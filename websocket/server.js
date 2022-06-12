@@ -9,3 +9,9 @@ app.use("/" , function(req, res){
 });
 
 app.listen(8080);
+
+const WebSocket = require('ws');
+
+conset socket = new Websocket.Server({
+  port: 8081
+});
