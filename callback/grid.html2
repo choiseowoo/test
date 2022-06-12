@@ -1,0 +1,16 @@
+<script>
+  //first()
+  //second()
+
+  function first(parameter){
+    console.log(1)
+    parameter()
+  }
+  
+  function second(){
+    console.log(2)
+  }
+  
+  first(second)
+  
+</script>
