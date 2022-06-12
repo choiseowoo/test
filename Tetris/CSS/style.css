@@ -2,16 +2,13 @@
   margin : 0;
   padding : 0;
 }
-
 ul {
   list-style : none;
 }
-
 body {
   height : 100%;
   overflow : hidden;
 }
-
 .score {
   test-align : center;
   font-size : 36px;
@@ -19,6 +16,8 @@ body {
 }
 .playground > ul {
   boder : 1px solid #333;
+  width : 250px;
+  margin : 0 auto;
 }
 .playground > ul > li {
   width : 100%;
@@ -30,6 +29,6 @@ body {
 .playground > ul > li > ul > li {
   width : 25px;
   height : 25px;
-  outline : 1px outline #ccc;
+  outline : 1px solid #ccc;
 }
 
