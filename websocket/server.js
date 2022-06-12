@@ -15,3 +15,11 @@ const WebSocket = require('ws');
 conset socket = new Websocket.Server({
   port: 8081
 });
+
+socket.on('connection', (ws, req)=>{
+  
+  ws.on('message', (msg)=>{
+    console.log('user send :' + msg);
+    ws.send('hello');
+  })
+});
