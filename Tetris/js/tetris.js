@@ -11,15 +11,6 @@ let duration = 500;
 let downInterval;
 let tempMovingItem;
 
-const BLOCKS = {
-  tree : [
-    [[2,1],[0,1],[1,0],[1,1]],
-    [[1,2],[0,1],[1,0],[1,1]],
-    [[1,2],[0,1],[2,1],[1,1]],
-    [[2,1],[1,2],[1,0],[1,1]],
-  ]
-}
-
 const movingItem = {
   type : "tree",
   direction : 1,
@@ -78,11 +69,23 @@ function renderBlocks(moveType= ""){
   moving.direction = direction;
 }
 function seizeBlock(){
-  
+  const movingBlocks = document.querySelectorAll(".moving");
+  movingBlocks.forEach(moving => {
+    moving.classList.remove("moving")
+    moving.classList.add("seized");
+  })
+  generateNewBlock()
+}
+function generateNewBlock(){
+  movingItem.top = 0;
+  movingItem.left = 3;
+  movingItem.direction = 0;
+  tempMovingItem = {...movingItem};
+  renderBlocks()
 }
 
 function checkEmpty(target){
-  if(!target){
+  if(!target || target.classList.contains("seized")) {
     return false;  
   }
   return true;
