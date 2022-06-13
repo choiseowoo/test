@@ -57,8 +57,12 @@ function renderBlocks(moveType= ""){
     target.classList.add(type, "moving")
     } else {
       tempMovingItem = { ...movingItem }
+      if(moveType === 'retry){
+          clearInterval(downInterval)
+          showGameoverText()
+         }
       setTimeout(() => {
-        renderBlocks();
+        renderBlocks('retry')
         if(moveType === "top"){
           seizeBlock();
         }
@@ -77,8 +81,27 @@ function seizeBlock(){
     moving.classList.remove("moving")
     moving.classList.add("seized");
   })
+   checkMatch()
+}
+function checkMatch(){
+  const childNodes = playground.childNodes; 
+  childNodes.forEach(child=>{
+    let matched = true;
+    child.children[0].childNodes.forEach(li=>{
+      if(li.classList.contains("seized")){
+          matched = false;
+      } 
+    })
+    if(matched){
+        child.remove();
+        prependNewLine()
+    }
+    
+  })
+  
   generateNewBlock()
 }
+
 function generateNewBlock(){
   
   clearInterval(downInterval);
@@ -144,8 +167,5 @@ document.addEventListener("keydown", e => {
 })
 
 
-22.17
-
-https://www.youtube.com/watch?v=1lNy2mhvLFk&t=139s
 
 
