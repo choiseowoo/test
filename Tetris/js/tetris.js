@@ -4,6 +4,8 @@ import BLOCKS from "./blocks.js"
 const playground = document.querySelector(".playground > ul");
 const gameText = document.querySelector(".game-text");
 const scoreDisplay = document.querySelector(".score");
+const restartButton = document.querySelector(".game-text > button ");
+
 
 // Setting
 const GAME_ROWS = 20;
@@ -97,6 +99,8 @@ function checkMatch(){
     if(matched){
         child.remove();
         prependNewLine()
+        score++;
+        scoreDisplay.innerText = score;
     }
     
   })
@@ -171,6 +175,10 @@ document.addEventListener("keydown", e => {
   console.log(e)
 })
 
-
+restartButton.addEventListener("click", ()=>{
+  playground.innerHTML = "";
+  gameText.style.display = "none"
+  init()
+})
 
 
