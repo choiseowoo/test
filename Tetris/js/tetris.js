@@ -2,6 +2,8 @@ import BLOCKS from "./blocks.js"
 
 // DOM
 const playground = document.querySelector(".playground > ul");
+const gameText = document.querySelector(".game-text");
+const scoreDisplay = document.querySelector(".score");
 
 // Setting
 const GAME_ROWS = 20;
@@ -140,6 +142,9 @@ function dropBlock(){
   downInterval = setInterval(()=>{
     moveBlock("top",1)
   }, 10)
+}
+function showGameoverText(){
+  gameText.style.display = "flex"
 }
 
 // evnet handling
