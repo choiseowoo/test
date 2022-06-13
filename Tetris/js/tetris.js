@@ -54,7 +54,8 @@ function renderBlocks(){
   BLOCKS[type][direction].forEach(block=>{
     const x = block[0];
     const y = block[1];
-    const target = playground.childNodes;
+    const target = playground.childNodes[y].childNodes[0].childNodes[x];
+    target.classList.add(type)
   })
 }
 
