@@ -14,7 +14,7 @@ let downInterval;
 let tempMovingItem;
 
 const movingItem = {
-  type : "tree",
+  type : "",
   direction : 1,
   top : 0,
   left : 0,
@@ -28,7 +28,8 @@ function init(){
   for (let i = 0; i < GAME_ROWS; i++){
      prependNewLine()
   } 
-  renderBlocks()
+  generateNewBlock()
+  //renderBlocks()
 }
 
 function prependNewLine(){
@@ -79,6 +80,12 @@ function seizeBlock(){
   generateNewBlock()
 }
 function generateNewBlock(){
+  
+  clearInterval(downInterval);
+  downInterval = setInterval(()=>{
+    moveBlock('top', 1)
+  }, duration)
+  
   const blockArray = Object.entrise(BLOCKS); 
   const randomIndex = Math.floor(Math.random() * blockArray.length)
   movingItem.type = blockArray[randomIndex][0]
@@ -96,7 +103,6 @@ function checkEmpty(target){
   return true;
 }
 
-
 function moveBlock(moveType, amount){
   tempMovingItem[moveType] += amount;
   renderBlocks(moveType)
@@ -104,7 +110,13 @@ function moveBlock(moveType, amount){
 function chageDirection(){
   const direction = tempMovingItem.direction;
   direction === 3 ? tempMovingItem.direction =0 : tempMovingItem.direction += 1;
-  renderBlocks
+  renderBlocks()
+}
+function dropBlock(){
+  clearInterval(downInterval);
+  downInterval = setInterval(()=>{
+    moveBlock("top",1)
+  }, 10)
 }
 
 // evnet handling
@@ -121,6 +133,9 @@ document.addEventListener("keydown", e => {
       break;
     case 38:
       changeDirection();
+      break;
+    case 32:
+      dropBlock();
       break;
      default:
       break;
