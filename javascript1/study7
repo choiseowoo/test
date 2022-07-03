@@ -1,0 +1,10 @@
+console.log(
+    String(3),
+    String(true)
+)
+
+
+console.log(
+        Number(true),
+        Number(false)
+    )
