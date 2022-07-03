@@ -1,0 +1,10 @@
+const name = "MIke";
+
+//typeof = 프로젝트 실행시 데이터 타입에 따른 처리값을 확인하여 작성 하기 위함니다. 
+
+console.log(typeof 3);
+console.log(typeof name);
+console.log(typeof true);
+console.log(typeof "xxx");
+console.log(typeof null);
+console.log(typeof undefined);
