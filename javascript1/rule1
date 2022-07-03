@@ -1,0 +1,8 @@
+Number(null)  //0
+Number(undefined) //Nan
+
+Number(0) //false
+Number('0') //true
+
+Number('') // false 
+Number(' ') //true
