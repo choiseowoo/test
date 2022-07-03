@@ -1,0 +1,7 @@
+const mathScore = prompt("수학점수는"); //prompt는 문자열만 입력된다.
+const engScore = prompt("영어점수는"); // 9080/2 = 4540
+//"6" / "2" = 3 자동형변화가 된다.
+
+const result = (mathScore + engScore) / 2;
+
+console.log(result);
