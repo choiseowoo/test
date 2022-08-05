@@ -9,7 +9,7 @@ public class Main {
         int height;
         double vision;
     
-    PhyscData(String name, int height, double vistion){
+    PhyscData(String name, int height, double vision){
         this.name = name;
         this.height = height;
         this.vision = vision;
