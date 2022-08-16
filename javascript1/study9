@@ -1,0 +1,12 @@
+function Person(name){
+    this.name = name;
+}
+
+const me = new Person("Lee");
+
+const parent = {
+    sayHello(){
+        console.log(`Hi My name ${this.name}`);
+    },
+};
+console.log(parent.sayHello());
