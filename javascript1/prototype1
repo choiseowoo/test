@@ -1,0 +1,11 @@
+function Person(){}
+
+var joon = new Person();
+var jisoo = new Person();
+
+Person.prototype.getType = function(){
+    return "인간";
+};
+
+console.log(joon.getType());
+console.log(jisoo.getType());
