@@ -1,0 +1,36 @@
+//즉시실행함수 immediately-inovoked function expression
+
+//함수표현식에 의한 명시적인 함수호출
+var app = function(){
+    console.log('함수 호출'); // "함수 호출" 출력
+};
+app();
+
+
+//즉시실행함수 immediately-inovoked function expression
+
+var app = (function (){
+    var privateVar = 'private';
+    return {
+        prop : privateVar
+    };
+}());
+
+console.log(app.prop); // "private" 출력
+
+var buyCar = function(carName){
+    //내가 구매한 차는 sonata입니다.  출력
+    console.log('내가 구매한 차는 ' + carName + '입니다.');
+};
+
+buyCar('sonata');
+
+(function(carName){
+    // "내가 구매한 차는 sonata입니다." 출력
+    console.log('내가 구매한 차는 ' + carName + '입니다.');
+}('sonata'));
+
+(function($){
+    //함수 스코프 내에서 $는 jQuery Object임.
+    console.log($);
+}(jQuery));
