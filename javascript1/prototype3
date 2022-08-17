@@ -1,0 +1,23 @@
+//재사용  - 부모의 객체와 생성자 까지 전부다 받아서 와서 처리하기 때문에 비효율적이 코드
+function Person(){}
+
+var joon = new Person();
+
+function Person(name){
+    this.name = name || "혁준";
+}
+
+Person.prototype.getName = function(){
+    return this.name;
+};
+
+function Korean(name){}
+Korean.prototype = new Person();
+
+var kor1 = new Korean();
+console.log(kor1.getName());
+
+var kor2 = new Korean("지수");
+console.log(kor2.getName());
+
+
