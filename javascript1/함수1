@@ -1,0 +1,8 @@
+/* 함수 first - class object 
+    함수와 익명함수
+*/ 
+
+// 함수선언식(function declaration)
+function company(){
+    /* 실행코드 */
+}
