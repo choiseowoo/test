@@ -1,0 +1,24 @@
+//재사용  - 부모의 생성자 빌려쓰기 *부모생서자를 한번도 호출하지 않으면서 프로토타입 객체 공유)
+
+var joon = new Person();
+
+function Person(name){
+    this.name = name || "혁준";
+}
+
+Person.prototype.getName = function(){
+    return this.name;
+};
+
+function Korean(name){
+    this.name = name;
+}
+
+Korean.prototype = Person.prototype;
+
+var kor1 = new Korean("지수");
+console.log(kor1.getName());
+
+//undefined
+var kor2 = new Korean();
+console.log(kor2.getName());
