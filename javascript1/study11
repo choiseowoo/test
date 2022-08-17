@@ -1,0 +1,36 @@
+const person = {
+    // 데이터 프로퍼티
+    firstName : "Donald",
+    lastName : "Duck",
+     // getter 함수
+    get fullName(){
+        return `${this.firstName} ${this.lastName}`;
+    },
+    // setter 함수
+    set fullName(name){
+        [this.firstName, this.lastName] = name.split(' ');
+    }
+};
+
+// 데이터 프로퍼티를 통한 프로퍼티 값의 참조
+console.log(person.firstName + ' ' + person.lastName);
+
+// 접근자 프로퍼티를 통한 프로퍼티 값의 저장
+// 접근자 프로퍼티 fullName값을 저장하면 setter 함수가 호출
+person.fullName = 'Daisy Duck';
+console.log(person.firstName + ' ' + person.lastName);
+
+// 접근자 프로퍼티를 통한 프로퍼티 값의 참조
+// 접근자 프로퍼티 fullName에 접근하면 getter 함수가 호출
+console.log(person.fullName);
+
+// firstName은 데이터 프로퍼티
+let descriptor = Object.getOwnPropertyDescriptor(person, 'firstName'); 
+console.log(descriptor);
+// {value:"Daisy", writable: true, enumerable: true, configurable: true}
+
+
+// fullName은 접근자 프로퍼티
+descriptor = Object.getOwnPropertyDescriptor(person, 'fullName');
+console.log(descriptor);
+// {get: f, set: f, enumerable: true, configurable: true}
