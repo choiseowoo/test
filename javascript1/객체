@@ -1,0 +1,27 @@
+// 속성을 통해 여러 개의 값을 하나의 단위로 구성한 복합적인 자료구조를 객체라 하며, 객체지향 프로그래밍은 독립적인 객체의 집합으로 프로그램을 표현
+
+const circle = {
+    radius : 5, //반지름
+
+    //원의 지름 : 2r
+    getDiameter(){
+        return 2 * this.radius;
+    },
+    
+    //원의 둘레 : 2πr
+    getPerimeter(){
+        return 2 * Math.PI * this.radius;
+    },
+    
+    // 원의 넓이 : πrr
+    getArea(){
+        return Math.PI * this.radius ** 2;
+    }
+};
+
+console.log(circle);
+// {radius: 5, getDiameter: ƒ, getPerimeter: ƒ, getArea: ƒ}
+
+console.log(circle.getDiameter());  // 10
+console.log(circle.getPerimeter()); // 31.41592653589793
+console.log(circle.getArea());      // 78.53981633974483
