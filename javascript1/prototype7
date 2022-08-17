@@ -1,0 +1,17 @@
+//재사용  - prototypal한 방식의 재사용 * Object.create() 다수의 사람들이 선호하지 않는방식
+
+var person = {
+    type : "인간",
+    getType : function(){
+        return this.type;
+    },
+    getName : function(){
+        return this.name;
+    }
+};
+
+var joon = Object.create(person);
+joon.name = "혁준";
+
+console.log(joon.getType()); //인간
+console.log(joon.getName()); //혁준
