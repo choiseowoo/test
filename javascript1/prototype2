@@ -1,0 +1,29 @@
+function Person(){}
+
+var joon = new Person();
+var jisoo = new Person();
+
+Person.prototype.getType = function(){
+    return "인간";
+};
+
+//console.log(joon.getType());
+//console.log(jisoo.getType());
+
+joon.getType = function(){
+    return "사람";
+};
+
+//console.log(joon.getType());
+console.log(jisoo.getType());
+
+jisoo.age = 25;
+
+//console.log(joon.age);
+//console.log(jisoo.age);
+
+Person.prototype.getType = function(){
+    return "사람";
+};
+
+console.log(jisoo.getType());
