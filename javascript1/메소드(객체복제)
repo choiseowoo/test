@@ -1,0 +1,44 @@
+const user = {
+    name : 'mike',
+    age : 30
+}
+const newUser = Object.assign({}, user); 
+
+newUser.name = 'Tom';
+console.log(user.name);
+
+console.log(newUser.name);
+
+/*const cloneUser = user;
+console.log(cloneUser);
+
+user.name
+console.log(user.name);
+
+cloneUser.name = 'Tom';
+console.log(user.name);*/
+
+newUser != user
+
+
+------------------------------------
+
+const user = {
+    name : 'mike',
+    age : 30
+}
+const newUser = Object.assign({ gender:'male'}, user); // 객체가 추가된다.
+const newUser = Object.assign({ name:'Tom'}, user); // 덮어쓰기 된다.
+
+//두개 이상을 겹처쓸수 있다.
+const user = {
+    name : 'mike'
+}
+const info1 = {
+    age : 30,
+}
+const info2 = {
+    gender : 'male',
+}
+Object.assign(user, info1, info2)
+
