@@ -1,0 +1,49 @@
+var는 전역변수의 개념 
+let , const 지역변수의 개념과 비슷하다
+
+var는 순서를 역순으로해서 읽어들이면 undefined처리가 되어 나오기 때문에 값이 나온다.
+var name
+console.log(name);
+name  = "mike";
+result = undefined 
+
+let은 순석를 역순으로해서 읽으면 에러가 발생된다. 
+let name
+console.log(name);
+name  = "mike";
+result = error
+
+되도록 let, const를 권장한다.
+
+var,let와 const의 차이점으로 const는 변수선언시 반드시 같이 const와 리터럴(값)을 같이 써줘야한다.
+ex)
+var name;
+name = "mike";
+console.log(name);
+
+let gender;
+gender = "male";
+console.log(gender);
+
+const age;
+age = 30;
+console.log(age);
+
+const age가 에러가 발생한다. 
+-------------------------
+var는 전역변수의 개념이 강하기 때문에
+var age = 30;
+function checkage(){
+  console.log(age)
+  var age = 20;
+};
+checkage();
+result = undefined
+
+반약 function, for, if문 안에서 let, const선언시 지역변수로써만 가능하기 떄문에 전역변수 처리가 되지 않는다. 단 function에서는 var도 지역변수로만 값이 처리 된다. 
+
+
+
+
+
+
