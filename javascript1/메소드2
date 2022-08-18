@@ -1,0 +1,27 @@
+// 객체 : {} / 배열 : []
+
+const user = {
+    name : 'mike',
+    age : 30,
+    gender : 'male',
+}
+//키 배열 반환
+const check1 = Object.keys(user);
+console.log(check1);
+
+//값 배열 반환
+const check2 = Object.values(user);
+console.log(check2);
+
+//키/값 배열 반환
+const check3 = Object.entries(user);
+console.log(check3);
+
+//키/값 배열을 객체로
+const arr = [
+    ["name" , "mike", "Tom"],
+    ["age" , 30],
+    ["gender", "male"]
+];
+const check4 = Object.fromEntries(arr)
+console.log(check4);
