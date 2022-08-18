@@ -1,0 +1,33 @@
+//생성자 선언시 대문자로 선언 User
+
+function User(name, age){
+  this.name = name;
+  this.age = age;
+};
+
+//new연산자를 사용해서 호출
+let user1 = new User('Mike', 30);
+let user2 = new User('Jhon', 22);
+let user3 = new User('Jane', 17);
+
+생성자 함수 처리 구조 - this = {} , return this는 실제 입력을 하지는 않지만 실행되고 있다. 생서자는 첫 문자는 반드시 대문자.
+/* function User(name,age){
+  //this = {}
+  this.name = name;
+  this.age = age;
+  
+  //return this;
+};
+new 함수명(); */
+----------------------------------
+function User(name, age){
+  this.name = name;
+  this.age = age;
+  this.sayName = function(){
+    console.log(this.name);  //this.name에서 this는 31행에 있는 user5이다. 
+  }
+}
+let user5 = new User('han', 40);
+user5.sayName(); // 'han'  // 26행에 this이다.
+-----------------------------------------------
+
