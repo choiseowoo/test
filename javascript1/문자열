@@ -1,0 +1,68 @@
+// ', ", '
+let html = '<div class="box_title">제목 영역</div>'; //html은 작은 따음표가 표현하기 좋다.
+let desc = "Its 3 o'clock."; //문자열은 큰따음표가 좋다.
+
+let name = 'mike'; // 중괄호 
+let result = `My name is ${name}`;
+let addr = `2 더하기 3은 ${2+3}`;
+
+let desc2 = `오늘은 맑고 화장한 
+날씨가 계속 되겠습니다.
+내일은 비소식이 있습니다.`;
+console.log(desc2);
+
+let desc3 = '오늘은 맑고 화장한\n 날씨가 계속 되겠습니다. 내일은 비소식이 있습니다.';
+console.log(desc3);
+
+//length : 문자열 길이 -- 아이디나 비밃번호 길이 제한 걸때 사용하는 경우가 많다.
+let desc4 = '안녕하세요';
+console.log(desc4.length);
+
+//특정 위치에 접근
+let desc5 = '안녕하세요.';
+console.log(desc5[2]);
+
+desc5[4] = '용'; // 속성을 변화를 줘도 바뀌지 않는다.
+console.log(desc5);
+
+let desc6 = "Hi guys. Nice to meet you.";
+console.log(desc6.toUpperCase());
+console.log(desc6.toLowerCase());
+
+//str.indexOf(text) 문자를 인수로 받아서 처리한다.
+let desc7 = "Hi guys. Nice to meet you.";
+console.log(desc7.indexOf('to'));
+console.log(desc7.indexOf('man')); //찾는 문자가 업으면 -1로 반환한다. 
+
+//문자가 중복되어 있다면 첫번째 문자열만 반환한다.
+if(desc7.indexOf('Hi')){ //문자열 맨앞은 0이기 때문에 false처리 된다 그렇기에
+    console.log('Hi가 포함된 문장입니다.');
+}
+
+if(desc7.indexOf('Hi') > -1 ){ //문자열 맨앞은 0이기 때문에 false처리 된다 그렇기에
+    console.log('Hi가 포함된 문장입니다.');
+}
+
+//str.slice(n, m) n은 시작점 m은 없으면 문자열 끝가지 양수면 그 숫자까지(포험하지않음) 음수면 끝에서부터 셈)
+let desc8 = "abcdefg";
+console.log(desc8.slice(2));  // "cdefg"
+console.log(desc8.slice(0,5)); // "abcde"
+console.log(desc8.slice(2,-2)); // "cde"
+
+//str.substring(n,m) n과 m 사이 문자열 반환 n과 m을 바꿔도 동작함. 음수 허용하지 않음. 0으로 반환함.
+let desc9 = "abcdefg";
+console.log(desc9.substring(2,5));
+console.log(desc9.substring(5,2));
+
+//str.substr(n,m) n부터 시작 m개를 가져옴
+let desc10 = "abcdefg";
+console.log(desc10.substr(2,4)); // "cdef"
+console.log(desc10.substr(-4,2)); //"de"
+
+//str.trim() : 앞 뒤 공백제거 스페이스 제거
+let desc11 = " coding       ";
+console.log(desc11.)
+
+
+
+
