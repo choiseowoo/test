@@ -1,0 +1,109 @@
+const car = {
+    wheels: 4,
+    drive(){
+        console.log("drive..");
+    },
+};
+
+const bmw = {
+    color : "red",
+    navigation: 1,
+};
+
+bmw.__proto__ = car;
+
+const x5 = {
+    color : "white",
+    name : "x5",
+};
+
+x5.__proto__ = bmw;
+console.log(x5.navigation);
+
+for(p in x5){
+    if(x5.hasOwnProperty(p)){
+        console.log('o', p);
+    }else {
+        console.log('x', p);
+    }
+}
+
+
+
+/*const car = {
+    wheel : 4, 
+    drive(){
+        console.log('drive...');
+    },
+};*/
+
+const Bmw = function(color){
+    this.color = color;
+};
+
+Bmw.prototype.wheel = 4;
+Bmw.prototype.drive = function(){
+    console.log('drive..');
+};
+
+
+const x5 = new Bmw("red");
+const z4 = new Bmw("blue");
+
+/*x5.__proto__ = car;
+z4.__proto__ = car;*/
+
+
+
+
+
+/*const car = {
+    wheel : 4, 
+    drive(){
+        console.log('drive...');
+    },
+};*/
+
+const Bmw = function(color){
+    this.color = color;
+};
+
+/*Bmw.prototype.wheel = 4;
+Bmw.prototype.drive = function(){
+    console.log('drive..');
+};
+*/
+
+//아래의 방법이 편하긴 하지만 z4.constructor === Bmw값이 false로 처리된다.
+//수동으로 constructor를 넣을 수 있따.
+/*Bmw.prototype = {
+    constructor: Bmw,
+    wheel : 4,
+    drive(){
+        console.log("drive..");
+    },
+    navigation : 1,
+    stop(){
+        console.log("STOP!");
+    },
+};*/
+
+
+
+const x5 = new Bmw("red");
+const z4 = new Bmw("blue");
+
+/*x5.__proto__ = car;
+z4.__proto__ = car;*/
+
+
+//get을 사용하면 초기에 대한 값만 받아 올 수 있고 이후에 값을 받지 못한다.
+const Bmw = function(color){
+    const c = color;
+    this.getColor = function(){
+        console.log(c);
+    };
+};
+
+const x5 = new Bmw("red");
+x5.getColor();
