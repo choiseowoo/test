@@ -1,0 +1,83 @@
+/*Destructuring assignment
+구조 분해 할당 구문은 배열이나 객체의 속성을 분해해서 
+그값을 변수에 담을 수 있게 하는 표현식*/
+
+//배열구조 분해
+let [x,y] = [1,2];
+console.log(x);
+console.log(y);
+
+
+//배열구조 분해
+let users = ["Mike", "Tom", "Jane"];
+
+let [user1, user2, user3] = users;
+
+console.log(user1);
+console.log(user2);
+console.log(user3);
+
+const str = ["Mike-Tom-Jane"];
+
+const [user1, user2, user3] = str.split('-');
+
+console.log(user1);
+console.log(user2);
+console.log(user3);
+
+//배열구조 분해 : 기본값
+//const = [a,b,c] = [1,2]; c는 undefined
+
+const [a=3,b=4,c=5] = [1,2];
+
+console.log(a);
+console.log(b);
+console.log(c);
+
+//배열구조 분해 : 일부 반환값 무시
+
+let [user1, user2] = ['Mike','Tom','Jane','Tony'];
+
+console.log(user1);
+console.log(user2);
+
+//배열구조 분해 : 바꿔치기
+/*임시 변수 ex)temp = c
+let a = 1;
+let b = 2;
+let c = a;
+a = b;
+b = c;
+*/
+let a = 1;
+let b = 2;
+[a,b] = [b,a];
+
+---------------------------------------
+
+//객체 구조 분해
+let user = {name: 'Mike' , age: 30};
+let{name, age} = user; //let name = uers.name, let age = user.age
+console.log(name);
+console.log(age);
+
+//객체 구조 분해 : 새로운 변수 이름으로 할당
+let user = {name: 'Mike' , age: 30};
+let{name : userName, age: userAge} = user;
+console.log(userName);
+console.log(userAge);
+
+/*Destructuring assignment
+구조 분해 할당 구문은 배열이나 객체의 속성을 분해해서 
+그값을 변수에 담을 수 있게 하는 표현식*/
+
+//객체 구조 분해 : 기본값
+let user = {name: 'Mike' , age: 30, gender: 'female'}; //gender값이 undefined일경우만 male로 표시됨
+// let{name, age, gender} = user; //gender=undefined
+let{name, age, gender = 'male'} = user; //gender=undefined
+console.log(name);
+console.log(age);
+console.log(gender);
+
+//https://www.learn-codes.net/javascript/javascript-uncaught-typeerror-split-is-not-a-function/
+//https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Errors/is_not_iterable
