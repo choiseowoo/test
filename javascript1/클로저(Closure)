@@ -1,0 +1,45 @@
+//클로저(Closure) 
+//어휘적환경Lexical Environmnet)
+//즉 function 내부에서 우선적으로 객체 값을 찾아서 확인하고 그다음 전역에서
+//확인하여 값을 처리한다. 
+//즉 내부에서부터 외부로 찾아가면서 값을 처리한다. 
+
+let one;    //undefined
+one = 1;    // 1 
+
+function addOne(num){                //Lexical환경 one: 초기화X(사용불가), addOne : function 사용가능
+    console.log(one + num);          // 전역 :Lexical환경 addOne : function
+}
+ 
+addOne(5);  // 내부 Lexical환경 num:5
+
+
+//클로저(Closure) 
+//어휘적환경Lexical Environmnet)
+//전역 Lexical환경 
+/*makeAdder : function
+add3 : 초기화X - 즉 function makeAdder를 처리할떄는 초기화 상태이고 const add3을 처리할때는 x = 3값으로 처리한 상태이다.    */ 
+
+function makeAdder(x){
+    return function(y){
+        return x + y;
+    }
+}
+
+const add3 = makeAdder(3);
+console.log(add3(2)); 
+
+
+function makeCounter(){
+    let num = 0; //은닉화
+    
+    return function(){
+        return num++;
+    };
+}
+
+let counter = makeCounter();
+
+console.log(counter()); // 0 
+console.log(counter()); // 1
+console.log(counter()); // 2
