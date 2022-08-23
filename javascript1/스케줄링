@@ -1,0 +1,56 @@
+//setTimeout 일정시간이 지난 후 함수를실행  / setInterval 일정시간 간격으로 함수를 반복
+function fn(){
+    console.log(3)
+}
+setTimeout(fn, 3000); //3s
+
+
+setTimeout(function(){
+    console.log(3)
+}, 3000);
+
+const tId = function showName(name){
+    console.log(name);
+}
+
+setTimeout(showName, 3000, 'Mike');
+
+clearTimeout(tId); //스케줄링을 취소할 수 있음.
+
+
+//setTimeout 일정시간이 지난 후 함수를실행  / setInterval 일정시간 간격으로 함수를 반복
+function showName(name){
+    console.log(name);
+} 
+
+const tId = setInterval(showName, 3000, 'Mike');
+
+//중지하기위해서 clearTimeout 사용해야함다.
+
+//setTimeout 일정시간이 지난 후 함수를실행  / setInterval 일정시간 간격으로 함수를 반복
+setTimeout(function(){
+    console.log(2) //순서2 
+}, 0);  //delay0을 적어도 브라우저는 약 4ms의 시간의 이터벌이 있기에 그정도에 시간이 걸리거나 그 이상의 시간이 걸린다.
+
+console.log(1); //순서 1
+
+let num = 0;
+
+function showTime(){
+    console.log(`안녕하세요. 접속하신지 ${num++}초가 지났습니다.`);
+}
+setInterval(showTime, 1000);
+
+
+
+let num = 0;
+
+function showTime(){
+    console.log(`안녕하세요. 접속하신지 ${num++}초가 지났습니다.`);
+    if(num > 5 ){
+    clearInterval(tId);
+    }
+}
+const tId = setInterval(showTime, 1000); //무한으로 처리되기 떄문에 clear인터벌로 제한해야한다.
+
+
