@@ -78,3 +78,5 @@ function* gen2(){
     yield* gen1();
     yield "!";
 }
+
+//Generator 제네레이터는 다른 작업을 하다가 다시 돌아와서 next()해주면 진행이 멈췄던 부분부터 이어서 실행 ex)Rdux Saga
