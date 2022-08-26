@@ -1,0 +1,67 @@
+const User = function(name, age){
+    this.name = name;
+    this.age = age;
+/*    this.showName = function(){
+        console.log(this.name);
+    
+    };*/
+};
+
+User.prototype.showName = function(){
+    console.log(this.name);
+}
+
+const mike = new User("Mike", 30);
+
+class User2 {
+    constructor(name, age){
+        this.name = name;
+        this.age = age;
+    }
+    showName(){
+        console.log(this.name + "\n check");
+    }
+}
+
+const tom = new User2("Tom", 19);
+// console.log(mike);
+// console.log(tom);
+//console.log(User2);
+for(const p in mike){
+    console.log(p);
+}
+
+for(const o in tom){
+    console.log(o);
+}
+
+
+
+
+
+
+class Car{
+    constructor(color){
+        this.color = color;
+        this.wheel = 4;
+    }
+    drive(){
+        console.log("drive..");
+    }
+    stop(){
+        console.log("STOP..");
+    }
+}
+
+class Bmw extends Car{
+    Park(){
+        console.log("PARK..");
+    }
+    stop(){
+        super.stop();
+        console.log("OFF");
+    }
+}
+
+const z4 = new Bmw("blue");
+console.log(z4.stop());
