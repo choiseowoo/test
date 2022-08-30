@@ -1,0 +1,13 @@
+function solution(s){
+  return s.split(''),sort().reverse().join('');
+}
+
+console.log(solution('Zbcedfg'));
+
+
+function solution(s){
+    //map에 문자열을 코드화시켜서 담고서 map에 있는 코드화 된걸 다시 원래 문자열로 변환하면서 역순으로 출력하게끔 한다.
+    return s.split('').map(x => x.charCodeAt()).sort((a,b)=> b-a).map(x => String.fromCharCode(x)).join('');
+}
+
+console.log(solution('Zbcdefg'));
