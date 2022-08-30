@@ -1,0 +1,37 @@
+function solution(n) {
+    var answer = '';
+    if(n < 10000){
+    for(let i =1; i <= n; i++){
+        if(i % 2 !== 0) {answer += "수"}
+        else {answer += "박"}
+        }
+    }
+    return answer;
+}
+console.log(solution(10));
+
+
+function solution(s){
+    let result = '';
+    if(s<10000){
+        for(let i=0; i<s; i++){
+            if(i % 2 === 0) result += '수'
+            else result += '박'
+        }
+    }
+    return result;
+}
+
+console.log(solution(100011));
+
+
+function solution(n) {
+    var answer = '';
+    if(n < 10000){
+    for(let i =1; i <= n; i++){
+        (i % 2 !== 0) ? (answer += "수") : (answer += "박");
+        }
+    }
+    return answer;
+}
+console.log(solution(2));
