@@ -1,0 +1,48 @@
+function solution(a,b){
+    let week = ['SUN','MON','TUE','WED','THU','FRI','SAT']
+    let year = '2016';
+    let month = a;
+    let day = b;
+    let dayOfWeek = week[new Date(year+'-'+month+'-'+day).getDay()];
+    return dayOfWeek;
+}
+console.log(solution(5,24));
+    console.log(solution.getDay());
+    
+    
+    -----
+    
+   let date1 = new Date('December 17, 1995 03:24:00');
+let date2 = new Date('1995-12-17T03:24:00');
+let date3 = new Date(95,11,17,3,24,0);
+let date4 = new Date().toString();
+
+let week = date4.slice(0, 12);
+
+console.log(date1);
+console.log(date2);
+console.log(date3);
+console.log(date4);
+console.log(week);
+
+https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Date/now
+
+----
+
+function solution(a,b){
+    let day = new Date(2016, a-1, b);
+    return day.toString().slice(0,3).toUpperCase();
+}
+
+console.log(solution(1,3))
+
+
+
+
+function solution(a,b){
+    let day = new Date(2016, a-1, b);
+    var weekDay = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    return weekDay[day.getDay()];
+}
+
+console.log(solution(1,4))
