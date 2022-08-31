@@ -1,0 +1,30 @@
+function solution(n){
+    let num = String(n).split('').map(num => parseInt(num)).reduce((acc, cur)=>
+    acc + cur);
+    
+    return n % num === 0 ? true : false;
+}
+
+
+function solution(x){
+       return !(x % String(x).split('').reduce((a, b) => +b + +a ));
+}
+
+const solution = (x) =>
+!(
+    x %
+    x
+        .toString()
+        .split('')
+        .reduce((acc, cur) => acc + Number(cur), 0)
+    );
+    
+    
+    function solution(x){
+    const arrX = `${x}`.split("").map((n) => parseInt(n));
+    let sum = 0;
+    for(const num of arrX){
+        sum += num;
+    }
+    return !(x % sum);
+}
