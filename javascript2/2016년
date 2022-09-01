@@ -1,0 +1,25 @@
+function solution(a,b){
+    let count = 0;
+     const day = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+     const month = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+     for(let i = 1; i < a; i++) count += month[i];
+         count += b;
+         return day[(count + 4 ) % 7];
+     
+}
+
+function solution(a,b){
+    let count = 0;
+     const day = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+     const month = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+     for(let i = 1; i < a; i++) count += month[i]; //ex)5월인 경우 1~4월까지 더해준다.
+         count += b;
+         return day[(count + 4 ) % 7]; //1일이 금요일이므로, 0이면 목요일이 출력되어야 한다.
+}
+
+function solution(a, b) {
+  let week = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  let dateStr = "2016-" + a + "- " + b;
+  let date = new Date(dateStr);
+  return week[date.getDay()];
+}
