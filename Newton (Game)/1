@@ -1,0 +1,264 @@
+var sketchProc = function(processingInstance) {
+  with (processingInstance) {
+    size(600, 600); 
+    frameRate(60);    
+    smooth();
+    
+textFont(createFont("verdana"));
+
+{
+    //Key|Button stuff
+    var clicked = false;
+    var hover = false;
+    var keys = [];
+    keyPressed = function () {
+        keys[keyCode] = true;
+    };
+    keyReleased = function () {
+        keys[keyCode] = false;
+    };
+    mouseClicked = function () {
+        clicked = true;
+    };
+} //Keys/Mouse
+
+var Game = function(config) {
+    this.page = "home";
+    this.base = 570;
+    
+    this.titleFont = createFont("arial black");
+    
+    this.frequencyMax = 240;
+    this.frequencyMin = 100;
+    this.frequency = this.frequencyMax;
+    this.frequencyTimer = 0;
+    
+    this.colors = [
+        { //red
+            back: color(205, 20, 54),
+            front: color(237, 64, 66),
+            brick: color(244, 120, 82)
+        },
+        { //blue
+            back: color(84, 133, 229),
+            front: color(94, 148, 255),
+            brick: color(126, 169, 255)
+        },
+        { //green
+            back: color(125, 181, 169),
+            front: color(139, 201, 77),
+            brick: color(162, 212, 113)
+        },
+        { //purple
+            back: color(144, 101, 229),
+            front: color(160, 113, 225),
+            brick: color(179, 141, 255)
+        }
+    ];
+    this.theme = 0;
+    
+    this.bricksRepository = [];
+    this.bricks = [];
+    this.brickPieces = [];
+    
+    this.enemiesRepository = [];
+    this.enemies = [];
+    
+    this.bombsRepository = [];
+    this.bombs = [];
+    this.bombPiecesRepository = [];
+    this.bombPieces = [];
+    
+    this.medkitsRepository = [];
+    this.medkits = [];
+    
+    this.clouds = [];
+    this.rain = [];
+    this.drops = 0;
+    
+    this.storm = 0;
+    
+    this.score = 0;
+    this.highscore = 0;
+    this.health = 100;
+    
+    this.shake = 0;
+    this.shakedown = 0.2;
+    
+    this.bombPieceCoords = [
+        {
+            x: 0,
+            y: 0
+        },
+        {
+            x: -0.5,
+            y: 0 
+        },
+        {
+            x: 0.5,
+            y: 0 
+        },
+        {
+            x: 0,
+            y: -0.5 
+        },
+        {
+            x: 0,
+            y: 0.5 
+        },
+        {
+            x: 0.25,
+            y: 0.25 
+        },
+        {
+            x: 0.25,
+            y: -0.25 
+        },
+        {
+            x: -0.25,
+            y: 0.25 
+        },
+        {
+            x: -0.25,
+            y: -0.25 
+        }
+    ];
+    
+    this.leaderboardArr = [
+        {
+            user: "Could be you",
+            score: 0
+        },
+        {
+            user: "Could be you",
+            score: 0
+        },
+        {
+            user: "Could be you",
+            score: 0
+        },
+        {
+            user: "Could be you",
+            score: 0
+        },
+        {
+            user: "Could be you",
+            score: 0
+        },
+        {
+            user: "Could be you",
+            score: 0
+        },
+        {
+            user: "Could be you",
+            score: 0
+        },
+        {
+            user: "Could be you",
+            score: 0
+        },
+        {
+            user: "Could be you",
+            score: 0
+        },
+        {
+            user: "Could be you",
+            score: 0
+        }
+    ];
+    this.leaderboardArr.sort(function(a, b) {
+       return b.score - a.score; 
+    });
+};
+var game = new Game({});
+
+{
+    var Button = function (config) {
+        this.pos = config.pos || new PVector(0, 0);
+        this.size = config.size || 70;
+        this.content = config.content || "Home";
+        this.page = config.page || "home";
+        this.textSize = config.textSize || this.size / 5;
+        this.borderColor = color(12, 31, 3, 20);
+        this.backColor = game.colors[game.theme].back;
+        this.textColor = color(245, 242, 242);
+        this.backColorHover = game.colors[game.theme].front;
+        this.textColorHover = color(245, 242, 242);
+        this.growth = 0;
+    };
+
+    Button.prototype.draw = function () {
+        pushStyle();
+        textAlign(CENTER, CENTER);
+        textSize(this.textSize + (this.growth * 0.1));
+        noStroke();
+
+        //shadow
+        fill(20, 20, 20, 30);
+        ellipse(this.pos.x, this.pos.y + this.size * 0.52, (this.size + this.growth) * 0.8, (this.size + this.growth) * 0.3);
+
+        //circles
+        if (dist(mouseX, mouseY, this.pos.x, this.pos.y) <= this.size / 2) { //hover
+            this.growth = constrain(this.growth + 0.5, 0, 10);
+            if (clicked) {
+                game.page = this.page;
+                if(game.page === "home") {
+                    game.player.x = 300;
+                    game.player.y = game.base;
+                    game.boss.x = 280;
+                    game.boss.y = 54;
+                }
+                if(game.page === "play" || game.page === "replay") {
+                    game.reset();
+                }
+            }
+
+            fill(this.backColorHover);
+            stroke(this.borderColor);
+            ellipse(this.pos.x, this.pos.y, this.size + this.growth, this.size + this.growth);
+            fill(this.textColorHover);
+            switch(this.content) {
+                case "Play":
+                    triangle(this.pos.x + this.size*0.25, this.pos.y, this.pos.x - this.size*0.15, this.pos.y - this.size*0.25, this.pos.x - this.size*0.15, this.pos.y + this.size*0.25);
+                    break;
+                case "How":
+                    pushStyle();
+                        textSize(this.size*0.6);
+                        text("?", this.pos.x, this.pos.y);
+                    popStyle();
+                    break;
+                case "Story":
+                    pushStyle();
+                        noFill();
+                        stroke(this.textColorHover);
+                        strokeWeight(4);
+                        line(this.pos.x-this.size*0.23, this.pos.y-this.size*0.2, this.pos.x+this.size*0.23, this.pos.y-this.size*0.2);
+                        line(this.pos.x-this.size*0.23, this.pos.y, this.pos.x+this.size*0.23, this.pos.y);
+                        line(this.pos.x-this.size*0.23, this.pos.y+this.size*0.2, this.pos.x+this.size*0.23, this.pos.y+this.size*0.2);
+                    popStyle();
+                    break;
+                case "Themes":
+                    arc(this.pos.x, this.pos.y, this.size + this.growth, this.size + this.growth, radians(271), radians(450));
+                    break;
+                case "Back":
+                    pushStyle();
+                    beginShape();
+                        vertex(this.pos.x+this.size*0.25, this.pos.y); //1
+                        vertex(this.pos.x+this.size*0.25, this.pos.y+this.size*0.25); //2
+                        vertex(this.pos.x+this.size*0.07, this.pos.y+this.size*0.25); //3
+                        vertex(this.pos.x+this.size*0.07, this.pos.y+this.size*0.12); //4
+                        vertex(this.pos.x-this.size*0.07, this.pos.y+this.size*0.12); //5
+                        vertex(this.pos.x-this.size*0.07, this.pos.y+this.size*0.25); //6
+                        vertex(this.pos.x-this.size*0.25, this.pos.y+this.size*0.25); //7
+                        vertex(this.pos.x-this.size*0.25, this.pos.y); //8
+                        vertex(this.pos.x, this.pos.y-this.size*0.2); //9
+                        vertex(this.pos.x+this.size*0.25, this.pos.y); //10
+                    endShape();
+                    noFill();
+                    stroke(this.textColorHover);
+                    strokeWeight(this.size*0.05);
+                    line(this.pos.x-this.size*0.27, this.pos.y-this.size*0.05, this.pos.x, this.pos.y-this.size*0.27);
+                    line(this.pos.x+this.size*0.27, this.pos.y-this.size*0.05, this.pos.x, this.pos.y-this.size*0.27);
+                    line(this.pos.x+this.size*0.15, this.pos.y-this.size*0.19, this.pos.x+this.size*0.15, this.pos.y-this.size*0.25);
+                    popStyle();
+                    break;
