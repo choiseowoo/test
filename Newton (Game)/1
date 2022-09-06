@@ -262,3 +262,38 @@ var game = new Game({});
                     line(this.pos.x+this.size*0.15, this.pos.y-this.size*0.19, this.pos.x+this.size*0.15, this.pos.y-this.size*0.25);
                     popStyle();
                     break;
+                case "Leaderboard":
+                    pushStyle();
+                        noFill();
+                        stroke(this.textColorHover);
+                        strokeWeight(this.size * 0.14);
+                        strokeCap(SQUARE);
+                        
+                        line(this.pos.x, this.pos.y + this.size * 0.25, this.pos.x, this.pos.y - this.size * 0.3);
+                        line(this.pos.x - this.size * 0.2, this.pos.y + this.size * 0.25, this.pos.x - this.size * 0.2, this.pos.y - this.size * 0.1);
+                        line(this.pos.x + this.size * 0.2, this.pos.y + this.size * 0.25, this.pos.x + this.size * 0.2, this.pos.y - this.size * 0.2);
+                    popStyle();
+                    break;
+                case "Replay":
+                    pushStyle();
+                        noFill();
+                        stroke(this.textColorHover);
+                        strokeWeight(5);
+                        pushMatrix();
+                            translate(this.pos.x, this.pos.y);
+                            rotate(radians(frameCount * 5));
+                            arc(0, 0, this.size * 0.6, this.size * 0.6, 0, radians(275));
+                            noStroke();
+                            fill(this.textColorHover);
+                            translate(this.size * 0.30, -this.size * 0.18);
+                            rotate(radians(-70));
+                            triangle(0, -this.size * 0.1, -this.size * 0.14, -this.size * 0.3, this.size * 0.14, -this.size * 0.3);
+                        popMatrix();
+                    popStyle();
+                    break;
+                default:
+                    text(this.content, this.pos.x, this.pos.y);
+            }
+        }
+        else{ //not hover
+        }
