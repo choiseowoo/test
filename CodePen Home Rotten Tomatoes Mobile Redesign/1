@@ -1,0 +1,92 @@
+const content = document.getElementById("content"),
+      results = document.getElementById("content-results"),
+      result = results.getElementsByClassName("result")[0];
+
+const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+const items = [{
+  img: "https://images.unsplash.com/photo-1661901060088-32dbfeb040df?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxlZGl0b3JpYWwtZmVlZHwxMnx8fGVufDB8fHx8&auto=format&fit=crop&w=500&q=60",
+  title: "Shed on the River"
+}, {
+  img: "https://images.unsplash.com/photo-1661933159306-0f118db543b9?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxlZGl0b3JpYWwtZmVlZHwxOHx8fGVufDB8fHx8&auto=format&fit=crop&w=500&q=60",
+  title: "Palmy Mc Palm Trees"
+}, {
+  img: "https://images.unsplash.com/photo-1661926577316-067a9b79497b?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxlZGl0b3JpYWwtZmVlZHwzM3x8fGVufDB8fHx8&auto=format&fit=crop&w=500&q=60",
+  title: "Looky Uppy Time"
+}, {
+  img: "https://images.unsplash.com/photo-1661940348479-0411d52eb04c?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxlZGl0b3JpYWwtZmVlZHw0N3x8fGVufDB8fHx8&auto=format&fit=crop&w=500&q=60",
+  title: "Neat View Off Side of Boat Maybe"
+}, {
+  img: "https://images.unsplash.com/photo-1661879392883-30d306d70ad8?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxlZGl0b3JpYWwtZmVlZHw1NHx8fGVufDB8fHx8&auto=format&fit=crop&w=500&q=60",
+  title: "Wow Cool Airplane"
+}, {
+  img: "https://images.unsplash.com/photo-1661929002870-ae54a4748870?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxlZGl0b3JpYWwtZmVlZHw1OXx8fGVufDB8fHx8&auto=format&fit=crop&w=500&q=60",
+  title: "Fast 'N Angry 127.5"
+}, {
+  img: "https://images.unsplash.com/photo-1661900948585-b2fbb74382e5?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxlZGl0b3JpYWwtZmVlZHw2N3x8fGVufDB8fHx8&auto=format&fit=crop&w=500&q=60",
+  title: "Small Big Buildings in the Distance"
+}];
+
+for(let i = 0; i<7; i++){
+  const clone = result.cloneNode(true),
+        image = clone.getElementsByClassName("result-image")[0],
+        title = clone.getElementsByClassName("result-info-title")[0],
+        criticRating = clone.getElementsByClassName("critic-rating")[0],
+        criticRatingIcon = criticRating.getElementsByClassName("icon")[0],
+        criticRatingLabel = criticRating.getElementsByClassName("label")[0],
+        audienceRating = clone.getElementsByClassName("audience-rating")[0],
+        audienceRatingLabel = audienceRating.getElementsByClassName("label")[0],
+        item = items[i];
+        
+  const criticRatingValue = rand(10, 80),
+        audienceRatingValue = criticRatingValue + rand(0, 100 - criticRatingValue);
+  
+  image.style.backgroundImage = `url(${item.img})`;
+  
+  title.innerText = item.title;
+  
+  criticRating.className = criticRatingValue > 50 ? "critic-rating result-info-rating fresh" : "critic-rating result-info-rating rotten";
+  
+  criticRatingIcon.className = criticRatingValue > 50 ? "fa-solid fa-tomato icon" : "fa-solid fa-burst icon";
+  
+  criticRatingLabel.innerText = `${criticRatingValue}%`;
+  
+  audienceRatingLabel.innerText = `${audienceRatingValue}%`;
+  
+  results.appendChild(clone);
+}
+
+  const closeAllFilters = exclusion => {
+    const filters = [
+      "streaming-service-filter",
+      "additional-filters"
+    ]
+    
+    for(const filter of filters){
+      if(filter !== exclusion){
+        handleContentFilterClose(filter);
+      }
+    }
+  }
+
+const handleOptionChange = e => {
+  content.dataset.option = e.target.value;
+  
+  closeAllFilters();
+}  
+
+const getFilter = className => content.getElementsByClassName(className)[0];
+
+const handleContentFilterToggle = className => {
+  const filter = getFilter(className)
+  
+  closeAllFilters(className);
+
+  filter.dataset.toggled = filter.dataset.toggled === "true" ? "false" : "true";
+}
+
+const handleContentFilterClose = className => {
+  const filter = getFilter(className);
+  
+  filter.dataset.toggled = "false";
+}
