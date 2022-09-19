@@ -1,0 +1,213 @@
+/**
+ * Transition Module
+ * @version 1.0.35
+ * @summary 09-05-2022
+ * @author Mads Stoumann
+ * @description Using `data-trs` attribute to handle transitions.
+ * Credits to AOS: https://michalsnik.github.io/aos/ and Open Props: https://open-props.style/
+
+ * Abbreviations:
+ * .trs-:   transition-name
+ * .trsde-: transition-delay
+ * .trsdu-: transition-duration
+ * .trstf-: transition-timing-function (easing)
+
+ * To trigger a transition, add the class `trs` to the element.
+ * You should only add the class to the *outermost* element with a `trs-`, children will be animated automatically.
+*/
+
+@import 'https://unpkg.com/open-props@1.4.14/src/props.easing.css';
+
+:where([class*="trs-"]) {
+	--dg: 100deg;
+	--tx: 55px;
+	--ty: 110px;
+	--zi: 0.6;
+	--zo: 1.2;
+}
+
+:is([class*="trs-"].trs) {
+	opacity: 1;
+	transform: translateZ(0) scale(1);
+	transition: all var(--duration, 400ms) var(--delay, 0ms) var(--easing, var(--ease-1, ease));
+}
+
+:is(.trs [class*="trs-"]) {
+	opacity: 1;
+	transform: translateZ(0);
+	transition-timing-function: var(--easing, ease-in-out);
+	transition-delay: var(--delay, 0ms);
+	transition-duration: var(--duration, 400ms);
+}
+
+/* .trs .trs-fld  { transform: perspective(2500px) rotate(0deg); }  */
+
+/* TRANSITIONS */
+
+/* FADE */
+.trs-fdd { opacity: 0; transform: translate3d(0px, calc(-1 * var(--ty)), 0); }
+.trs-fdl { opacity: 0; transform: translate3d(calc(-1 * var(--tx)), calc(-1 * var(--ty)), 0); }
+.trs-fdr { opacity: 0; transform: translate3d(var(--tx), calc(-1 * var(--ty)), 0); }
+.trs-fal { opacity: 0; transform: translate3d(calc(-1 * var(--tx)), 0px, 0); }
+.trs-far { opacity: 0; transform: translate3d(var(--tx), 0px, 0); }
+.trs-fau { opacity: 0; transform: translate3d(0px, var(--ty), 0); }
+.trs-ful { opacity: 0; transform: translate3d(calc(-1 * var(--tx)), var(--ty), 0); }
+.trs-fur { opacity: 0; transform: translate3d(var(--tx), var(--ty), 0); }
+
+/* FLIP */
+.trs-fld { backface-visibility: hidden; transform: perspective(2500px) rotateX(var(--dg)); }
+.trs-fll { backface-visibility: hidden; transform: perspective(2500px) rotateY(calc(0deg - var(--dg))); }
+.trs-flr { backface-visibility: hidden; transform: perspective(2500px) rotateY(var(--dg)); }
+.trs-flu { backface-visibility: hidden; transform: perspective(2500px) rotateX(calc(0deg - var(--dg))); }
+
+/* ZOOM */
+.trs-zoi { opacity: 0; transform: scale(var(--zi)); }
+.trs-zod { opacity: 0; transform: translate3d(0px, calc(-1 * var(--ty)), 0) scale(var(--zi)); }
+.trs-ziu { opacity: 0; transform: translate3d(0px, var(--ty), 0) scale(var(--zi)); }
+.trs-zoo { opacity: 0; transform: scale(var(--zo)) ; }
+
+/* DELAYS */
+.trsde-0 { --delay: 0ms; }
+.trsde-25 { --delay: 25ms; }
+.trsde-50 { --delay: 50ms; }
+.trsde-75 { --delay: 75ms; }
+.trsde-100 { --delay: 100ms; }
+.trsde-150 { --delay: 150ms; }
+.trsde-250 { --delay: 250ms; }
+.trsde-500 { --delay: 500ms; }
+.trsde-750 { --delay: 750ms; }
+.trsde-1000  { --delay: 1000ms; }
+.trsde-1500  { --delay: 1500ms; }
+.trsde-2000 { --delay: 2000ms; }
+
+/* DURATIONS */
+.trsdu-100 { --duration: 100ms; }
+.trsdu-200 { --duration: 200ms; }
+.trsdu-300 { --duration: 300ms; }
+.trsdu-400 { --duration: 400ms; }
+.trsdu-500 { --duration: 500ms; }
+.trsdu-750 { --duration: 750ms; }
+.trsdu-1000 { --duration: 1000ms; }
+.trsdu-1500 { --duration: 1500ms; }
+.trsdu-2000 { --duration: 2000ms; }
+
+/* TIMING FUNCTIONS */
+.trstf-eas-1 { --easing: var(--ease-1); }
+.trstf-eas-2 { --easing: var(--ease-2); }
+.trstf-eas-3 { --easing: var(--ease-3); }
+.trstf-eas-4 { --easing: var(--ease-4); }
+.trstf-eas-5 { --easing: var(--ease-5); }
+.trstf-eai-1 { --easing: var(--ease-in-1); }
+.trstf-eai-2 { --easing: var(--ease-in-2); }
+.trstf-eai-3 { --easing: var(--ease-in-3); }
+.trstf-eai-4 { --easing: var(--ease-in-4); }
+.trstf-eai-5 { --easing: var(--ease-in-5); }
+.trstf-eao-1 { --easing: var(--ease-out-1); }
+.trstf-eao-2 { --easing: var(--ease-out-2); }
+.trstf-eao-3 { --easing: var(--ease-out-3); }
+.trstf-eao-4 { --easing: var(--ease-out-4); }
+.trstf-eao-5 { --easing: var(--ease-out-5); }
+.trstf-eio-1 { --easing: var(--ease-in-out-1); }
+.trstf-eio-2 { --easing: var(--ease-in-out-2); }
+.trstf-eio-3 { --easing: var(--ease-in-out-3); }
+.trstf-eio-4 { --easing: var(--ease-in-out-4); }
+.trstf-eio-5 { --easing: var(--ease-in-out-5); }
+.trstf-eel-1 { --easing: var(--ease-elastic-1); }
+.trstf-eel-2 { --easing: var(--ease-elastic-2); }
+.trstf-eel-3 { --easing: var(--ease-elastic-3); }
+.trstf-eel-4 { --easing: var(--ease-elastic-4); }
+.trstf-eel-5 { --easing: var(--ease-elastic-5); }
+.trstf-esq-1 { --easing: var(--ease-squish-1); }
+.trstf-esq-2 { --easing: var(--ease-squish-2); }
+.trstf-esq-3 { --easing: var(--easing-squish-3); }
+.trstf-esq-4 { --easing: var(--easing-squish-4); }
+.trstf-esq-5 { --easing: var(--easing-squish-5); }
+.trstf-lin { --easing: linear; }
+
+/* FOR DEMO */
+* {
+  box-sizing: border-box;
+}
+aside, pre {
+  background: hsl(210, 99%, 5%);
+  color: hsl(190, 10%, 90%);
+  overflow-x: auto;
+  padding: 1ch;
+}
+body {
+  block-size: 100vh;
+  display: grid;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: small;
+  grid-template-columns: 15rem 1fr;
+  margin: unset;
+}
+button {
+  background-color: hsl(210, 99%, 52%);
+  border: 0;
+  border-radius: 2em;
+  color: hsl(210, 99%, 95%);
+  inline-size: 100%;
+  margin-block: .5em 1em;
+  padding: 1em 2em;
+}
+fieldset {
+  border: 0;
+  padding: 1em 0;
+}
+img {
+  block-size: 100%;
+  inset: 0;
+  object-fit: cover;
+  position: absolute;
+  inline-size: 100%;
+}
+input, select {
+  border: 0;
+  border-radius: .25em;
+  font-size: inherit;
+  inline-size: 100%;
+  margin-block: .25em .75em;
+  padding: .25em .5em;
+}
+legend {
+  border-block-end: 1px solid #FFF;
+  display: block;
+  inline-size: 100%;
+  padding-block: .5em;
+}
+main {
+  margin: 2em;
+  overflow: hidden;
+}
+pre {
+  tab-size: 2;
+}
+#demo {
+  display: grid;
+  gap: 1em;
+}
+#demo1 {
+  aspect-ratio: 16 / 9;
+  inline-size: 100%;
+  grid-column: 1 / span 2;
+  position: relative;
+}
+#demo2, #demo3 {
+  aspect-ratio: 16 / 9;
+  position: relative;
+  inline-size: 100%;
+}
+
+@media (min-width: 768px) {
+  #demo {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  #demo1 {
+    grid-column: 1 / span 2;
+    grid-row: 1 / span 2;
+  }
+  #demo2, #demo3 {
+    aspect-ratio: unset;
+  }
+}
