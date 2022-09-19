@@ -1,0 +1,499 @@
+		<aside>
+			<form id="app">
+				<button type="button" id="play">Re-Play</button>
+
+				<fieldset name="demo">
+					<legend>CSS Transition Editor</legend>
+					<label>
+						Transition
+						<select>
+							<option value="">none</option>
+							<optgroup label="fade">
+								<option value="trs-fdd">fade-down</option>
+								<option value="trs-fdl">fade-down-left</option>
+								<option value="trs-fdr">fade-down-right</option>
+								<option value="trs-fal">fade-left</option>
+								<option value="trs-far">fade-right</option>
+								<option value="trs-fau">fade-up</option>
+								<option value="trs-ful">fade-up-left</option>
+								<option value="trs-fur">fade-up-right</option>
+							</optgroup>
+							<optgroup label="flip">
+								<option value="trs-fld">flip-down</option>
+								<option value="trs-fll">flip-left</option>
+								<option value="trs-flr">flip-right</option>
+								<option value="trs-flu">flip-up</option>
+							</optgroup>
+							<optgroup label="zoom">
+								<option value="trs-zoi">zoom-in</option>
+								<option value="trs-zod">zoom-in-down</option>
+								<option value="trs-ziu">zoom-in-up</option>
+								<option value="trs-zoo">zoom-out</option>
+							</optgroup>
+						</select>
+					</label>
+					<label>
+						Easing
+						<select>
+							<optgroup label="ease">
+								<option value="trstf-eas-1" selected>ease-1</option>
+								<option value="trstf-eas-2">ease-2</option>
+								<option value="trstf-eas-3">ease-3</option>
+								<option value="trstf-eas-4">ease-4</option>
+								<option value="trstf-eas-5">ease-5</option>
+							</optgroup>
+							<optgroup label="ease-in">
+								<option value="trstf-eai-1">ease-in-1</option>
+								<option value="trstf-eai-2">ease-in-2</option>
+								<option value="trstf-eai-3">ease-in-3</option>
+								<option value="trstf-eai-4">ease-in-4</option>
+								<option value="trstf-eai-5">ease-in-5</option>
+							</optgroup>
+							<optgroup label="ease-out">
+								<option value="trstf-eao-1">ease-out-1</option>
+								<option value="trstf-eao-2">ease-out-2</option>
+								<option value="trstf-eao-3">ease-out-3</option>
+								<option value="trstf-eao-4">ease-out-4</option>
+								<option value="trstf-eao-5">ease-out-5</option>
+							</optgroup>
+							<optgroup label="ease-in-out">
+								<option value="trstf-eio-1">ease-in-out-1</option>
+								<option value="trstf-eio-2">ease-in-out-2</option>
+								<option value="trstf-eio-3">ease-in-out-3</option>
+								<option value="trstf-eio-4">ease-in-out-4</option>
+								<option value="trstf-eio-5">ease-in-out-5</option>
+							</optgroup>
+							<optgroup label="ease-elastic">
+								<option value="trstf-eel-1">ease-elastic-1</option>
+								<option value="trstf-eel-2">ease-elastic-2</option>
+								<option value="trstf-eel-3">ease-elastic-3</option>
+								<option value="trstf-eel-4">ease-elastic-4</option>
+								<option value="trstf-eel-5">ease-elastic-5</option>
+							</optgroup>
+							<optgroup label="ease-squish">
+								<option value="trstf-esq-1">ease-squish-1</option>
+								<option value="trstf-esq-2">ease-squish-2</option>
+								<option value="trstf-esq-3">ease-squish-3</option>
+								<option value="trstf-esq-4">ease-squish-4</option>
+								<option value="trstf-esq-5">ease-squish-5</option>
+							</optgroup>
+							<option>linear</option>
+						</select>
+					</label>
+					<label>
+						Duration
+						<select>
+							<option value="trsdu-100">100ms</option>
+							<option value="trsdu-200">200ms</option>
+							<option value="trsdu-300">300ms</option>
+							<option value="trsdu-400" selected>400ms</option>
+							<option value="trsdu-500">500ms</option>
+							<option value="trsdu-750">750ms</option>
+							<option value="trsdu-1000">1000ms</option>
+							<option value="trsdu-1500">1500ms</option>
+							<option value="trsdu-2000">2000ms</option>
+						</select>
+					</label>
+					<label>
+						Delay
+						<select>
+							<option value="trsde-0" selected>0ms</option>
+							<option value="trsde-25">25ms</option>
+							<option value="trsde-50">50ms</option>
+							<option value="trsde-75">75ms</option>
+							<option value="trsde-100">100ms</option>
+							<option value="trsde-150">150ms</option>
+							<option value="trsde-250">250ms</option>
+							<option value="trsde-500">500ms</option>
+							<option value="trsde-750">750ms</option>
+							<option value="trsde-1000">1000ms</option>
+							<option value="trsde-1500">1500ms</option>
+							<option value="trsde-2000">2000ms</option>
+						</select>
+					</label>
+				</fieldset>
+
+				<fieldset name="demo1">
+					<legend>Child 1</legend>
+					<label>
+						Transition
+						<select>
+							<option value="">none</option>
+							<optgroup label="fade">
+								<option value="trs-fdd">fade-down</option>
+								<option value="trs-fdl">fade-down-left</option>
+								<option value="trs-fdr">fade-down-right</option>
+								<option value="trs-fal">fade-left</option>
+								<option value="trs-far">fade-right</option>
+								<option value="trs-fau">fade-up</option>
+								<option value="trs-ful">fade-up-left</option>
+								<option value="trs-fur">fade-up-right</option>
+							</optgroup>
+							<optgroup label="flip">
+								<option value="trs-fld">flip-down</option>
+								<option value="trs-fll">flip-left</option>
+								<option value="trs-flr">flip-right</option>
+								<option value="trs-flu">flip-up</option>
+							</optgroup>
+							<optgroup label="zoom">
+								<option value="trs-zoi">zoom-in</option>
+								<option value="trs-zod">zoom-in-down</option>
+								<option value="trs-ziu">zoom-in-up</option>
+								<option value="trs-zoo">zoom-out</option>
+							</optgroup>
+						</select>
+					</label>
+					<label>
+						Easing
+						<select>
+							<option value="" selected>inherit</option>
+							<optgroup label="ease">
+								<option value="trstf-eas-1">ease-1</option>
+								<option value="trstf-eas-2">ease-2</option>
+								<option value="trstf-eas-3">ease-3</option>
+								<option value="trstf-eas-4">ease-4</option>
+								<option value="trstf-eas-5">ease-5</option>
+							</optgroup>
+							<optgroup label="ease-in">
+								<option value="trstf-eai-1">ease-in-1</option>
+								<option value="trstf-eai-2">ease-in-2</option>
+								<option value="trstf-eai-3">ease-in-3</option>
+								<option value="trstf-eai-4">ease-in-4</option>
+								<option value="trstf-eai-5">ease-in-5</option>
+							</optgroup>
+							<optgroup label="ease-out">
+								<option value="trstf-eao-1">ease-out-1</option>
+								<option value="trstf-eao-2">ease-out-2</option>
+								<option value="trstf-eao-3">ease-out-3</option>
+								<option value="trstf-eao-4">ease-out-4</option>
+								<option value="trstf-eao-5">ease-out-5</option>
+							</optgroup>
+							<optgroup label="ease-in-out">
+								<option value="trstf-eio-1">ease-in-out-1</option>
+								<option value="trstf-eio-2">ease-in-out-2</option>
+								<option value="trstf-eio-3">ease-in-out-3</option>
+								<option value="trstf-eio-4">ease-in-out-4</option>
+								<option value="trstf-eio-5">ease-in-out-5</option>
+							</optgroup>
+							<optgroup label="ease-elastic">
+								<option value="trstf-eel-1">ease-elastic-1</option>
+								<option value="trstf-eel-2">ease-elastic-2</option>
+								<option value="trstf-eel-3">ease-elastic-3</option>
+								<option value="trstf-eel-4">ease-elastic-4</option>
+								<option value="trstf-eel-5">ease-elastic-5</option>
+							</optgroup>
+							<optgroup label="ease-squish">
+								<option value="trstf-esq-1">ease-squish-1</option>
+								<option value="trstf-esq-2">ease-squish-2</option>
+								<option value="trstf-esq-3">ease-squish-3</option>
+								<option value="trstf-esq-4">ease-squish-4</option>
+								<option value="trstf-esq-5">ease-squish-5</option>
+							</optgroup>
+							<option>linear</option>
+						</select>
+					</label>
+					<label>
+						Duration
+						<select>
+							<option value="" selected>inherit</option>
+							<option value="trsdu-100">100ms</option>
+							<option value="trsdu-200">200ms</option>
+							<option value="trsdu-300">300ms</option>
+							<option value="trsdu-400">400ms</option>
+							<option value="trsdu-500">500ms</option>
+							<option value="trsdu-750">750ms</option>
+							<option value="trsdu-1000">1000ms</option>
+							<option value="trsdu-1500">1500ms</option>
+							<option value="trsdu-2000">2000ms</option>
+						</select>
+					</label>
+					<label>
+						Delay
+						<select>
+							<option value="trsde-0" selected>0ms</option>
+							<option value="trsde-25">25ms</option>
+							<option value="trsde-50">50ms</option>
+							<option value="trsde-75">75ms</option>
+							<option value="trsde-100">100ms</option>
+							<option value="trsde-150">150ms</option>
+							<option value="trsde-250">250ms</option>
+							<option value="trsde-500">500ms</option>
+							<option value="trsde-750">750ms</option>
+							<option value="trsde-1000">1000ms</option>
+							<option value="trsde-1500">1500ms</option>
+							<option value="trsde-2000">2000ms</option>
+						</select>
+					</label>
+				</fieldset>
+
+				<fieldset name="demo2">
+					<legend>Child 2</legend>
+					<label>
+						Transition
+						<select>
+							<option value="">none</option>
+							<optgroup label="fade">
+								<option value="trs-fdd">fade-down</option>
+								<option value="trs-fdl">fade-down-left</option>
+								<option value="trs-fdr">fade-down-right</option>
+								<option value="trs-fal">fade-left</option>
+								<option value="trs-far">fade-right</option>
+								<option value="trs-fau">fade-up</option>
+								<option value="trs-ful">fade-up-left</option>
+								<option value="trs-fur">fade-up-right</option>
+							</optgroup>
+							<optgroup label="flip">
+								<option value="trs-fld">flip-down</option>
+								<option value="trs-fll">flip-left</option>
+								<option value="trs-flr">flip-right</option>
+								<option value="trs-flu">flip-up</option>
+							</optgroup>
+							<optgroup label="zoom">
+								<option value="trs-zoi">zoom-in</option>
+								<option value="trs-zod">zoom-in-down</option>
+								<option value="trs-ziu">zoom-in-up</option>
+								<option value="trs-zoo">zoom-out</option>
+							</optgroup>
+						</select>
+					</label>
+					<label>
+						Easing
+						<select>
+							<option value="" selected>inherit</option>
+							<optgroup label="ease">
+								<option value="trstf-eas-1">ease-1</option>
+								<option value="trstf-eas-2">ease-2</option>
+								<option value="trstf-eas-3">ease-3</option>
+								<option value="trstf-eas-4">ease-4</option>
+								<option value="trstf-eas-5">ease-5</option>
+							</optgroup>
+							<optgroup label="ease-in">
+								<option value="trstf-eai-1">ease-in-1</option>
+								<option value="trstf-eai-2">ease-in-2</option>
+								<option value="trstf-eai-3">ease-in-3</option>
+								<option value="trstf-eai-4">ease-in-4</option>
+								<option value="trstf-eai-5">ease-in-5</option>
+							</optgroup>
+							<optgroup label="ease-out">
+								<option value="trstf-eao-1">ease-out-1</option>
+								<option value="trstf-eao-2">ease-out-2</option>
+								<option value="trstf-eao-3">ease-out-3</option>
+								<option value="trstf-eao-4">ease-out-4</option>
+								<option value="trstf-eao-5">ease-out-5</option>
+							</optgroup>
+							<optgroup label="ease-in-out">
+								<option value="trstf-eio-1">ease-in-out-1</option>
+								<option value="trstf-eio-2">ease-in-out-2</option>
+								<option value="trstf-eio-3">ease-in-out-3</option>
+								<option value="trstf-eio-4">ease-in-out-4</option>
+								<option value="trstf-eio-5">ease-in-out-5</option>
+							</optgroup>
+							<optgroup label="ease-elastic">
+								<option value="trstf-eel-1">ease-elastic-1</option>
+								<option value="trstf-eel-2">ease-elastic-2</option>
+								<option value="trstf-eel-3">ease-elastic-3</option>
+								<option value="trstf-eel-4">ease-elastic-4</option>
+								<option value="trstf-eel-5">ease-elastic-5</option>
+							</optgroup>
+							<optgroup label="ease-squish">
+								<option value="trstf-esq-1">ease-squish-1</option>
+								<option value="trstf-esq-2">ease-squish-2</option>
+								<option value="trstf-esq-3">ease-squish-3</option>
+								<option value="trstf-esq-4">ease-squish-4</option>
+								<option value="trstf-esq-5">ease-squish-5</option>
+							</optgroup>
+							<option>linear</option>
+						</select>
+					</label>
+					<label>
+						Duration
+						<select>
+							<option value="" selected>inherit</option>
+							<option value="trsdu-100">100ms</option>
+							<option value="trsdu-200">200ms</option>
+							<option value="trsdu-300">300ms</option>
+							<option value="trsdu-400">400ms</option>
+							<option value="trsdu-500">500ms</option>
+							<option value="trsdu-750">750ms</option>
+							<option value="trsdu-1000">1000ms</option>
+							<option value="trsdu-1500">1500ms</option>
+							<option value="trsdu-2000">2000ms</option>
+						</select>
+					</label>
+					<label>
+						Delay
+						<select>
+							<option value="trsde-0" selected>0ms</option>
+							<option value="trsde-25">25ms</option>
+							<option value="trsde-50">50ms</option>
+							<option value="trsde-75">75ms</option>
+							<option value="trsde-100">100ms</option>
+							<option value="trsde-150">150ms</option>
+							<option value="trsde-250">250ms</option>
+							<option value="trsde-500">500ms</option>
+							<option value="trsde-750">750ms</option>
+							<option value="trsde-1000">1000ms</option>
+							<option value="trsde-1500">1500ms</option>
+							<option value="trsde-2000">2000ms</option>
+						</select>
+					</label>
+				</fieldset>
+
+				<fieldset name="demo3">
+					<legend>Child 3</legend>
+					<label>
+						Transition
+						<select>
+							<option value="">none</option>
+							<optgroup label="fade">
+								<option value="trs-fdd">fade-down</option>
+								<option value="trs-fdl">fade-down-left</option>
+								<option value="trs-fdr">fade-down-right</option>
+								<option value="trs-fal">fade-left</option>
+								<option value="trs-far">fade-right</option>
+								<option value="trs-fau">fade-up</option>
+								<option value="trs-ful">fade-up-left</option>
+								<option value="trs-fur">fade-up-right</option>
+							</optgroup>
+							<optgroup label="flip">
+								<option value="trs-fld">flip-down</option>
+								<option value="trs-fll">flip-left</option>
+								<option value="trs-flr">flip-right</option>
+								<option value="trs-flu">flip-up</option>
+							</optgroup>
+							<optgroup label="zoom">
+								<option value="trs-zoi">zoom-in</option>
+								<option value="trs-zod">zoom-in-down</option>
+								<option value="trs-ziu">zoom-in-up</option>
+								<option value="trs-zoo">zoom-out</option>
+							</optgroup>
+						</select>
+					</label>
+					<label>
+						Easing
+						<select>
+							<option value="" selected>inherit</option>
+							<optgroup label="ease">
+								<option value="trstf-eas-1">ease-1</option>
+								<option value="trstf-eas-2">ease-2</option>
+								<option value="trstf-eas-3">ease-3</option>
+								<option value="trstf-eas-4">ease-4</option>
+								<option value="trstf-eas-5">ease-5</option>
+							</optgroup>
+							<optgroup label="ease-in">
+								<option value="trstf-eai-1">ease-in-1</option>
+								<option value="trstf-eai-2">ease-in-2</option>
+								<option value="trstf-eai-3">ease-in-3</option>
+								<option value="trstf-eai-4">ease-in-4</option>
+								<option value="trstf-eai-5">ease-in-5</option>
+							</optgroup>
+							<optgroup label="ease-out">
+								<option value="trstf-eao-1">ease-out-1</option>
+								<option value="trstf-eao-2">ease-out-2</option>
+								<option value="trstf-eao-3">ease-out-3</option>
+								<option value="trstf-eao-4">ease-out-4</option>
+								<option value="trstf-eao-5">ease-out-5</option>
+							</optgroup>
+							<optgroup label="ease-in-out">
+								<option value="trstf-eio-1">ease-in-out-1</option>
+								<option value="trstf-eio-2">ease-in-out-2</option>
+								<option value="trstf-eio-3">ease-in-out-3</option>
+								<option value="trstf-eio-4">ease-in-out-4</option>
+								<option value="trstf-eio-5">ease-in-out-5</option>
+							</optgroup>
+							<optgroup label="ease-elastic">
+								<option value="trstf-eel-1">ease-elastic-1</option>
+								<option value="trstf-eel-2">ease-elastic-2</option>
+								<option value="trstf-eel-3">ease-elastic-3</option>
+								<option value="trstf-eel-4">ease-elastic-4</option>
+								<option value="trstf-eel-5">ease-elastic-5</option>
+							</optgroup>
+							<optgroup label="ease-squish">
+								<option value="trstf-esq-1">ease-squish-1</option>
+								<option value="trstf-esq-2">ease-squish-2</option>
+								<option value="trstf-esq-3">ease-squish-3</option>
+								<option value="trstf-esq-4">ease-squish-4</option>
+								<option value="trstf-esq-5">ease-squish-5</option>
+							</optgroup>
+							<option>linear</option>
+						</select>
+					</label>
+					<label>
+						Duration
+						<select>
+							<option value="" selected>inherit</option>
+							<option value="trsdu-100">100ms</option>
+							<option value="trsdu-200">200ms</option>
+							<option value="trsdu-300">300ms</option>
+							<option value="trsdu-400">400ms</option>
+							<option value="trsdu-500">500ms</option>
+							<option value="trsdu-750">750ms</option>
+							<option value="trsdu-1000">1000ms</option>
+							<option value="trsdu-1500">1500ms</option>
+							<option value="trsdu-2000">2000ms</option>
+						</select>
+					</label>
+					<label>
+						Delay
+						<select>
+							<option value="trsde-0" selected>0ms</option>
+							<option value="trsde-25">25ms</option>
+							<option value="trsde-50">50ms</option>
+							<option value="trsde-75">75ms</option>
+							<option value="trsde-100">100ms</option>
+							<option value="trsde-150">150ms</option>
+							<option value="trsde-250">250ms</option>
+							<option value="trsde-500">500ms</option>
+							<option value="trsde-750">750ms</option>
+							<option value="trsde-1000">1000ms</option>
+							<option value="trsde-1500">1500ms</option>
+							<option value="trsde-2000">2000ms</option>
+						</select>
+					</label>
+				</fieldset>
+
+				<fieldset>
+					<legend>Variables</legend>
+					<label>
+						Zoom-in
+						<input type="number" name="--zi" value="0.6" step="0.1" min="0.1" max="1" />
+					</label>
+					<label>
+						Zoom-out
+						<input type="number" name="--zo" value="1.2" step="0.1" min="1" max="5" />
+					</label>
+					<label>
+						Translate X
+						<input type="number" name="--tx" value="55" step="1" min="1" max="999" data-suffix="px" />
+					</label>
+					<label>
+						Translate Y
+						<input type="number" name="--ty" value="110" step="1" min="1" max="999" data-suffix="px" />
+					</label>
+				</fieldset>
+
+			</form>
+		</aside>
+
+		<main>
+
+<div id="demo">
+	<div id="demo1">
+		<img src="https://assets.stoumann.dk/img/color.jpg" />
+	</div>
+	<div id="demo2">
+		<img src="https://assets.stoumann.dk/img/gallery01.jpg" />
+	</div>
+	<div id="demo3">
+		<img src="https://assets.stoumann.dk/img/gallery04.jpg" />
+	</div>
+</div>
+
+			<p><strong>How to use:</strong> Select a transition for the main wrapper or one of it's child-elements. Try to play around with individual transitions, easings, durations and delays.<br />
+			At the bottom of the sidebar, you can edit <em>custom properties</em> for finer control of offset- and zoom-transitions.
+			</p>
+			<details>
+				<summary>See code</summary>
+				<pre id="code">Code here ...</pre>
+			</details>
+		</main>
