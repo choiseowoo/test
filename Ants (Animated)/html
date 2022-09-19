@@ -1,0 +1,8 @@
+//- 
+  Ants (Animated)
+  Grant Jenkins, September 2022
+
+  Animation based off:  https://i.pinimg.com/originals/53/9e/8b/539e8bc7d602c0e65dd80bda08234695.gif
+
+canvas#canvas
+script(src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js")
