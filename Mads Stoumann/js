@@ -1,0 +1,13 @@
+const cleanIt = (code) => code.replace(/<img?.+\n\t/gi,'');
+const playIt = () => { demo.classList.remove('trs'); setTimeout(() => { demo.classList.add('trs'); }, 400); code.innerText = cleanIt(demo.outerHTML); }
+app.addEventListener('input', event => {
+  const node = event.target;
+  if (node.name) {
+    demo.style.setProperty(node.name, node.value + (node.dataset.suffix||''));
+    return;
+  }
+  const group = node.closest('fieldset');
+  document.getElementById(group.name).className = [...group.elements].map(input => input.value).join(' ').replace(/  +/g, ' ');
+  playIt();
+})
+play.addEventListener('click', () => playIt());
