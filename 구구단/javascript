@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+
+<body>
+    <script>
+        //1. 변수 선언
+        let num1 = Math.ceil(Math.random() * 9);
+        let num2 = Math.ceil(Math.random() * 9);
+        let answer = num1 * num2;
+
+        //2. 화면 구성
+        //제목
+        let title = document.createElement('h1');
+        title.textContent = '구구단';
+        document.body.append(title);
+
+        //문제: x 곱하기 x 는?
+        let word = document.createElement('div');
+        word.textContent = `${num1} 곱하기 ${num2}는?`
+        document.body.append(word);
+
+        //정답 form 
+        let form = document.createElement('form');
+        document.body.append(form);
+        let input = document.createElement('input');
+        form.append(input);
+
+        //정답 입력 후 확인 버튼
+        let btn = document.createElement('button');
+        btn.textContent = "클릭"
+        form.append(btn);
+
+        //결과
+        let result = document.createElement('div');
+        document.body.append(result);
+
+        //3. form 이벤트리스너 함수
+        form.addEventListener('submit', function(event) {
+            //console.log(input.value, answer);
+            event.preventDefault();
+            if (Number(input.value) === answer) { //Number를 이용하여 string을 number로 변환
+                result.innerHTML = "딩동댕";
+                //문제 새로 내기
+                num1 = Math.ceil(Math.random() * 9);
+                num2 = Math.ceil(Math.random() * 9);
+                word.textContent = `${num1} 곱하기 ${num2}는?`
+                answer = num1 * num2;
+
+                input.value = '';
+                input.focus();
+            } else {
+                result.innerHTML = "땡";
+                input.value = '';
+                input.focus();
+            }
+        });
+    </script>
+</body>
+
+</html>
