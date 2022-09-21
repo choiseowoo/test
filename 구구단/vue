@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script> //vue.js cdn설치
+</head>
+
+<body>
+    <div id="app">
+        <h1>구구단</h1>
+        <div> {{ num1 }} 곱하기 {{ num2 }} 는?</div>
+        <form @submit.prevent="checkFn">
+            <input type="text" v-model="value" ref="input" /> 
+            //focus() 처리를 위하여 ref 사용
+            <button>결과</button>
+        </form>
+        <div>{{result}}</div>
+    </div>
+
+    <script>
+        var app = new Vue({
+            el: '#app',
+            data: {
+                num1: Math.ceil(Math.random() * 9), //1-9까지 랜덤 숫자
+                num2: Math.ceil(Math.random() * 9), //1-9까지 랜덤 숫자
+                value: "",
+                result: "",
+            },
+            methods: {
+                checkFn() {
+                    if (this.num1 * this.num2 === parseInt(this.value)) {
+                        this.result = "딩동댕"
+                        this.value = ""
+                        this.$refs.input.focus();	//$refs.ref이름으로 focus() 사용
+                        this.num1 = Math.ceil(Math.random() * 9);
+                        this.num2 = Math.ceil(Math.random() * 9);
+                    } else {
+                        this.result = "땡"
+                        this.value = ""
+                        this.$refs.input.focus();
+                    }
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>
