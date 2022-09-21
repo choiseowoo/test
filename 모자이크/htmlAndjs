@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+
+    <body>
+        <img src="https://assets.codepen.io/t-1/denys-striyeshyn-wJ7yGwz2-00-unsplash.jpg">
+        <button onclick="addCanvas()">  Canvas</button>
+        <button onclick="generateImg()">    </button>
+    </body>
+    <script>
+        function addCanvas() {
+            let bt = document.querySelector('button')
+
+            let img = new Image();
+            img.src = 'https://assets.codepen.io/t-1/denys-striyeshyn-wJ7yGwz2-00-unsplash.jpg'; //        
+            img.onload = function() {
+                let width = this.width
+                let height = this.height
+
+                let {
+                    canvas,
+                    ctx
+                } = createCanvasAndCtx(width, height)
+
+                ctx.drawImage(this, 0, 0, width, height);
+
+                document.body.insertBefore(canvas, bt)
+
+            }
+        }
+
+        function createCanvasAndCtx(width, height) {
+            let canvas = document.createElement('canvas')
+            canvas.setAttribute('width', width)
+            canvas.setAttribute('height', height)
+            canvas.setAttribute('onmouseout', 'end()')
+            canvas.setAttribute('onmousedown', 'start()')
+            canvas.setAttribute('onmouseup', 'end()')
+            let ctx = canvas.getContext("2d");
+            return {
+                canvas,
+                ctx
+            }
+        }
+
+        function start() {
+            let img = document.querySelector('img')
+            let canvas = document.querySelector('canvas')
+            let ctx = canvas.getContext("2d");
+            imgData = ctx.getImageData(0, 0, img.clientWidth, img.clientHeight);
+            canvas.onmousemove = (e) => {
+                let w = imgData.width; //1.      
+                let h = imgData.height;
+
+                //      ，       
+                let num = 10;
+
+                //           RGBA
+                let color = getXY(imgData, e.offsetX, e.offsetY);
+
+                for (let k = 0; k < num; k++) {
+                    for (let l = 0; l < num; l++) {
+                        //  imgData    (e.offsetX + l, e.offsetY + k)    
+                        setXY(imgData, e.offsetX + l, e.offsetY + k, color);
+                    }
+                }
+                //  canvas  
+                ctx.putImageData(imgData, 0, 0);
+            }
+        }
+
+        function generateImg() {
+            let canvas = document.querySelector('canvas')
+            var newImg = new Image();
+            newImg.src = canvas.toDataURL("image/png");
+            document.body.insertBefore(newImg, canvas)
+        }
+
+        function setXY(obj, x, y, color) {
+            var w = obj.width;
+            var h = obj.height;
+            var d = obj.data;
+            obj.data[4 * (y * w + x)] = color[0];
+            obj.data[4 * (y * w + x) + 1] = color[1];
+            obj.data[4 * (y * w + x) + 2] = color[2];
+            obj.data[4 * (y * w + x) + 3] = color[3];
+        }
+
+        function getXY(obj, x, y) {
+            var w = obj.width;
+            var h = obj.height;
+            var d = obj.data;
+            var color = [];
+            color[0] = obj.data[4 * (y * w + x)];
+            color[1] = obj.data[4 * (y * w + x) + 1];
+            color[2] = obj.data[4 * (y * w + x) + 2];
+            color[3] = obj.data[4 * (y * w + x) + 3];
+            return color;
+        }
+
+        function end() {
+            let canvas = document.querySelector('canvas')
+            canvas.onmousemove = null
+        }
+    </script>
+</body>
+
+</html>
