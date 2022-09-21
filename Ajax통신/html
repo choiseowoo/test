@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+
+<body>
+    <button type="submit" onClick="getUser()">click</button>
+    <div id="userBox"></div>
+
+    <script>
+        function getUser() {
+            fetch('https://jsonplaceholder.typicode.com/users')
+                .then(res => {
+                    // 응답을 JSON 형태로 파싱
+                    return res.json();
+                })
+                .then(data => {
+                    // json 출력
+                    //div 태그 생성
+                    const info = document.createElement("div");
+                    //태그안 정보 할당
+                    //map함수를 이용하여 info에 모든 user의 name, email 정보를 할당
+                    info.textContent = data.map((item) => item.name + item.email);
+                    //생성된 info, div태그를 <div id="userBox"></div> 안에 삽입
+                    userBox.appendChild(info);
+
+                })
+                .catch(err => {
+                    // error 처리
+                    console.log('Fetch Error', err);
+                });
+        }
+    </script>
+</body>
+
+</html>
