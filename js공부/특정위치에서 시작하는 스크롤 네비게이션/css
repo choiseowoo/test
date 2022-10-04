@@ -1,0 +1,17 @@
+/*퀵메뉴*/
+.quick_menu {left:5%;position: absolute;}
+.quick_menu.fixed {position: fixed;top: 5px; z-index:100}
+.quick_menu  li {width: 120px;height: 35px;line-height: 35px; border-radius: 5px;background: #b2b2b2;margin-bottom: 10px;overflow: hidden}
+.quick_menu  li a{color: #fff;display: block;width: 100%;height: 100%;padding:0 10px ;}
+.quick_menu li.on {background: url(../images/tm_03/quick_arrow.png) no-repeat right 20px center #0368da}
+.quick_menu  li a:hover {background: url(../images/tm_03/quick_arrow.png) no-repeat right 20px center #0368da}
+    
+
+.main-img {background:black;width:100%;height:500px;color:#fff;text-align:center;line-height:500px;font-size:30px}
+
+.section{width:100%;height:500px;text-align:center;line-height:500px;font-size:30px}
+#section01{background:red}
+#section02{background:blue}
+#section03{background:green}
+#section04{background:yellow}
+출처: https://eunyoe.tistory.com/102 [eunyo의 it이야기:티스토리]
