@@ -1,0 +1,32 @@
+  <div class="container">
+        <div class="main-img">main</div>
+        <!-- 퀵메뉴 영역 -->
+        <ul class="quick_menu">
+            <li class="on">
+                <a href="#section01" class="f16">section1</a>
+            </li>
+            <li>
+                <a href="#section02" class="f16">section2</a>
+            </li>
+            <li>
+                <a href="#section03" class="f16">section3</a>
+            </li>
+            <li>
+                <a href="#section04" class="f16">section4</a>
+            </li>
+        </ul>
+        <!-- //퀵메뉴 영역 -->
+        <div id="section01" class="section target">
+            section01
+        </div>
+        <div id="section02" class="section target">
+            section02
+        </div>
+        <div id="section03" class="section target">
+            section03
+        </div>
+        <div id="section04" class="section target">
+            section04
+        </div>
+    </div>
+출처: https://eunyoe.tistory.com/102 [eunyo의 it이야기:티스토리]
