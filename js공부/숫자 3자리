@@ -1,0 +1,11 @@
+const n1 = 12345.6789;
+const n2 = -12345.6789;
+
+const cn1 = n1.toString()
+  .replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
+const cn2 = n2.toString()
+  .replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
+
+document.writeln(cn1);
+document.writeln('<br>');
+document.writeln(cn2);
