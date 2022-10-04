@@ -1,0 +1,13 @@
+let arr1 = [1,2,3];
+let arr2 = [1,2,3];
+console.log(arr1===arr2);  
+//false
+
+
+
+let arr1 = [1,2,3];
+let arr2 = [1,2,3];
+const result = arr1.length === arr2.length && arr1.every((value, idx) => value === arr2[idx]);
+
+console.log(result)
+//true
