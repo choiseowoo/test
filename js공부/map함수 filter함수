@@ -1,0 +1,65 @@
+/*array.map(callbackFunction(current value, index, array), thisArg)
+ ● currentValue : 배열 내 현재 값
+   ● index : 배열내 현재 값의 인덱스 
+   ● array : 현재배열
+   ● thisAgr: callbackFunction 내에서 this로 사용될 값  */
+
+/*let arr1 = [ "월요일" , "화요일" , "수요일" , "목요일" , "금요일" ]
+let map1 = arr1.map( item => '출근하는 ' + item );
+
+console.log(map1);*/
+
+/*let arr2 = [ 1,2,3,4,5 ]
+let map2 = arr2.map( item => item * 2);
+console.log(map2);*/
+
+// let fruit = [
+//   {color : "yellow", name: "banana" },
+//   {color : "red", name: "tomato" },
+//   {color : "orange", name: "arange" },
+//   {color : "green", name: "grape" },
+//   {color : "red", name: "apple" }
+// ]
+
+// let fruitColor = fruit.map((item) => item.color + " " + item.name );
+// console.log(fruitColor);
+
+// const colors = [ "yello" , "red" , "orange", "green", "red" ]
+// const a = colors.map((color, index) =>{
+//   return {
+//   id : index,
+//   name : color
+//   }
+// })
+
+// console.log(a);
+
+// const colors = [ "yello" , "red" , "orange", "green", "red" ]
+// const a = colors.map((color, index ) => ({
+//   id : index, 
+//   name : color
+// }));
+
+// console.log(a);
+
+/*filter()메서드
+
+filter()메서드는 배열 내의 모든 요소를 돌면서 주어진 함수의 조건에 맞는 요소만을 모아 새로운 배열을 리턴합니다.*/
+
+// let newArray = arr.filter(callback(currentValue[, index, [array]]{
+//                                    //return element for new Array. if true
+//                                    } [, thisArg]))
+
+//let fruits = [ "kiwi" , "banana", "apple", "peach", "pineapple", "strawberry", "watermelon"];
+//let result = fruits.filter( item => item.length > 1);
+//console.log(result);
+
+let fruits = [ "kiwi" , "banana", "apple", "peach", "pineapple", "strawberry", "watermelon"];
+let search = (query) => {
+  return fruits.filter((item) => 
+                      item.toLowerCase().includes(query.toLowerCase()));
+};
+console.log(search(' '));
+//console.log(search('ea'));
+
+
