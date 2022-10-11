@@ -1,0 +1,25 @@
+let array = [
+  'Lorem Ipsum is simply dummy text of the printing and typesetting industry.',
+  'Lorem Ipsum has been the industry',
+  'It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.',
+  'It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages',
+  'and more recently with desktop publishing software like Aldus PageMaker including versions'
+]
+
+const result1 = array.filter(el => !el.includes('Lorem'));
+const result2 = array.filter(el => !el.includes('Lorem'));
+console.log(result1);
+console.log(result2);
+
+let array = [
+  'Lorem Ipsum is simply dummy text of the printing and typesetting industry.',
+  'Lorem Ipsum has been the industry',
+  'It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.',
+  'It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages',
+  'and more recently with desktop publishing software like Aldus PageMaker including versions'
+]
+
+const filteringTexts = ['versions','industry'];
+
+const result1 = array.filter(el => filteringTexts.some( v => el.includes(v)));
+console.log(result1);
