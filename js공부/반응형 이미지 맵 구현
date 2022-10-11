@@ -1,0 +1,39 @@
+//npm install image-map
+
+//상단 <head> 태그 사이에 삽입
+<script src="//t1.daumcdn.net/tistory_admin/lib/jquery/jquery-1.12.4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-rwdImageMaps/1.6/jquery.rwdImageMaps.min.js"></script>
+
+//body 아래에 삽입
+<script>
+$(function(){
+	$('img[usemap]').rwdImageMaps();
+});
+</script>
+
+import React, { useEffect } from 'react';
+import ImageMap from "image-map";
+
+const Intro = () => {
+    useEffect(() => { 
+        ImageMap('img[usemap]') //ImageMap 삽입코드
+    }, [])
+
+    const clickHandler = (titile) => {
+        alert(titile)
+    }
+
+    return (
+        <>
+            <img src="/images/mobile/home/231.jpeg" useMap="#image-map" />
+
+            <map name="image-map">
+                <area onClick={() => clickHandler('보')} target="" alt="" title="보" href="" coords="2,57,75,7,139,14,186,100,187,128,153,192,107,222,42,208,18,141" shape="poly"></area>
+                <area onClick={() => clickHandler('가위')} target="" alt="" title="가위" href="" coords="266,19,247,128,279,206,326,218,362,204,389,131,372,23,351,13,295,10" shape="poly"></area>
+                <area onClick={() => clickHandler('바위')} target="" alt="" title="바위" href="" coords="216,199,127,250,128,314,171,367,229,371,268,340,291,268" shape="poly"></area>
+            </map>
+        </>
+    );
+};
+
+export default Intro;
