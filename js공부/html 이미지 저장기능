@@ -1,0 +1,28 @@
+import html2canvas from 'html2canvas';
+
+...
+
+const onSaveToImg = () => {
+  const capture = document.querySelector('#capture')
+  capture.style.width = '1000px' //너비 영역 증가
+  capture.style.paddingBottom = '20px'
+  html2canvas(capture).then(
+    canvas => {
+      saveAs(canvas.toDataURL('image/jpg'), '식단표.jpg')
+    }
+  )
+  capture.style.width = 'auto' //원점으로
+}
+
+const saveAs = (uri, filename) => {
+  let link = document.createElement('a')
+  if (typeof link.download === 'string') {
+    link.href = uri;
+    link.download = filename;
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } else {
+    window.open(uri)
+  }
+}
