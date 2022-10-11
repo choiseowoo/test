@@ -1,0 +1,11 @@
+let arr1 =[1,2,3,9]
+let arr2=[2,4,6,9]
+let newArr = [...arr1, ...arr2]
+console.log([...new Set(newArr)])
+//결과 (6) [1, 2, 3, 9, 4, 6]
+
+let arr1 =[1,2,3,9]
+let arr2=[2,4,6,9]
+let newArr = [...arr1, ...arr2]
+console.log(arr1.filter(el => arr2.includes(el)))
+//결과 (2) [2, 9]
