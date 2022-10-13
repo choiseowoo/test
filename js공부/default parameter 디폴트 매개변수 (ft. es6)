@@ -1,0 +1,18 @@
+매개변수 = 'x'로 default 값을 지정합니다.
+매개변수가 없을 경우, undefined 일 경우 default 값을 사용합니다. 
+function multiply(a, b = 1) { //디폴트 매개변수 사용
+  return a * b;
+}
+//위와 아래가 동일합니다. 
+function multiply(a, b) { //디폴트 매개변수 사용안했을때
+  b = b || 1
+  return a * b;
+}
+ 
+
+default parameter 사용 예시
+const multyply = (a, b=1) => a * b;
+multyply(5)
+//5
+multyply(2,3)
+//6
