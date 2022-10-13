@@ -1,0 +1,20 @@
+적용 전 예시
+ fnName = (type) => {
+      return {
+        type: {
+          fill: 'gray'
+        }
+      }
+    }
+ 
+
+적용 후
+사용 후 key를 대가로로 묶어주시면 됩니다. 
+
+ fnName = (type) => {
+      return {
+        [type]: {
+          fill: 'gray'
+        }
+      }
+    }
