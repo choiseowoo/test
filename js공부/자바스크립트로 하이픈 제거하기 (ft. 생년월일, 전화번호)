@@ -1,0 +1,8 @@
+자바스크립트로 하이픈 제거
+str.replace(/-/g, "")
+ 
+
+예제
+const birth="1991-12-22"
+const newBirth = birth.replace(/-/g, "")
+//결과: 19911222
