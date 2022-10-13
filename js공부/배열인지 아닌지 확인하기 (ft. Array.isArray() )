@@ -1,0 +1,28 @@
+Array.isArray() 메서드는 가로 안의 인자가 array 인지를 판별합니다.
+array이면  true를 반환하고, 아니면 false를 반환합니다.
+ 
+
+Array.isArray() 예제
+Array.isArray([1, 2, 3]);  // true
+Array.isArray({foo: 123}); // false
+Array.isArray('foobar');   // false
+Array.isArray(undefined);  // false
+ 
+
+실무에서  실제 사용했던 코드 입니다.
+result에 데이터가 들어왔을 때만 실행하는 코드를 만들었습니다. 
+
+result라는 변수가 초기값이 null이고 데이터가 채워지면 객체의 형태인데, 무슨 이유인지 어쩔때는 초기값이 null이 아니라 [] 의 빈배열로 설정이 되어있었습니다. 
+
+이 부분 때문에 변수가 배열일 경우를 고려하는,  Array.isArryay(result) && result.length > 0 일 경우도 추가를 해주었습니다 .
+
+하지만 여기서 위의 코드만 삽입하면 에러가 나게 됩니다.
+방법은  !Array.isArray(result)일 경우 즉, 배열이 아닐 경우거나의 조건도 추가를 해줘야 에러가 안납니다. 
+
+ 
+
+Array.isArray() 결과 코드
+if (result && result !== null && 
+(!Array.isArray(result) || (Array.isArray(result) && result?.length > 0))) {
+	//return 코드
+}
