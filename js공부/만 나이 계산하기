@@ -1,0 +1,47 @@
+만 나이 계산하는 함수 (파라미터로 생년월일 넘겨줄때)
+export const gettingOriginalAge = (birth) => { //birth가 1990-03-05, string 형식 
+    const today = new Date(); //현재 날짜
+    let age = today.getFullYear() - Number(birth.slice(0, 4)); 
+    let mon = (today.getMonth()+1) - Number(birth.slice(5, 7));//getMonth()는 0-11로 출력되므로 +1
+    if (mon < 0 || (mon === 0 && today.getDate() < Number(birth.slice(8, 10)))) {
+        return age = age - 1; //생일이 안지났을 경우 1을 빼줍니다.
+    } else {
+        return age;
+    }
+}
+ 
+
+만 나이 계산하는 함수
+export const gettingOriginalAge = () => {  
+    const today = new Date(); //현재 날짜
+    const birthDate = new Date(2002, 3, 7); // 2002년 3월 7일
+    let age = today.getFullYear() - birthDate.getFullYear();
+    let mon = (today.getMonth()+1) - birthDate.getMonth();
+    if (mon < 0 || (mon === 0 && today.getDate() < birthDate.getDate()) {
+        return age = age - 1; //생일이 안지났을 경우 1을 빼줍니다.
+    } else {
+        return age;
+    }
+}
+
+
+
+const today = new Date();
+const birthDate = new Date(2000, 7, 10); // 2000년 8월 10일
+
+let age = today.getFullYear()
+          - birthDate.getFullYear()
+          + 1;
+
+document.writeln(age);
+
+const today = new Date();
+const birthDate = new Date(2000, 7, 10); // 2000년 8월 10일
+
+let age = today.getFullYear() - birthDate.getFullYear();
+const m = today.getMonth() - birthDate.getMonth();
+if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+}
+
+document.writeln(age);
