@@ -1,0 +1,80 @@
+a ?? b //a가 null 또는 undefined 일때 b
+해석: 변수 a의 값이 null도 아니고, undefined가 아니면 a, 그 외에는 b
+왼쪽 코드(a)가 null 또는 undefined일 경우, 오른쪽 코드(b)가 실행
+a ? "a" : "b"와 같은 형식의 삼항 연산자와 비슷한 문법
+x = a ?? b와 동일한 코드를 삼항 연산자로 나타내면, x = (a !== null && a !== undefined) ? a : b; 
+a와 b는 value 뿐만 아니라 함수로 사용  
+a() ?? b() //a 함수의 값이 null 또는 undefined일때 b 함수를 실행
+
+
+나쁜 코드
+const msg = (item) => {
+  let message = item;
+  if (item == null || item == undefined) {
+    message = "none";
+  }
+  console.log(message)
+};
+
+msg("kk"); //kk
+msg(); //none
+ 
+
+null 병합 연산자를 사용한 좋은 코드
+null 병합 연산자 '??'를 이용하여 코드를 절반으로 줄일 수 있고, 가독성도 뛰어납니다.
+
+const msg = (item) => {
+  const message = item ?? "none"; //item이 있으면 item을 출력하고, null 이나 undefinded일때 none 출력
+  console.log(message);
+};
+
+msg("kk"); //kk
+msg(); //none
+msg(null); //none
+msg(undefined); //none
+ 
+
+여기서 null 병합 연산자와 기본값 매개변수(default parameter)의 차이점을 알아봅니다.
+
+기본값 매개변수 (default parameter)
+매개변수 값이 없거나 undefined일 경우에만 매개변수에 기본값을 줄 수 있습니다.
+
+ const msg = (item = "none") => {
+   console.log(item);
+ };
+
+ msg(); //none
+ msg(null); //null - null일 경우 default 값이 전달안됨
+ msg(undefined); //none
+ 
+
+정리
+null 병합 연산자일 경우 변수가 null, undefined일 경우 두번째 문장(조건)이 실행되고,
+기본값 매개변수의 경우에는 undefined일 경우에만 default 값이 실행됩니다.  
+
+ 
+
+or 연산자 '||' (logical or operator) 
+사용 방법
+a || b //a가 false 일때 b
+false인 경우 해당하는 것들: false, null, undefined, NaN, 0, -0, " ", ' ', ``(빈 문자열)
+ 
+
+const msg = (item) => {
+  const message = item || "none"; //item이 있으면 item을 출력하고, false 일때 none 출력
+  console.log(message);
+};
+
+msg("kk"); //kk
+msg(); //none
+msg(null); //none
+msg(undefined); //none
+msg(0); //none
+msg(""); //none
+msg(``); //none
+ 
+
+?? (null 연산자) 와 || (or 연산자) 의 차이
+null 병합 연산자는 OR 연산자 ||와 상당히 유사
+?? 의 경우는 undefined, null의 경우에만 오른쪽 문장이 실행
+||의 경우는 false인 모든 경우에만 오른쪽 문장이 실행되므로 서로 다른 결과값을 나타낼 수 있습니다.
