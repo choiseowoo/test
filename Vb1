@@ -1,0 +1,45 @@
+' 필요한 변수 정의
+Dim conn, rs, fs, outFile
+
+' Connection 문자열 설정
+Dim connectionString
+connectionString = "Provider=OraOLEDB.Oracle;Data Source=YourOracleDB;User Id=YourUsername;Password=YourPassword;"
+
+' Connection 객체 생성
+Set conn = CreateObject("ADODB.Connection")
+
+' Connection 열기
+conn.Open connectionString
+
+' SQL 쿼리 실행
+Dim sql, result
+sql = "SELECT * FROM YourTable"
+Set rs = conn.Execute(sql)
+
+' 결과를 CSV 파일로 출력
+Set fs = CreateObject("Scripting.FileSystemObject")
+Set outFile = fs.CreateTextFile("output.csv", True)
+
+' CSV 파일에 열 이름 쓰기
+For Each field In rs.Fields
+    outFile.Write field.Name & ","
+Next
+outFile.Write vbCrLf
+
+' 데이터 행 쓰기
+Do While Not rs.EOF
+    For Each field In rs.Fields
+        outFile.Write field.Value & ","
+    Next
+    outFile.Write vbCrLf
+    rs.MoveNext
+Loop
+
+' 파일 닫기
+outFile.Close
+
+' 리소스 정리
+rs.Close
+conn.Close
+Set rs = Nothing
+Set conn = Nothing
