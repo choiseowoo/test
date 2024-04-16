@@ -1,0 +1,61 @@
+' 필요한 변수 정의
+Dim conn, rs, fs, outFile
+
+' 보안을 위한 연결 정보
+Dim dbServer, dbUser, dbPassword, dbTable
+dbServer = "YourOracleDB"
+dbUser = "YourUsername"
+dbPassword = "YourPassword"
+dbTable = "YourTable"
+
+' Connection 문자열 설정
+Dim connectionString
+connectionString = "Provider=OraOLEDB.Oracle;Data Source=" & dbServer & ";User Id=" & dbUser & ";Password=" & dbPassword & ";"
+
+' Connection 객체 생성
+Set conn = CreateObject("ADODB.Connection")
+
+' Connection 열기
+On Error Resume Next
+conn.Open connectionString
+If Err.Number <> 0 Then
+    MsgBox "Database connection failed: " & Err.Description
+    WScript.Quit
+End If
+On Error Goto 0
+
+' SQL 쿼리 실행
+Dim sql, result
+sql = "SELECT * FROM " & dbTable
+Set rs = conn.Execute(sql)
+
+' 결과를 CSV 파일로 출력
+Set fs = CreateObject("Scripting.FileSystemObject")
+Set outFile = fs.CreateTextFile("output.csv", True)
+
+' CSV 파일에 열 이름 쓰기
+For Each field In rs.Fields
+    outFile.Write field.Name & ","
+Next
+outFile.Write vbCrLf
+
+' 데이터 가져오기
+Dim dataArray
+dataArray = rs.GetRows()
+
+' 데이터 행 쓰기
+For i = LBound(dataArray, 2) To UBound(dataArray, 2)
+    For j = LBound(dataArray, 1) To UBound(dataArray, 1)
+        outFile.Write dataArray(j, i) & ","
+    Next
+    outFile.Write vbCrLf
+Next
+
+' 파일 닫기
+outFile.Close
+
+' 리소스 정리
+rs.Close
+conn.Close
+Set rs = Nothing
+Set conn = Nothing
