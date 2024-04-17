@@ -1,0 +1,3 @@
+Const DATABASE_NAME = "ORCL"
+Const USER_ID = "PROST"
+Const PASSWORD = "1234"
