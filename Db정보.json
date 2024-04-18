@@ -1,0 +1,8 @@
+{
+    "database": {
+        "server": "데이터베이스 서버 주소",
+        "database": "데이터베이스 이름",
+        "username": "사용자명",
+        "password": "비밀번호"
+    }
+}
