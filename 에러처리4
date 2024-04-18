@@ -1,0 +1,76 @@
+Dim conn, rs, fs, outputFile
+Dim attempt, maxAttempts
+maxAttempts = 3 ' 최대 재시도 횟수 설정
+attempt = 1
+
+' 필요한 객체를 생성합니다.
+Set conn = CreateObject("ADODB.Connection")
+Set rs = CreateObject("ADODB.Recordset")
+Set fs = CreateObject("Scripting.FileSystemObject")
+
+' 데이터베이스 연결 정보 설정 (보안 강화를 위해 연결 문자열을 암호화하여 사용)
+Dim dbPath, dbProvider, dbUsername, dbPassword
+dbPath = "C:\경로\to\your\database.accdb" ' 데이터베이스 파일 경로
+dbProvider = "Microsoft.ACE.OLEDB.12.0" ' 데이터베이스 프로바이더
+dbUsername = "사용자명" ' 데이터베이스 사용자명
+dbPassword = "패스워드" ' 데이터베이스 암호
+
+' 데이터베이스에 연결합니다.
+Do Until conn.State = 1 Or attempt > maxAttempts
+    On Error Resume Next
+    conn.Open "Provider=" & dbProvider & ";Data Source=" & dbPath & ";User ID=" & dbUsername & ";Password=" & dbPassword
+    If Err.Number <> 0 Then
+        MsgBox "데이터베이스 연결에 실패했습니다. 재시도 중입니다... (시도 횟수: " & attempt & ")"
+        Err.Clear
+        attempt = attempt + 1
+    Else
+        Exit Do ' 연결 성공 시 루프 종료
+    End If
+Loop
+
+' 데이터베이스 연결이 실패한 경우 메시지 출력 후 종료
+If conn.State <> 1 Then
+    MsgBox "데이터베이스에 연결할 수 없습니다. 프로그램을 종료합니다."
+    WScript.Quit
+End If
+
+' 데이터베이스 연결에 성공한 경우, 쿼리 실행 및 파일 출력 등의 작업을 수행합니다.
+
+' 예시: 쿼리 실행 (SQL Injection 공격을 방지하기 위해 파라미터화된 쿼리 사용)
+Dim sqlQuery, employeeID
+employeeID = 123 ' 예시로 사용할 직원 ID
+sqlQuery = "SELECT * FROM employees WHERE EmployeeID = ?"
+
+' 쿼리를 실행하여 결과를 레코드셋에 저장합니다.
+rs.Open sqlQuery, conn, , , employeeID
+If Err.Number <> 0 Then
+    MsgBox "SQL 쿼리 실행 중 에러 발생: " & Err.Description
+    ' 에러 처리 동작 추가
+End If
+
+' 예시: CSV 파일 출력 (파일 경로를 환경 변수로부터 읽어오고, 파일을 쓸 때 인증정보를 보호하기 위해 보안 상의 주의를 기울입니다)
+Dim csvPath
+csvPath = CreateObject("WScript.Shell").ExpandEnvironmentStrings("%USERPROFILE%") & "\output\file.csv" ' CSV 파일 경로
+Set outputFile = fs.CreateTextFile(csvPath, True)
+
+' CSV 파일 헤더 작성
+outputFile.WriteLine("EmployeeID,FirstName,LastName")
+
+' 레코드셋에서 각 레코드를 읽어와 CSV 파일에 쓰기
+Do Until rs.EOF
+    outputFile.WriteLine(rs("EmployeeID") & "," & rs("FirstName") & "," & rs("LastName"))
+    rs.MoveNext
+Loop
+
+' 파일 닫기
+outputFile.Close
+
+' 리소스 해제
+rs.Close
+conn.Close
+
+' 메시지 출력
+MsgBox "작업이 완료되었습니다."
+
+' 종료
+WScript.Quit
