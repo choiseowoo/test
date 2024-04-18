@@ -1,0 +1,40 @@
+Dim objFSO, objFile, objShell, objXMLHTTP
+
+' 파일 경로 설정
+Dim localFilePath
+localFilePath = "C:\경로\to\your\file.csv"
+
+' FTP 서버 정보 설정
+Dim ftpServer, ftpUsername, ftpPassword, ftpFilePath
+ftpServer = "ftp://ftp.example.com" ' FTP 서버 주소
+ftpUsername = "사용자명" ' FTP 서버 사용자명
+ftpPassword = "비밀번호" ' FTP 서버 비밀번호
+ftpFilePath = "/remote/path/file.csv" ' 전송될 파일 경로
+
+' 파일을 업로드할 FTP URL 생성
+Dim ftpURL
+ftpURL = ftpServer & ftpFilePath
+
+' 파일 존재 여부 확인
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+If Not objFSO.FileExists(localFilePath) Then
+    MsgBox "파일을 찾을 수 없습니다."
+    WScript.Quit
+End If
+
+' FTP 요청 설정
+Set objXMLHTTP = CreateObject("MSXML2.ServerXMLHTTP")
+objXMLHTTP.Open "PUT", ftpURL, False, ftpUsername, ftpPassword
+objXMLHTTP.setRequestHeader "Content-Type", "application/octet-stream"
+objXMLHTTP.Send objFSO.OpenTextFile(localFilePath).ReadAll
+
+' 응답 확인
+If objXMLHTTP.Status = 200 Then
+    MsgBox "파일이 성공적으로 전송되었습니다."
+Else
+    MsgBox "파일 전송 중 오류가 발생했습니다. 상태 코드: " & objXMLHTTP.Status
+End If
+
+' 객체 해제
+Set objFSO = Nothing
+Set objXMLHTTP = Nothing
