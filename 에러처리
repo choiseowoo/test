@@ -1,0 +1,73 @@
+On Error Resume Next
+
+' 데이터베이스 연결
+Set objConn = CreateObject("ADODB.Connection")
+objConn.Open "connection_string"
+
+' 오류 확인
+If Err.Number <> 0 Then
+    MsgBox "데이터베이스 연결에 실패했습니다: " & Err.Description
+End If
+
+' 다음 코드 계속 실행
+On Error GoTo 0
+
+On Error Resume Next
+
+' 데이터베이스 연결
+Set objConn = CreateObject("ADODB.Connection")
+objConn.Open "connection_string"
+
+' 오류 확인
+If Err.Number <> 0 Then
+    MsgBox "데이터베이스 연결에 실패했습니다: " & Err.Description
+    Err.Clear
+    Exit Sub ' 또는 다른 오류 처리 방법을 수행할 수 있음
+End If
+
+' 쿼리 실행
+strSQL = "SELECT * FROM table_name"
+Set objRS = objConn.Execute(strSQL)
+
+' 오류 확인
+If Err.Number <> 0 Then
+    MsgBox "쿼리 실행에 실패했습니다: " & Err.Description
+    Err.Clear
+    ' 추가적인 오류 처리 또는 스크립트 종료 등을 수행할 수 있음
+End If
+
+' 다음 코드 계속 실행
+On Error GoTo 0
+
+On Error Resume Next
+
+' CSV 파일 경로 설정
+strFilePath = "C:\path\to\output.csv"
+
+' 파일 생성 및 오픈
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set objFile = objFSO.CreateTextFile(strFilePath, True)
+
+' 오류 확인
+If Err.Number <> 0 Then
+    MsgBox "CSV 파일을 생성할 수 없습니다: " & Err.Description
+    Err.Clear
+    Exit Sub ' 또는 다른 오류 처리 방법을 수행할 수 있음
+End If
+
+' 데이터 쓰기 (예: 쿼리 결과)
+' 예시로 "Hello,World"를 CSV 파일에 씁니다.
+objFile.WriteLine "Hello,World"
+
+' 파일 닫기
+objFile.Close
+
+' 오류 확인
+If Err.Number <> 0 Then
+    MsgBox "CSV 파일에 데이터를 쓸 수 없습니다: " & Err.Description
+    Err.Clear
+    ' 추가적인 오류 처리 또는 스크립트 종료 등을 수행할 수 있음
+End If
+
+' 다음 코드 계속 실행
+On Error GoTo 0
