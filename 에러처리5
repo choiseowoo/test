@@ -1,0 +1,8 @@
+' 최종적으로 연결 상태를 확인하고 처리합니다.
+If conn.State = 1 And Err.Number = 0 Then
+    WScript.Echo "데이터베이스에 연결되었습니다."
+ElseIf Err.Number <> 0 Then
+    WScript.Echo "데이터베이스 연결 중 에러가 발생했습니다: " & Err.Description
+Else
+    WScript.Echo "데이터베이스에 연결할 수 없습니다."
+End If
