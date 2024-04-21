@@ -1,0 +1,33 @@
+@echo off
+setlocal
+
+rem VBScript 파일 경로 설정
+set vbsFilePath=C:\경로\to\your_script.vbs
+
+rem 재시도 횟수 설정
+set maxAttempts=3
+set attempt=1
+
+:retry
+rem VBScript 파일 실행
+cscript "%vbsFilePath%"
+
+rem VBScript 실행 결과 검사
+if %errorlevel% neq 0 (
+    rem 실패한 경우 메시지 출력
+    echo VBScript 실행이 실패했습니다. 재시도 중입니다... (시도 횟수: %attempt%)
+    rem 재시도 횟수 체크
+    if %attempt% lss %maxAttempts% (
+        rem 재시도 횟수가 maxAttempts보다 작은 경우 다시 시도
+        set /a attempt+=1
+        goto retry
+    ) else (
+        rem 재시도 횟수가 maxAttempts보다 큰 경우 실패 메시지 출력 후 종료
+        echo 최대 재시도 횟수를 초과하였습니다.
+        goto :eof
+    )
+)
+
+rem 성공한 경우 메시지 출력 후 종료
+echo VBScript 실행이 성공했습니다.
+goto :eof
