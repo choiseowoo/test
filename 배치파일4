@@ -1,0 +1,14 @@
+@echo off
+
+rem 로그 파일 경로 설정
+set logFile=log.txt
+
+rem 에러 출력을 로그 파일에 추가
+( your_program.exe 2>&1 ) >> %logFile%
+
+rem 에러 발생 여부 확인
+if %errorlevel% neq 0 (
+    echo Error occurred. Check %logFile% for details.
+) else (
+    echo No error occurred.
+)
