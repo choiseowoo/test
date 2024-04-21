@@ -1,0 +1,19 @@
+@echo off
+chcp 65001 > nul  rem UTF-8 인코딩 설정
+
+echo 안녕하세요. 이 배치 파일은 한국어를 포함하고 있습니다.
+echo 재시도 횟수 설정 중입니다.
+
+set maxAttempts=3
+set attempt=1
+
+:retry
+echo 시도 중입니다... (시도 횟수: %attempt%)
+
+rem 여기에 실행할 작업 추가
+
+rem 예시로 3번까지 재시도하는 코드
+set /a attempt+=1
+if %attempt% leq %maxAttempts% goto retry
+
+echo 모든 시도가 실패했습니다. 종료합니다.
