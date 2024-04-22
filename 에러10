@@ -1,0 +1,7 @@
+@echo off
+echo Running script.vbs
+cscript //nologo script.vbs > output.txt
+
+rem VBS 스크립트에서 출력한 값을 캡처하여 사용
+set /p result=<output.txt
+echo VBS 스크립트의 결과는: %result%
