@@ -1,0 +1,10 @@
+' 현재 디렉토리 확인
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+currentDirectory = objFSO.GetAbsolutePathName(".")
+
+' 출력 파일의 상대 경로 설정
+outputFileName = "output_" & curDate & ".csv"
+relativeOutputFilePath = "relative_path\" & outputFileName ' 상대 경로 설정
+
+' 상대 경로로 파일을 생성
+Set csvFile = fs.CreateTextFile(objFSO.BuildPath(currentDirectory, relativeOutputFilePath), True)
