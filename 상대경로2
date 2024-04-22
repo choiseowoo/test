@@ -1,0 +1,11 @@
+' 현재 스크립트 파일의 절대 경로 가져오기
+currentScriptPath = WScript.ScriptFullName
+
+' 현재 스크립트 파일이 있는 디렉토리의 절대 경로 가져오기
+currentDirectory = objFSO.GetParentFolderName(currentScriptPath)
+
+' 상대 경로 설정
+relativeOutputFilePath = "log\output_" & curDate & ".csv"
+
+' 상대 경로로 파일을 생성
+Set csvFile = fs.CreateTextFile(objFSO.BuildPath(currentDirectory, relativeOutputFilePath), True)
