@@ -1,0 +1,11 @@
+@echo off
+timeout /t 5 >nul
+
+REM 현재 배치 파일이 위치한 디렉토리를 기준으로 상대 경로로 설정
+set "scriptPath=%~dp0"
+set "logFilePath=%scriptPath%log\log.txt"
+
+REM VBScript 파일 실행하고 그 내용을 log.txt에 저장
+cscript //NoLogo "%scriptPath%vbs\Test.vbs" > "%logFilePath%"
+
+REM 5초 후에 실행된다
