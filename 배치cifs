@@ -1,0 +1,16 @@
+@echo off
+timeout /t 5 >nul
+
+REM 현재 배치 파일이 위치한 디렉토리를 기준으로 상대 경로로 설정
+set "scriptPath=%~dp0"
+set "logFilePath=%scriptPath%log\log.txt"
+set "vbsFilePath=%scriptPath%vbs\test.vbs"
+
+REM CIFS 폴더로 복사할 경로 설정
+set "cifsFolderPath=\\mvp858\test"
+
+REM VBScript 파일 실행하여 로그 생성
+cscript //NoLogo "%vbsFilePath%" > "%logFilePath%"
+
+REM 로그 파일을 CIFS 폴더로 복사
+copy "%logFilePath%" "%cifsFolderPath%" /Y
