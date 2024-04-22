@@ -1,0 +1,35 @@
+@echo off
+setlocal enabledelayedexpansion
+
+rem 반복 횟수 설정
+set max_attempts=3
+set attempt=0
+
+:run_script
+rem 스크립트 실행
+echo Running script.vbs (Attempt !attempt! of !max_attempts!)
+cscript //nologo script.vbs
+
+rem vbscript에서 발생한 오류 레벨을 확인
+if %ERRORLEVEL% EQU 0 (
+    echo Script.vbs executed successfully
+    goto :end
+) else (
+    echo Error: An error occurred in script.vbs
+
+    rem 추가적인 오류 처리 또는 종료 등을 수행할 수 있음
+)
+
+rem 다음 시도를 위해 attempt 변수 증가
+set /a attempt+=1
+
+rem 최대 시도 횟수 이상이면 종료
+if !attempt! geq %max_attempts% (
+    echo Maximum number of attempts reached. Exiting.
+    exit /b %ERRORLEVEL%
+) else (
+    rem 최대 시도 횟수 미만이면 다시 실행
+    goto :run_script
+)
+
+:end
