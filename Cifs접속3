@@ -1,0 +1,17 @@
+@echo off
+timeout /t 5 >nul
+
+REM 계정 정보 설정
+set "username=test1"
+set "password=비밀번호" REM 계정에 비밀번호가 있는 경우 여기에 추가합니다.
+
+REM 현재 배치 파일이 위치한 디렉토리를 기준으로 상대 경로로 설정
+set "scriptPath=%~dp0"
+set "logFilePath=%scriptPath%log\log.txt"
+set "vbsFilePath=%scriptPath%vbs\test.vbs"
+
+REM VBScript 파일 실행 및 로그 기록
+cscript //NoLogo "%vbsFilePath%" > "%logFilePath%"
+
+REM CIFS 공유로 로그 파일 복사
+xcopy "%logFilePath%" "\\mvp858\mvp858¥test\로그파일명" /Y /C /I /E
