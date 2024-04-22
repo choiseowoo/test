@@ -1,0 +1,18 @@
+' 출력 파일 경로 설정
+outputFilePath = "test.csv"
+
+' FileSystemObject 생성
+Set fs = CreateObject("Scripting.FileSystemObject")
+
+' 기존 파일이 존재하는지 확인하고 있다면 삭제
+If fs.FileExists(outputFilePath) Then
+    fs.DeleteFile outputFilePath
+End If
+
+' 새로운 CSV 파일 생성
+Set csvFile = fs.CreateTextFile(outputFilePath, True)
+
+' 파일에 데이터 작성 (생략)
+
+' 파일 닫기
+csvFile.Close
