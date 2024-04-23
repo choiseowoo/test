@@ -1,0 +1,3 @@
+@echo off
+REM 파일 삭제
+del "파일 경로"
