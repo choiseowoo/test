@@ -1,0 +1,22 @@
+Dim objFSO, folderPath, fileName, newCSVFile, csvData
+
+' 폴더 경로와 파일명 설정
+folderPath = "C:\Your\Folder\Path\" ' 폴더 경로
+fileName = "your_file.csv" ' 파일명
+
+' 파일 삭제
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+If objFSO.FileExists(folderPath & fileName) Then
+    objFSO.DeleteFile(folderPath & fileName)
+    WScript.Echo "기존 CSV 파일이 삭제되었습니다."
+Else
+    WScript.Echo "삭제할 파일이 존재하지 않습니다."
+End If
+
+' 새로운 CSV 파일 작성
+Set newCSVFile = objFSO.CreateTextFile(folderPath & fileName, True)
+csvData = "Your,CSV,Data,Here" ' CSV 파일에 쓸 데이터
+newCSVFile.WriteLine csvData
+newCSVFile.Close
+
+WScript.Echo "새로운 CSV 파일이 생성되었습니다."
