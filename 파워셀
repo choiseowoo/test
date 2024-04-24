@@ -1,0 +1,18 @@
+# XML 파일 경로 설정
+$xmlFile = "server_info.xml"
+
+# XML 파일 읽기
+[xml]$xmlContent = Get-Content $xmlFile
+
+# 서버 정보 가져오기
+$serverName = $xmlContent.server_info.server_name
+$folderPath = $xmlContent.server_info.folder_path
+$username = $xmlContent.server_info.username
+$password = $xmlContent.server_info.password
+
+# 서버 접속 및 파일 복사
+New-PSDrive -Name "Z" -PSProvider "FileSystem" -Root "\\$serverName\$folderPath" -Credential (Get-Credential -UserName $username -Message "Enter your password") | Out-Null
+Copy-Item "원본파일경로" -Destination "Z:\대상폴더경로" -Force
+
+# 연결 해제
+Remove-PSDrive -Name "Z"
