@@ -1,0 +1,20 @@
+@echo off
+
+REM XML 파일 경로 설정
+set "xmlFile=server_info.xml"
+
+REM XML 파일에서 정보 읽어오기
+for /f "usebackq tokens=2 delims=<> " %%i in ("%xmlFile%") do (
+    set "server_name=%%i"
+    set /p "folder_path="
+    set /p "username="
+    set /p "password="
+)
+
+REM 서버 접속 및 파일 복사
+net use \\%server_name%\%folder_path% /user:%username% %password% /persistent:no
+xcopy "원본파일경로" "\\%server_name%\%folder_path%\대상폴더경로" /Y /C /I /E
+
+REM 연결 해제
+net use \\%server_name%\%folder_path% /delete
+
