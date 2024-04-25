@@ -1,0 +1,45 @@
+Dim conn, rs
+Dim connectionString, query
+
+' 가능한 접속 문자열 리스트 설정
+Dim connectionStrings(2)
+connectionStrings(0) = "Provider=OraOLEDB.Oracle;Data Source=ORCL;User ID=myUsername;Password=myPassword;"
+connectionStrings(1) = "다른 접속 문자열1"
+connectionStrings(2) = "다른 접속 문자열2"
+
+' 쿼리 설정
+query = "SELECT * FROM your_table"
+
+' 연결 문자열 시도 및 연결
+For Each connectionString In connectionStrings
+    Set conn = CreateObject("ADODB.Connection")
+    conn.ConnectionString = connectionString
+    On Error Resume Next
+    conn.Open
+    If Err.Number = 0 Then
+        Exit For ' 연결 성공 시 루프 종료
+    Else
+        Err.Clear ' 에러 클리어 후 다음 연결 문자열 시도
+        Set conn = Nothing
+    End If
+Next
+
+' 연결 문자열이 모두 실패한 경우 메시지 출력 후 종료
+If conn Is Nothing Then
+    MsgBox "데이터베이스에 연결할 수 없습니다. 프로그램을 종료합니다."
+    WScript.Quit
+End If
+
+' 쿼리 실행
+Set rs = CreateObject("ADODB.Recordset")
+rs.Open query, conn
+
+' 결과 출력
+Do Until rs.EOF
+    ' 결과 처리
+    rs.MoveNext
+Loop
+
+' 리소스 해제
+rs.Close
+conn.Close
