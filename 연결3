@@ -1,0 +1,85 @@
+네, **VBScript에서 11g와 19c 클라이언트 모두 사용 가능한 방법은 있습니다.** 
+
+**방법:**
+
+**1. TNSNAMES.ORA 파일 사용:**
+
+* TNSNAMES.ORA 파일에 별칭을 정의하여 11g 및 19c 서버에 대한 연결 정보를 저장할 수 있습니다.
+* VBScript 코드에서 연결 문자열을 사용하여 별칭을 참조하여 서버에 연결할 수 있습니다.
+
+**예시:**
+
+```vbscript
+' TNSNAMES.ORA 파일에 정의된 별칭 사용
+
+' TNSNAMES.ORA 파일
+ORCL11G = (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = <11g 서버 주소>)(PORT = 1521))
+    (CONNECT_DATA =
+      (SID = <11g SID>)
+    )
+)
+
+ORCL19C = (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = <19c 서버 주소>)(PORT = 1521))
+    (CONNECT_DATA =
+      (SID = <19c SID>)
+    )
+)
+
+' VBScript 코드
+Set conn = CreateObject("ADODB.Connection")
+
+' 11g 서버 연결
+conn.ConnectionString = "Provider=OraOLEDB.Oracle;Data Source=ORCL11G;User ID=<username>;Password=<password>;"
+conn.Open
+
+' 19c 서버 연결
+conn.ConnectionString = "Provider=MSDAORA.120;Data Source=ORCL19C;User ID=<username>;Password=<password>;"
+conn.Open
+```
+
+**2. Oracle 클라이언트별 연결 문자열 사용:**
+
+* VBScript 코드에서 조건문을 사용하여 11g 또는 19c 클라이언트에 따라 연결 문자열을 동적으로 설정할 수 있습니다.
+
+**예시:**
+
+```vbscript
+' Oracle 클라이언트별 연결 문자열 사용
+
+' 11g 클라이언트
+If <사용자 설정> = "11g" Then
+  connString = "Provider=OraOLEDB.Oracle;Data Source=<11g 서버 주소>;User ID=<username>;Password=<password>;"
+Else
+  ' 19c 클라이언트
+  connString = "Provider=MSDAORA.120;Data Source=<19c 서버 주소>;User ID=<username>;Password=<password>;"
+End If
+
+' 연결 설정
+Set conn = CreateObject("ADODB.Connection")
+conn.ConnectionString = connString
+conn.Open
+```
+
+**3. Oracle Instant Client 사용:**
+
+* Oracle Instant Client는 설치 없이 사용할 수 있는 Oracle 클라이언트 패키지입니다.
+* VBScript 코드에서 Oracle Instant Client API를 직접 사용하여 11g 및 19c 서버에 연결할 수 있습니다.
+
+**참고:**
+
+* 위의 방법들은 각자 장단점이 있습니다. 
+* 상황에 따라 적합한 방법을 선택하십시오.
+* VBScript 코드에서 사용하는 Oracle 클라이언트 API 및 함수는 11g 및 19c 클라이언트에서 모두 지원되는지 확인하십시오.
+* 19c 클라이언트에서만 사용 가능한 API 또는 함수를 사용하면 오류가 발생할 수 있습니다.
+* 문제가 발생하면, VBScript 코드, 연결 문자열, TNSNAMES.ORA 파일 등 관련 정보를 공유하면, 문제를 더 정확하게 진단하고 해결하는 데 도움이 될 수 있습니다.
+
+**도움이 되었기를 바랍니다!**
+
+**추가 정보:**
+
+* Oracle TNSNAMES.ORA 파일: [https://docs.oracle.com/en/database/oracle/oracle-database/21/ntcli/specifying-connection-by-configuring-tnsnames.ora-file.html](https://docs.oracle.com/en/database/oracle/oracle-database/21/ntcli/specifying-connection-by-configuring-tnsnames.ora-file.html)
+* Oracle Instant Client: [https://www.oracle.com/database/technologies/instant-client/downloads.html](https://www.oracle.com/database/technologies/instant-client/downloads.html)
+* VBScript에서 Oracle 접속: [https://stackoverflow.com/questions/35888245/unable-to-connect-to-oracle-db-using-vbs](https://stackoverflow.com/questions/35888245/unable-to-connect-to-oracle-db-using-vbs)
+* Oracle 커뮤니티 포럼: 
