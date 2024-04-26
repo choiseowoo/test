@@ -1,0 +1,57 @@
+## VBScript에서 Oracle 11g 접속 문제 해결 (서버 19g)
+
+**오류 메시지:**
+
+* "ODBC 드라이버가 설치되어 있지 않습니다."
+* "OLE DB Provider가 등록되지 않았습니다."
+
+**원인:**
+
+1. **ODBC 드라이버 부재:** VBScript에서 Oracle 11g에 접속하려면 ODBC 드라이버가 설치되어 있어야 합니다. ODBC 드라이버는 Oracle에서 직접 다운로드하거나, Oracle 클라이언트 설치 시 함께 설치할 수 있습니다.
+2. **ODBC Provider 부재:** ODBC 드라이버가 설치되어 있어도, ODBC Provider가 등록되지 않은 경우 오류가 발생할 수 있습니다. ODBC Provider는 Windows 시스템에 등록되어 있어야 VBScript에서 사용할 수 있습니다.
+3. **Oracle 클라이언트 버전 불일치:** VBScript에서 사용하는 Oracle 클라이언트 버전과 서버 버전이 서로 다를 경우 오류가 발생할 수 있습니다. 
+
+**해결 방법:**
+
+**1. ODBC 드라이버 설치:**
+
+* Oracle 사이트에서 ODBC 드라이버 다운로드: [https://www.oracle.com/database/technologies/releasenote-odbc-ic.html](https://www.oracle.com/database/technologies/releasenote-odbc-ic.html)
+* Oracle 클라이언트 설치 시 ODBC 드라이버 함께 설치: Oracle 클라이언트 설치 과정에서 ODBC 드라이버 설치 옵션 선택
+* **주의:** ODBC 드라이버 버전은 Oracle 클라이언트 버전과 일치해야 합니다.
+
+**2. ODBC Provider 등록:**
+
+* **시작 메뉴 > 제어판 > 관리 도구 > 데이터 소스** 실행
+* **시스템 DSN** 탭 선택
+* **추가** 버튼 클릭
+* **Oracle** 드라이버 선택 후 **마침** 버튼 클릭
+* **연결** 설정 후 **확인** 버튼 클릭
+
+**3. Oracle 클라이언트 버전 확인 및 일치:**
+
+* 사용하는 Oracle 클라이언트 버전 확인: **시작 메뉴 > 프로그램 및 기능 > Oracle** 클라이언트 선택 후 **속성** 확인
+* 서버 버전 확인: 서버 관리자에게 문의 또는 서버 문서 확인
+* **주의:** 서버 버전보다 낮은 Oracle 클라이언트 버전은 사용할 수 없습니다.
+
+**추가적으로 확인할 사항:**
+
+* **TNSNAMES.ORA 파일:** Oracle 클라이언트 설치 경로에 TNSNAMES.ORA 파일이 있는지 확인합니다. 이 파일은 서버 정보를 포함하고 있으며, VBScript에서 접속 설정에 사용됩니다.
+* **환경 변수:** PATH, TNS_ADMIN 환경 변수가 올바르게 설정되어 있는지 확인합니다.
+* **연결 문자열:** VBScript에서 사용하는 연결 문자열이 서버 정보와 일치하는지 확인합니다.
+
+**문제 해결 지침:**
+
+* 위의 단계를 차근차근 따르세요.
+* 문제가 지속되면, Oracle 문서 또는 온라인 커뮤니티에서 도움을 받으세요.
+* VBScript 코드를 공유하면, 문제를 더 정확하게 진단하고 해결하는 데 도움이 될 수 있습니다.
+
+**도움이 될 만한 링크:**
+
+* Oracle ODBC 드라이버 다운로드: [https://www.oracle.com/database/technologies/releasenote-odbc-ic.html](https://www.oracle.com/database/technologies/releasenote-odbc-ic.html)
+* Oracle 클라이언트 설치: [https://docs.oracle.com/cd/E11882_01/install.112/e47959/install.htm](https://docs.oracle.com/cd/E11882_01/install.112/e47959/install.htm)
+* TNSNAMES.ORA 파일: [https://docs.oracle.com/database/121/NETRF/tnsnames.htm](https://docs.oracle.com/database/121/NETRF/tnsnames.htm)
+* PATH 환경 변수: [https://learn.microsoft.com/en-us/previous-versions/office/developer/sharepoint-2010/ee537574%28v=office.14%29](https://learn.microsoft.com/en-us/previous-versions/office/developer/sharepoint-2010/ee537574%28v=office.14%29)
+* TNS_ADMIN 환경 변수: [https://www.ibm.com/support/pages/setting-tnsadmin-environment-variable-requisitepro-when-multiple-oracle-client-versions-are-installed](https://www.ibm.com/support/pages/setting-tnsadmin-environment-variable-requisitepro-when-multiple-oracle-client-versions-are-installed)
+* Oracle 커뮤니티 포럼: [https://community.oracle.com/hub/](https://community.oracle.com/hub/)
+
+**주의:** 위의 정보는 일반적인 지침이며, 모든 상황에 적용될 수는 없습니다. 특정 상황에 대한 도움이 필요하면, Oracle 기술 지원 또는 전문가에게 문의하시기 바랍니다.
