@@ -1,0 +1,35 @@
+Dim conn, connectionString
+
+' 환경 변수에서 설정값 읽어오기
+Dim environment
+environment = GetEnvironmentVariable("DATABASE_ENV")
+
+' 환경 변수에 따라 다른 접속 설정 적용
+Select Case environment
+    Case "PRODUCTION"
+        connectionString = "Provider=OraOLEDB.Oracle;Data Source=PROD_DB;User ID=user;Password=password;"
+    Case "DEVELOPMENT"
+        connectionString = "Provider=OraOLEDB.Oracle;Data Source=DEV_DB;User ID=user;Password=password;"
+    Case Else
+        MsgBox "유효하지 않은 환경 변수입니다."
+        WScript.Quit
+End Select
+
+' 데이터베이스에 연결
+Set conn = CreateObject("ADODB.Connection")
+conn.Open connectionString
+
+' 연결 확인
+If conn.State = 1 Then
+    MsgBox "데이터베이스에 성공적으로 연결되었습니다."
+Else
+    MsgBox "데이터베이스 연결에 실패했습니다."
+End If
+
+' 환경 변수 읽어오기 함수 정의
+Function GetEnvironmentVariable(variableName)
+    Dim objShell, objEnv
+    Set objShell = CreateObject("WScript.Shell")
+    Set objEnv = objShell.Environment("PROCESS")
+    GetEnvironmentVariable = objEnv(variableName)
+End Function
