@@ -1,0 +1,103 @@
+' ORACLE Database接続のあれこれ
+
+Option Explicit
+
+Dim constr_DSNless
+Dim constr_OdbcDSN, constr_OdbcDSN32
+Dim constr_OraClient
+Dim constr
+Dim conn
+
+'===========================
+' DSNレス接続 (ODBCデータソースの設定不要)
+' Microsoft ODBC for Oracle利用
+' 32bit: 未動作/以下のエラーが出る。
+'   SQL_HANDLE_ENVでのドライバーのSQLAllocateHandleは失敗しました。
+'   → OracleClientのセットアップに問題があった可能性がある。
+' 64bit: 恐らく不可。(32bit版しかドライバがないため)
+
+constr_DSNless = _
+  "Driver={Microsoft ODBC for Oracle};" & _
+  "DataSource=XE;UID=system;PWD=manager"
+
+'===========================
+' ODBC利用(ODBCデータソース[32/64bit]で設定が必要)
+' 32bit/64bitともに問題なし。使用しているドライバは、
+' 32bit: Microsoft ODBC for Oracle + Oracle Client(32bit)
+' 64bit: Oracle in XE (Express Edition導入時に入るドライバ)
+'   Oracle Client 64bitを入れてもODBCドライバは入らない模様?
+
+constr_OdbcDSN = _
+  "DSN=xe;UID=system;PWD=manager"
+
+constr_OdbcDSN32 = _
+  "DSN=xe32;UID=system;PWD=manager"
+
+'===========================
+' Oracle OLEドライバ?利用
+' 接続文字列に渡すDriverとProviderの違いがよくわかっていない。
+' 32bit版: 未検証(恐らく、64bitとの同居環境が原因で動作不良;tns解決失敗)
+' 64bit版: 問題なし
+constr_OraClient = _
+  "Provider=OraOLEDB.Oracle;" & _
+  "DataSource=XE;User ID=system;Password=manager"
+
+constr = constr_DSNless
+
+'===========================
+' 接続チェック
+On Error Resume Next
+Set conn = CreateObject("ADODB.Connection")
+conn.open(constr)
+If Err.Number <> 0 Then
+  Dim Msg
+  Msg = "ADODB connection failed." & _
+    "(reason:" & Err.Description & _
+    " [Errno:" & Err.Number & "])"
+
+  WScript.Echo Msg
+  WScript.Quit
+End If
+
+' データ取得の試行
+On Error Goto 0
+Dim sql
+Dim rs
+
+sql = "select * from v$database"
+Set rs = conn.execute(sql)
+Do Until rs.EOF
+  WScript.Echo rs("name")
+  rs.movenext
+Loop
+
+
+
+'===========================
+' 結果
+' 32bit環境:
+' DSNレスでMS ODBC for Oracleが動作しない理由がよく分からないが、
+' ODBCデータソースにDSNを設定すれば動作する。
+' Oracle OLEドライバ利用については要追加検証
+'
+' 64bit環境
+' MS ODBC for Oracleは恐らく利用不可。ポーティングするなら対応が必要。
+' ODBCデータソースにDSNを登録して設定してもいいし、
+' 接続文字列をProvider=...にしてもいいと思われる。
+'
+'===========================
+' 補足
+' 32bit版/64bit版のOracle Clientは同居可能だが環境変数
+' など、環境を上手く管理する必要がある。
+' アプリの環境に合わせてで32bit版/64bit版を選ぶと良いと思う
+'
+'===========================
+' 補足2
+' Driver,Providerの違いについて。
+' MSDN曰く「Provider等5つのキーワード以外については直接プロバイダに渡す」
+' とのこと。 http://msdn.microsoft.com/ja-jp/library/cc426643.aspx
+' 以下の様な動作イメージになると思われる。
+' Driver={MS ODBC for Oracle}を指定した場合:
+'   ADODB -> OLE DBプロバイダ -> MS ODBC for Oracle -> Client -> DB
+' Provider=OraOLEDB.Oracleを指定した場合:
+'   ADODB -> OraOLEDB.Oracleプロバイダ -> ... -> 
