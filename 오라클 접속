@@ -1,0 +1,23 @@
+Dim adoConnection
+Dim connectionString
+Dim objRs
+Dim rows
+
+Set adoConnection = CreateObject("ADODB.Connection")
+
+strConnect = "DSN=CK2;uid=bfuser;pwd=bfuser123"
+
+adoConnection.Open strConnect
+
+strSQL = "SELECT app_service,src_loc from bf_app_info where app_category = 'EES';"
+Set rows = adoConnection.Execute(strSQL)
+
+while Not rows.EOF
+    msgbox rows.fields("app_service").value & ":" & rows.fields("src_loc").value
+    rows.moveNext
+wend
+
+adoConnection.close
+
+set rows = nothing
+set adoConnection = nothing
