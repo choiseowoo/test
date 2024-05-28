@@ -1,0 +1,71 @@
+네, 배치 파일에서 별도의 오브젝트 생성이나 추가적인 설치 없이 기본적으로 설치된 PowerShell을 호출하여 스크립트를 실행할 수 있습니다. Windows에는 기본적으로 PowerShell이 설치되어 있으므로 이를 활용하면 됩니다. 다음은 배치 파일에서 PowerShell 스크립트를 실행하는 예제입니다.
+
+### 예제 1: 간단한 PowerShell 명령 실행
+
+```batch
+@echo off
+
+rem PowerShell을 사용하여 현재 날짜와 시간을 출력
+powershell -Command "Get-Date"
+
+echo 작업이 완료되었습니다.
+pause
+```
+
+### 예제 2: PowerShell 스크립트를 배치 파일 내에서 작성하고 실행
+
+배치 파일 내에서 PowerShell 스크립트를 작성하고 이를 실행할 수도 있습니다.
+
+```batch
+@echo off
+
+rem PowerShell 스크립트를 임시 파일로 작성
+echo Write-Output "Hello from PowerShell!" > temp.ps1
+
+rem PowerShell 스크립트 실행
+powershell -ExecutionPolicy Bypass -File temp.ps1
+
+rem 임시 파일 삭제
+del temp.ps1
+
+echo 작업이 완료되었습니다.
+pause
+```
+
+### 예제 3: CSV 파일을 PowerShell로 처리하고 배치 파일에서 호출
+
+앞서 언급한 CSV 파일 처리를 PowerShell로 실행하는 배치 파일의 예입니다.
+
+1. `example.csv` 파일의 내용 (예시):
+
+```
+name,age,city
+Alice,30,New York
+Bob,25,Los Angeles
+Charlie,35,Chicago
+```
+
+2. 배치 파일 내용:
+
+```batch
+@echo off
+
+rem PowerShell 스크립트를 임시 파일로 작성
+echo $csv = Import-Csv -Path 'example.csv' > temp.ps1
+echo foreach ($row in $csv) { >> temp.ps1
+echo     Write-Output "$($row.name), $($row.age), $($row.city)" >> temp.ps1
+echo } >> temp.ps1
+
+rem PowerShell 스크립트 실행
+powershell -ExecutionPolicy Bypass -File temp.ps1
+
+rem 임시 파일 삭제
+del temp.ps1
+
+echo 작업이 완료되었습니다.
+pause
+```
+
+이 배치 파일은 PowerShell을 사용하여 `example.csv` 파일을 읽고 각 행의 데이터를 출력합니다. `temp.ps1`이라는 임시 PowerShell 스크립트를 생성하여 실행한 후, 임시 파일을 삭제하는 구조입니다.
+
+위의 예제들을 참고하여 필요한 작업에 맞게 배치 파일과 PowerShell을 조합하여 사용할 수 있습니다.
