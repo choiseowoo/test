@@ -1,0 +1,111 @@
+SQL*Plus를 사용하여 더 간결하게 데이터를 추출하고 CSV 파일을 생성하여 이메일을 보내는 방법을 다시 설명하겠습니다. 여기서는 SQL*Plus와 PowerShell을 조합하여 작업을 간단하게 처리할 수 있는 방법을 제시합니다.
+
+### 1. SQL 스크립트 작성
+
+사용자 목록과 금지 소프트웨어 목록을 각각 가져오는 SQL 스크립트를 작성합니다. `user_list.sql` 파일과 `software_list.sql` 파일을 작성합니다.
+
+**user_list.sql**:
+```sql
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SET PAGESIZE 0;
+SPOOL user_list.txt
+SELECT DISTINCT username
+FROM installed_software
+WHERE software_name IN ('SoftwareA', 'SoftwareB', 'SoftwareC');
+SPOOL OFF;
+EXIT;
+```
+
+### 2. 배치 파일 작성
+
+각 사용자의 금지 소프트웨어 목록을 조회하고, CSV 파일로 저장한 후 이메일로 전송하는 배치 파일을 작성합니다.
+
+**process.bat**:
+```batch
+@echo off
+setlocal enabledelayedexpansion
+
+rem 데이터베이스 접속 정보 설정
+set DB_USER=your_db_user
+set DB_PASS=your_db_password
+set DB_HOST=your_db_host
+set DB_SID=your_db_sid
+
+rem SQL*Plus 경로 설정
+set SQLPLUS_PATH=sqlplus
+
+rem 사용자 목록 파일 생성
+%SQLPLUS_PATH% -s %DB_USER%/%DB_PASS%@%DB_HOST%/%DB_SID% @user_list.sql
+
+rem 각 사용자의 금지 소프트웨어 목록을 CSV 파일로 저장
+for /f "tokens=*" %%u in (user_list.txt) do (
+    set "USERNAME=%%u"
+    set "CSV_FILE=!USERNAME!.csv"
+
+    echo SET HEADING OFF; > temp_query.sql
+    echo SET FEEDBACK OFF; >> temp_query.sql
+    echo SET COLSEP ','; >> temp_query.sql
+    echo SET PAGESIZE 0; >> temp_query.sql
+    echo SPOOL !CSV_FILE!; >> temp_query.sql
+    echo SELECT software_name FROM installed_software WHERE username='!USERNAME!' AND software_name IN ('SoftwareA', 'SoftwareB', 'SoftwareC'); >> temp_query.sql
+    echo SPOOL OFF; >> temp_query.sql
+    echo EXIT; >> temp_query.sql
+    
+    %SQLPLUS_PATH% -s %DB_USER%/%DB_PASS%@%DB_HOST%/%DB_SID% @temp_query.sql
+    del temp_query.sql
+
+    rem PowerShell 스크립트를 실행하여 이메일 전송
+    powershell -ExecutionPolicy Bypass -File send_email.ps1 -username !USERNAME! -csvFile "!CSV_FILE!"
+)
+
+rem 임시 파일 삭제
+del user_list.txt
+
+echo 작업이 완료되었습니다.
+pause
+```
+
+### 3. PowerShell 스크립트 작성
+
+사용자에게 이메일을 보내는 PowerShell 스크립트를 작성합니다.
+
+**send_email.ps1**:
+```powershell
+param (
+    [string]$username,
+    [string]$csvFile
+)
+
+# 이메일 발송에 사용할 정보 설정
+$smtpServer = "smtp.your_email_server.com"
+$smtpFrom = "your_email@example.com"
+$smtpTo = "$username@example.com"
+$messageSubject = "Prohibited Software Installed on Your PC"
+$messageBody = "Dear $username,`n`nPlease find the attached CSV file containing the list of prohibited software installed on your PC.`n`nBest regards,`nIT Department"
+
+# 첨부 파일을 포함한 메일 메시지 작성
+$message = New-Object System.Net.Mail.MailMessage
+$message.From = $smtpFrom
+$message.To.Add($smtpTo)
+$message.Subject = $messageSubject
+$message.Body = $messageBody
+$attachment = New-Object System.Net.Mail.Attachment($csvFile)
+$message.Attachments.Add($attachment)
+
+# SMTP 클라이언트 설정 및 이메일 발송
+$smtp = New-Object Net.Mail.SmtpClient($smtpServer)
+$smtp.Send($message)
+
+# 첨부 파일 객체 해제
+$attachment.Dispose()
+```
+
+### 사용 방법
+
+1. **SQL 스크립트 작성**: `user_list.sql` 파일을 작성하여 금지 소프트웨어가 설치된 PC의 사용자 목록을 가져옵니다.
+2. **배치 파일 작성**: `process.bat` 파일을 작성하여 사용자별 금지 소프트웨어 목록을 CSV 파일로 저장하고 이메일로 전송합니다.
+3. **PowerShell 스크립트 작성**: `send_email.ps1` 파일을 작성하여 이메일 설정 정보를 포함하고 CSV 파일을 첨부하여 이메일을 발송합니다.
+4. **배치 파일 실행**: `process.bat` 파일을 실행하면 전체 작업이 자동으로 수행됩니다.
+
+이 방법은 SQL*Plus와 PowerShell을 함께 사용하여 각 사용자의 금지 소프트웨어 목록을 CSV 파일로 저장하고 이메일로 전송하는 작업을 간단하게 수행합니다. 필요한 경우 데이터베이스 접속 정보와 SMTP 서버 정보를 적절히 수정하여 사용하세요.
