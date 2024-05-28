@@ -1,0 +1,93 @@
+네, 배치 파일, SQL 스크립트, 그리고 PowerShell을 조합하여 금지 소프트웨어를 설치한 PC 사용자 각각에게 서로 다른 CSV 파일을 생성하고 이를 이메일로 보낼 수 있습니다. 이를 위해 다음 단계를 수행합니다.
+
+### 1. SQL 스크립트 작성
+각 사용자의 금지 소프트웨어 목록을 쿼리하는 SQL 스크립트를 작성합니다.
+
+```sql
+-- query.sql
+SELECT username, software_name
+FROM installed_software
+WHERE software_name IN ('SoftwareA', 'SoftwareB', 'SoftwareC');
+```
+
+### 2. 배치 파일 작성
+SQL 쿼리를 실행하고, 결과를 개별 CSV 파일로 저장한 후 PowerShell을 사용해 이메일로 전송합니다.
+
+```batch
+@echo off
+setlocal enabledelayedexpansion
+
+rem 데이터베이스 접속 정보 설정
+set DB_SERVER=your_db_server
+set DB_NAME=your_db_name
+set DB_USER=your_db_user
+set DB_PASS=your_db_password
+
+rem 임시 디렉토리 생성
+set TEMP_DIR=%cd%\temp
+if not exist %TEMP_DIR% (
+    mkdir %TEMP_DIR%
+)
+
+rem 사용자 목록 파일 생성
+set USER_LIST=%TEMP_DIR%\user_list.txt
+sqlcmd -S %DB_SERVER% -d %DB_NAME% -U %DB_USER% -P %DB_PASS% -Q "SELECT DISTINCT username FROM installed_software WHERE software_name IN ('SoftwareA', 'SoftwareB', 'SoftwareC');" -h-1 -W > %USER_LIST%
+
+rem 각 사용자의 금지 소프트웨어 목록을 CSV 파일로 저장
+for /f "tokens=*" %%u in (%USER_LIST%) do (
+    set "USERNAME=%%u"
+    set "CSV_FILE=%TEMP_DIR%\!USERNAME!.csv"
+    
+    sqlcmd -S %DB_SERVER% -d %DB_NAME% -U %DB_USER% -P %DB_PASS% -Q "SELECT software_name FROM installed_software WHERE username='!USERNAME!' AND software_name IN ('SoftwareA', 'SoftwareB', 'SoftwareC');" -h-1 -W -s "," -o !CSV_FILE!
+    
+    rem PowerShell 스크립트를 실행하여 이메일 전송
+    powershell -ExecutionPolicy Bypass -File send_email.ps1 -username !USERNAME! -csvFile !CSV_FILE!
+)
+
+rem 임시 디렉토리 삭제
+rd /s /q %TEMP_DIR%
+
+echo 작업이 완료되었습니다.
+pause
+```
+
+### 3. PowerShell 스크립트 작성
+사용자에게 이메일을 보내는 PowerShell 스크립트를 작성합니다.
+
+```powershell
+param (
+    [string]$username,
+    [string]$csvFile
+)
+
+# 이메일 발송에 사용할 정보 설정
+$smtpServer = "smtp.your_email_server.com"
+$smtpFrom = "your_email@example.com"
+$smtpTo = "$username@example.com"
+$messageSubject = "Prohibited Software Installed on Your PC"
+$messageBody = "Dear $username,`n`nPlease find the attached CSV file containing the list of prohibited software installed on your PC.`n`nBest regards,`nIT Department"
+
+# 첨부 파일을 포함한 메일 메시지 작성
+$message = New-Object System.Net.Mail.MailMessage
+$message.From = $smtpFrom
+$message.To.Add($smtpTo)
+$message.Subject = $messageSubject
+$message.Body = $messageBody
+$attachment = New-Object System.Net.Mail.Attachment($csvFile)
+$message.Attachments.Add($attachment)
+
+# SMTP 클라이언트 설정 및 이메일 발송
+$smtp = New-Object Net.Mail.SmtpClient($smtpServer)
+$smtp.Send($message)
+
+# 첨부 파일 객체 해제
+$attachment.Dispose()
+```
+
+### 사용 방법
+1. **SQL 스크립트 작성**: 필요한 조건에 맞는 데이터를 검색하는 SQL 쿼리를 `query.sql` 파일에 작성합니다.
+2. **배치 파일 작성**: 데이터베이스 접속 정보와 임시 디렉토리를 설정한 후, `process.bat` 파일을 작성합니다.
+3. **PowerShell 스크립트 작성**: 이메일 설정 정보를 포함하여 CSV 파일을 첨부하여 이메일을 발송하는 `send_email.ps1` 파일을 작성합니다.
+4. **배치 파일 실행**: `process.bat` 파일을 실행하면 전체 작업이 자동으로 수행됩니다.
+
+이렇게 하면 각 사용자의 금지 소프트웨어 목록을 개별 CSV 파일로 저장하고, 해당 파일을 각 사용자에게 이메일로 보낼 수 있습니다. 각 단계에서 필요한 정보(예: 데이터베이스 접속 정보, SMTP 서버 정보)를 적절히 수정하여 사용하세요.
