@@ -1,0 +1,81 @@
+네, 배치 파일과 SQL 스크립트를 사용하여 데이터베이스에서 특정 조건에 부합하는 데이터를 검색하고, 그 데이터를 CSV 파일로 저장한 후, 이메일로 보내는 작업을 수행할 수 있습니다. 이 과정은 몇 가지 단계를 거쳐야 합니다:
+
+1. **SQL 스크립트 작성**: 데이터베이스에서 필요한 정보를 검색하는 SQL 쿼리 작성.
+2. **배치 파일 작성**: SQL 스크립트를 실행하고 결과를 CSV 파일로 저장.
+3. **PowerShell 스크립트 작성**: CSV 파일을 이메일로 보내기 위한 스크립트 작성.
+4. **배치 파일에서 PowerShell 스크립트 호출**: 전체 작업을 자동화하기 위해 배치 파일 내에서 PowerShell 스크립트를 호출.
+
+아래에 단계별로 필요한 예제 코드를 제공합니다.
+
+### 1. SQL 스크립트 (`query.sql`)
+
+```sql
+-- query.sql
+SELECT id, name, email
+FROM users
+WHERE condition = 'specific_condition';
+```
+
+### 2. 배치 파일 (`process.bat`)
+
+```batch
+@echo off
+
+rem 데이터베이스 접속 정보 설정
+set DB_SERVER=your_db_server
+set DB_NAME=your_db_name
+set DB_USER=your_db_user
+set DB_PASS=your_db_password
+
+rem 결과를 저장할 CSV 파일 경로 설정
+set CSV_FILE=result.csv
+
+rem SQLCMD를 사용하여 SQL 스크립트를 실행하고 결과를 CSV 파일로 저장
+sqlcmd -S %DB_SERVER% -d %DB_NAME% -U %DB_USER% -P %DB_PASS% -i query.sql -s "," -W -o %CSV_FILE%
+
+rem PowerShell 스크립트를 실행하여 이메일 전송
+powershell -ExecutionPolicy Bypass -File send_email.ps1 -csvFile %CSV_FILE%
+
+echo 작업이 완료되었습니다.
+pause
+```
+
+### 3. PowerShell 스크립트 (`send_email.ps1`)
+
+```powershell
+param (
+    [string]$csvFile
+)
+
+# 이메일 발송에 사용할 정보 설정
+$smtpServer = "smtp.your_email_server.com"
+$smtpFrom = "your_email@example.com"
+$smtpTo = "recipient@example.com"
+$messageSubject = "Database Query Result"
+$messageBody = "Please find the attached CSV file containing the query results."
+
+# 첨부 파일을 포함한 메일 메시지 작성
+$message = New-Object System.Net.Mail.MailMessage
+$message.From = $smtpFrom
+$message.To.Add($smtpTo)
+$message.Subject = $messageSubject
+$message.Body = $messageBody
+$attachment = New-Object System.Net.Mail.Attachment($csvFile)
+$message.Attachments.Add($attachment)
+
+# SMTP 클라이언트 설정 및 이메일 발송
+$smtp = New-Object Net.Mail.SmtpClient($smtpServer)
+$smtp.Send($message)
+
+# 첨부 파일 객체 해제
+$attachment.Dispose()
+```
+
+### 사용 방법
+
+1. **SQL 스크립트 작성**: 원하는 조건에 맞는 데이터를 검색하는 SQL 쿼리를 `query.sql` 파일에 작성합니다.
+2. **배치 파일 작성**: 데이터베이스 접속 정보와 CSV 파일 경로를 설정한 후, `process.bat` 파일을 작성합니다.
+3. **PowerShell 스크립트 작성**: 이메일 설정 정보를 포함하여 CSV 파일을 첨부하여 이메일을 발송하는 `send_email.ps1` 파일을 작성합니다.
+4. **배치 파일 실행**: `process.bat` 파일을 실행하면 전체 작업이 자동으로 수행됩니다.
+
+이렇게 하면 데이터베이스에서 데이터를 검색하여 CSV 파일로 저장하고, 해당 파일을 이메일로 보내는 전체 작업을 자동화할 수 있습니다. 이 과정에서는 SQLCMD와 PowerShell을 사용하여 작업을 처리합니다. 필요에 따라 SMTP 서버 정보와 데이터베이스 접속 정보를 수정하여 사용하세요.
