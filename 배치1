@@ -1,0 +1,46 @@
+네, 배치 파일에서 CSV 파일을 읽어들여 작업을 수행할 수 있습니다. 다만, 배치 스크립트 자체로 CSV 파일을 직접 처리하는 것은 한계가 있기 때문에 `FOR` 루프와 함께 사용하거나, 외부 도구(예: PowerShell, Python 등)를 호출하여 보다 복잡한 작업을 수행할 수 있습니다.
+
+예를 들어, 배치 파일에서 CSV 파일의 각 줄을 읽고 처리하는 기본적인 방법은 다음과 같습니다:
+
+```batch
+@echo off
+setlocal enabledelayedexpansion
+
+rem CSV 파일 경로 설정
+set "csvFile=example.csv"
+
+rem CSV 파일의 각 줄을 읽어서 처리
+for /f "tokens=1-3 delims=," %%a in (%csvFile%) do (
+    set "col1=%%a"
+    set "col2=%%b"
+    set "col3=%%c"
+    
+    rem 여기서 col1, col2, col3을 사용하여 원하는 작업 수행
+    echo Column 1: !col1!
+    echo Column 2: !col2!
+    echo Column 3: !col3!
+)
+
+endlocal
+```
+
+이 스크립트는 다음과 같은 형식의 CSV 파일을 가정합니다:
+
+```
+value1,value2,value3
+value4,value5,value6
+```
+
+이 방법은 단순한 CSV 파일에 적합하며, 쉼표로 구분된 값들을 각각의 변수에 할당하여 사용할 수 있습니다. 하지만, CSV 파일의 구조가 복잡하거나 데이터가 많은 경우, PowerShell 스크립트를 호출하는 것이 더 유용할 수 있습니다.
+
+예를 들어, PowerShell을 사용하여 CSV 파일을 읽고 처리하는 방법은 다음과 같습니다:
+
+```batch
+@echo off
+
+rem PowerShell 스크립트 호출
+powershell -Command "& {Import-Csv -Path 'example.csv' | ForEach-Object { $_.Column1; $_.Column2; $_.Column3 }}"
+
+```
+
+위 스크립트는 PowerShell의 `Import-Csv` cmdlet을 사용하여 CSV 파일을 읽고, 각 행에 대해 열 값을 출력합니다. 이와 같이 PowerShell을 사용하면 보다 복잡한 CSV 파일을 쉽게 처리할 수 있습니다.
