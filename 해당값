@@ -1,0 +1,123 @@
+## DB에서 ID값을 가져와서 ID.csv 파일을 만드는 방법 (조건에 따라 값만 포함)
+
+DB에서 ID값을 가져와서 ID.csv 파일을 만드는 방법은 여러 가지가 있습니다. 
+
+다음은 조건에 따라 값만 포함하는 두 가지 방법입니다.
+
+**1. DAO 및 서블릿을 사용하는 방법:**
+
+**1.1 DAO 클래스:**
+
+```java
+public class MemberDAO {
+
+    public List<MemberInfo> getMemberInfoList(String condition) {
+        // DB 연결 및 쿼리 실행
+        Connection conn = getConnection();
+        Statement stmt = conn.createStatement();
+        String sql = "SELECT * FROM member WHERE " + condition;
+        ResultSet rs = stmt.executeQuery(sql);
+
+        // ResultSet에서 MemberInfo 객체 목록 생성
+        List<MemberInfo> memberInfoList = new ArrayList<>();
+        while (rs.next()) {
+            String id = rs.getString("id");
+            String name = rs.getString("name");
+            int age = rs.getInt("age");
+            MemberInfo memberInfo = new MemberInfo(id, name, age);
+            memberInfoList.add(memberInfo);
+        }
+
+        // DB 연결 종료
+        rs.close();
+        stmt.close();
+        conn.close();
+
+        return memberInfoList;
+    }
+}
+```
+
+**1.2 서블릿 클래스:**
+
+```java
+public class MemberServlet extends HttpServlet {
+
+    private MemberDAO memberDAO = new MemberDAO();
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // 1. 조건 값을 가져옴
+        String condition = request.getParameter("condition");
+
+        // 2. DB에서 조건에 맞는 회원 정보 목록을 가져옴
+        List<MemberInfo> memberInfoList = memberDAO.getMemberInfoList(condition);
+
+        // 3. ID.csv 파일 생성
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("ID.csv"))) {
+            for (MemberInfo memberInfo : memberInfoList) {
+                writer.write(memberInfo.getId() + ",");
+            }
+            writer.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // 4. 응답 생성
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=ID.csv");
+        PrintWriter writer = response.getWriter();
+        writer.write("ID\n");
+        for (MemberInfo memberInfo : memberInfoList) {
+            writer.write(memberInfo.getId() + "\n");
+        }
+        writer.flush();
+    }
+}
+```
+
+**2. Apache POI를 사용하는 방법:**
+
+```java
+public class MemberCSVGenerator {
+
+    public static void main(String[] args) throws IOException {
+        // 1. DB 연결 및 쿼리 실행
+        Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/database_name", "username", "password");
+        Statement stmt = conn.createStatement();
+        String sql = "SELECT * FROM member WHERE " + condition;
+        ResultSet rs = stmt.executeQuery(sql);
+
+        // 2. Apache POI를 사용하여 CSV 파일 생성
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("MemberList");
+
+        int rowIndex = 0;
+        Row headerRow = sheet.createRow(rowIndex++);
+        headerRow.createCell(0).setCellValue("ID");
+
+        while (rs.next()) {
+            Row row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(rs.getString("id"));
+        }
+
+        // 3. CSV 파일 저장
+        try (FileOutputStream fileOutputStream = new FileOutputStream("ID.csv")) {
+            workbook.write(fileOutputStream);
+        }
+
+        // 4. DB 연결 종료
+        rs.close();
+        stmt.close();
+        conn.close();
+    }
+}
+```
+
+**주의 사항:**
+
+* 위 코드는 예시이며, 실제 구현 환경에 따라 변경될 수 있습니다.
+* DB 연결, 쿼리 실행, 파일 입출력 등의 코드는 사용하는 기술 스택에 따라 다를 수 있습니다.
+* CSV 파일 형식, 필드 순서, 인코딩 등은 필요에 따라 조정해야 할 수 있습니다.
+* ID 값 외에 다른 정보도 포함해야 하는 경우, 코드를 수정해야 합니다.
+* 조건에 따라 값을 포함하는 방식은 사용자의 요
