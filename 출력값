@@ -1,0 +1,114 @@
+## CSV 파일에서 특정 조건(flg=1)에 맞는 값만 추출하여 새 CSV 파일을 만드는 방법
+
+**1. for 루프와 if 문 사용하기:**
+
+```java
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+
+public class CSVFilter {
+
+    public static void main(String[] args) throws IOException {
+        // 입력 CSV 파일 경로
+        String inputCSVPath = "ID.csv";
+
+        // 출력 CSV 파일 경로
+        String outputCSVPath = "filtered_ID.csv";
+
+        // try-with-resources 문을 사용하여 파일 열고 닫기
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputCSVPath));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(outputCSVPath))) {
+
+            // CSV 헤더 행 읽기
+            String headerLine = reader.readLine();
+            writer.write(headerLine + "\n"); // 출력 CSV파일에 헤더 행 쓰기
+
+            // 데이터 행 읽기 및 조건에 맞는 값만 추출하여 출력 CSV 파일에 쓰기
+            String dataLine;
+            while ((dataLine = reader.readLine()) != null) {
+                String[] values = dataLine.split(","); // 쉼표(,)로 분할
+                String id = values[0]; // 첫 번째 값(ID) 추출
+                String flg = values[1]; // 두 번째 값(flg) 추출
+
+                if (flg.equals("1")) { // flg 값이 1인 경우
+                    writer.write(dataLine + "\n"); // 출력 CSV 파일에 데이터 행 쓰기
+                }
+            }
+        }
+    }
+}
+```
+
+**2. Apache Commons CSV 라이브러리 사용하기:**
+
+```java
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
+public class CSVFilterWithCommonsCSV {
+
+    public static void main(String[] args) throws IOException {
+        // 입력 CSV 파일 경로
+        String inputCSVPath = "ID.csv";
+
+        // 출력 CSV 파일 경로
+        String outputCSVPath = "filtered_ID.csv";
+
+        // try-with-resources 문을 사용하여 CSVParser 및 BufferedWriter 열고 닫기
+        try (CSVParser parser = CSVFormat.DEFAULT.parse(new FileReader(inputCSVPath));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(outputCSVPath))) {
+
+            // CSV 헤더 행 쓰기
+            for (CSVRecord headerRecord : parser) {
+                writer.write(headerRecord.toString());
+                writer.write("\n");
+                break;
+            }
+
+            // 데이터 행 읽기 및 조건에 맞는 값만 추출하여 출력 CSV 파일에 쓰기
+            for (CSVRecord record : parser) {
+                String id = record.get(0); // 첫 번째 필드(인덱스 0)에서 ID 추출
+                String flg = record.get(1); // 두 번째 필드(인덱스 1)에서 flg 값 추출
+
+                if (flg.equals("1")) { // flg 값이 1인 경우
+                    writer.write(record.toString());
+                    writer.write("\n");
+                }
+            }
+        }
+    }
+}
+```
+
+**3. Stream API 사용하기 (Java 8 이상):**
+
+```java
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.stream.Stream;
+
+public class CSVFilterWithStreamAPI {
+
+    public static void main(String[] args) throws IOException {
+        // 입력 CSV 파일 경로
+        String inputCSVPath = "ID.csv";
+
+        // 출력 CSV 파일 경로
+        String outputCSVPath = "filtered_ID.csv";
+
+        // try-with-resources 문을 사용하여 파일 열고 닫기
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputCSVPath));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(outputCSVPath))) {
+
+            // CSV 헤더 행 쓰기
+            reader.readLine().lines().forEach(writer::write); // 헤더 행을 문자열 스트림으로 변환하여 각 문자열을 writer에 쓰기
+            writer.write("\n");
+
+            // 데이터 행 읽기 및 조건에 맞는 값
