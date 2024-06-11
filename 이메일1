@@ -1,0 +1,80 @@
+네, 맞습니다. 제가 이전 답변에서 설명한 코드는 CSV 파일의 두 번째 열 데이터만 추출합니다. 하지만 엑셀에서 셀 이름과 같은 형식으로 표시되지는 않습니다. 
+
+**CSV 파일에서 특정 열 데이터만 추출하고 원하는 형식으로 표시하려면 다음과 같이 코드를 수정해야 합니다.**
+
+**1. `row[index]` 대신 컬럼 이름 사용:**
+
+```java
+// CSV 파일 헤더 행 읽기
+String[] header = csvReader.next();
+
+// 컬럼 인덱스 찾기
+int dataColumnIndex = -1;
+for (int i = 0; i < header.length; i++) {
+    if (header[i].equals("D")) { // "D"는 4번째 열의 컬럼 이름입니다.
+        dataColumnIndex = i;
+        break;
+    }
+}
+
+// 데이터 행 처리
+while (iterator.hasNext()) {
+    String[] row = iterator.next();
+    if (row.length > dataColumnIndex && dataColumnIndex >= 0) {
+        String data = row[dataColumnIndex]; // "D" 열 데이터 추출
+        System.out.println(data);
+    }
+}
+```
+
+**설명:**
+
+* 위 코드에서 `header` 변수는 CSV 파일의 헤더 행을 저장합니다.
+* `dataColumnIndex` 변수는 "D" 열의 인덱스를 저장합니다. 
+* `for` 루프를 사용하여 헤더 행에서 "D" 열의 인덱스를 찾습니다.
+* `while` 루프를 사용하여 CSV 파일의 각 행을 처리합니다.
+* `if` 문을 사용하여 행의 길이가 `dataColumnIndex`보다 크고 `dataColumnIndex`가 0보다 크거나 같은 경우에만 데이터를 추출합니다.
+* `row[dataColumnIndex]`는 "D" 열의 데이터를 추출합니다.
+* `System.out.println(data)`는 추출된 데이터를 콘솔에 출력합니다.
+
+**2. `Collectors` 클래스 사용 (Java 8 이상):**
+
+```java
+// CSV 파일 헤더 행 읽기
+String[] header = csvReader.next();
+
+// 컬럼 인덱스 찾기
+int dataColumnIndex = -1;
+for (int i = 0; i < header.length; i++) {
+    if (header[i].equals("D")) {
+        dataColumnIndex = i;
+        break;
+    }
+}
+
+// 데이터 추출 및 원하는 형식으로 변환
+List<String> dataList = csvReader.stream()
+    .filter(row -> row.length > dataColumnIndex && dataColumnIndex >= 0)
+    .map(row -> row[dataColumnIndex]) // "D" 열 데이터만 추출
+    .collect(Collectors.toList());
+
+// 추출된 데이터 출력
+for (String data : dataList) {
+    System.out.println(data);
+}
+```
+
+**설명:**
+
+* 위 코드는 `Collectors` 클래스의 `toList()` 메서드를 사용하여 추출된 "D" 열 데이터를 `List`에 저장합니다.
+* `for` 루프를 사용하여 `List`에 저장된 데이터를 콘솔에 출력합니다.
+
+**참고:**
+
+* 위 코드에서 "D"는 예시입니다. 실제 컬럼 이름은 사용하는 CSV 파일에 따라 다를 수 있습니다.
+* 컬럼 이름을 모르는 경우 CSV 파일의 첫 번째 행을 확인하여 컬럼 이름을 찾을 수 있습니다.
+* `Collectors` 클래스는 추출된 데이터를 다양한 형식으로 변환하는 데 유용한 메서드를 제공합니다. 자세한 내용은 [유효하지 않은 URL 삭제됨] 참조하십시오.
+
+**이 코드를 사용하면 CSV 파일에서 원하는 열 데이터만 추출하고 원하는 형식으로 표시할 수 있습니다.**
+
+**도움이 되었기를 바랍니다!**
