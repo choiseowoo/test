@@ -1,0 +1,39 @@
+네, `for (String[] fields : csvReader)` 코드에서 `fields[3]`를 사용하면 CSV 파일의 4번째 열 데이터를 추출할 수 있습니다. 하지만 `d2`만 출력하려면 코드를 조금 수정해야 합니다.
+
+**다음은 `d2`만 출력하는 방법입니다.**
+
+**1. 조건문 사용:**
+
+```java
+for (String[] fields : csvReader) {
+    if (fields.length >= 4 && fields[3].equals("d2")) { // "d2"만 출력
+        System.out.println(fields[3]);
+    }
+}
+```
+
+**설명:**
+
+* 위 코드에서 `if` 문을 사용하여 `fields` 배열의 길이가 4 이상이고 `fields[3]` 값이 "d2"인 경우에만 데이터를 출력합니다.
+
+**2. `Stream` API 사용 (Java 8 이상):**
+
+```java
+csvReader.stream()
+    .filter(fields -> fields.length >= 4 && fields[3].equals("d2")) // "d2"만 필터링
+    .forEach(fields -> System.out.println(fields[3])); // "d2" 출력
+```
+
+**설명:**
+
+* 위 코드에서 `Stream` API와 `filter()` 메서드를 사용하여 `fields` 배열의 길이가 4 이상이고 `fields[3]` 값이 "d2"인 경우에만 데이터를 필터링합니다.
+* `forEach()` 메서드를 사용하여 필터링된 데이터를 콘솔에 출력합니다.
+
+**참고:**
+
+* 위 코드에서 "d2"는 예시입니다. 실제 출력하려는 값은 사용하는 CSV 파일에 따라 다를 수 있습니다.
+* `if` 문이나 `Stream` API를 사용하여 원하는 조건에 맞는 데이터를 선택적으로 출력할 수 있습니다.
+
+**이 코드를 사용하면 CSV 파일에서 원하는 값만 추출하고 출력할 수 있습니다.**
+
+**도움이 되었기를 바랍니다!**
