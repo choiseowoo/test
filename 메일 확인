@@ -1,0 +1,87 @@
+## 자바에서 메일 송신 실패, 성공 확인 방법
+
+자바에서 메일 송신 시 성공 여부를 확인하는 방법은 여러 가지가 있습니다. 가장 일반적인 방법은 다음과 같습니다.
+
+**1. 예외 처리 사용:**
+
+* `javax.mail` API는 메일 송신 과정에서 발생하는 예외를 처리하기 위한 다양한 예외 클래스를 제공합니다.
+* 예를 들어, `MessagingException`은 메일 송신 중 발생하는 모든 예외의 기본 클래스입니다.
+* `SendFailedException`은 메일 전송에 실패했음을 나타내는 특정 예외 클래스입니다.
+* `try-catch` 블록을 사용하여 메일 송신 코드를 감싸고 예외가 발생하면 적절한 처리를 수행할 수 있습니다.
+* 예외 메시지를 사용하여 실패 원인을 파악할 수 있습니다.
+
+**2. SMTP 응답 코드 확인:**
+
+* SMTP 프로토콜은 메일 송신 결과를 나타내는 응답 코드를 제공합니다.
+* `Session` 객체의 `getTransport()` 메서드를 사용하여 `Transport` 객체를 가져옵니다.
+* `Transport` 객체의 `connect()` 메서드를 사용하여 SMTP 서버에 연결합니다.
+* `send()` 메서드를 사용하여 메일을 전송합니다.
+* `Transport` 객체의 `getLastStatus()` 메서드를 사용하여 SMTP 응답 코드를 확인합니다.
+* 성공적인 메일 송신은 `200` 코드로 표시됩니다.
+* 기타 코드는 오류를 나타냅니다. SMTP 응답 코드 목록은 [https://www.rfc-editor.org/rfc/rfc6574.txt](https://www.rfc-editor.org/rfc/rfc6574.txt) 에서 확인할 수 있습니다.
+
+**3. 메일 서버 로그 확인:**
+
+* 일부 메일 서버는 메일 송신 활동에 대한 로그를 제공합니다.
+* 로그 파일을 확인하면 메일 송신이 성공했는지 여부와 실패한 경우 오류 원인을 파악하는 데 도움이 될 수 있습니다.
+* 메일 서버 로그의 위치와 형식은 서버마다 다릅니다.
+* 서버 관리자에게 문의하여 로그 파일에 액세스하고 해석하는 방법에 대한 자세한 정보를 얻을 수 있습니다.
+
+**다음은 자바에서 메일 송신 성공 여부를 확인하는 코드 예시입니다.**
+
+```java
+import javax.mail.*;
+import javax.mail.internet.*;
+
+public class SendMail {
+
+    public static void main(String[] args) throws Exception {
+        // 메일 정보 설정
+        String from = "보내는 사람 이메일 주소";
+        String to = "받는 사람 이메일 주소";
+        String subject = "메일 제목";
+        String body = "메일 내용";
+
+        // SMTP 서버 정보 설정
+        String host = "SMTP 서버 호스트";
+        int port = 25; // SMTP 기본 포트
+
+        // Properties 객체 생성 및 SMTP 설정
+        Properties props = new Properties();
+        props.put("mail.smtp.host", host);
+        props.put("mail.smtp.port", port);
+
+        // 세션 객체 생성
+        Session session = Session.getDefaultInstance(props);
+
+        // 메일 객체 생성
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(from));
+        message.addRecipient(Message.RecipientType.TO, new InternetAddress(to));
+        message.setSubject(subject);
+        message.setText(body);
+
+        // Transport 객체 생성 및 SMTP 서버에 연결
+        Transport transport = session.getTransport("smtp");
+        transport.connect(host, port, null, null);
+
+        // 메일 전송
+        transport.sendMessage(message, message.getAllRecipients());
+
+        // SMTP 서버 연결 해제
+        transport.close();
+
+        System.out.println("메일 전송 성공!");
+    }
+}
+```
+
+**주의:** 위 코드는 예시이며 실제 상황에 따라 코드를 수정해야 할 수도 있습니다.
+
+**추가적으로 다음과 같은 방법을 활용하여 메일 송신 성공 여부를 확인할 수 있습니다.**
+
+* 메일 전송 후 수신자에게 확인 메일을 보냅니다.
+* 메일 송신 기록을 데이터베이스에 저장합니다.
+* 웹 서비스를 사용하여 메일 송신 결과를 확인합니다.
+
+
