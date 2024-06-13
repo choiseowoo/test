@@ -1,0 +1,99 @@
+## 기존 패키지에서 메일에 첨부파일 추가하는 방법 (Java 예시)
+
+기존 사내 회사 패키지에서 첨부파일 기능을 추가하는 방법은 여러 가지가 있습니다. 제가 앞서 설명드린 4가지 방법 중 **커스텀 스크립트 사용** 방법을 예시와 함께 자세히 설명해 드리겠습니다.
+
+**1. JavaMail 사용:**
+
+JavaMail API를 사용하여 첨부파일 기능을 구현하는 방법입니다. JavaMail은 표준적인 Java API로 다양한 메일 서버와 호환됩니다.
+
+**예시 코드:**
+
+```java
+import javax.mail.*;
+import javax.mail.internet.*;
+import java.util.Properties;
+
+public class SendEmailWithAttachment {
+
+    public static void main(String[] args) throws Exception {
+        // 메일 정보 설정
+        String fromEmail = "your_email@example.com"; // 보내는 사람 이메일 주소
+        String toEmail = "recipient_email@example.com"; // 받는 사람 이메일 주소
+        String subject = "Email with Attachment"; // 제목
+        String body = "This is an email with an attachment."; // 본문
+
+        // 첨부파일 정보 설정
+        String filePath = "/path/to/your/file.txt"; // 첨부파일 경로
+        String fileName = "your_file.txt"; // 첨부파일 이름
+
+        // 메일 전송
+        sendWithAttachment(fromEmail, toEmail, subject, body, filePath, fileName);
+    }
+
+    private static void sendWithAttachment(String fromEmail, String toEmail, String subject, String body, String filePath, String fileName) throws Exception {
+        // 메일 세션 설정
+        Properties props = new Properties();
+        props.put("mail.smtp.host", "smtp.example.com"); // SMTP 서버 주소
+        Session session = Session.getDefaultInstance(props, null);
+
+        // 메일 작성
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(fromEmail));
+        message.addRecipient(Message.RecipientType.TO, new InternetAddress(toEmail));
+        message.setSubject(subject);
+        message.setText(body);
+
+        // 첨부파일 추가
+        MimeBodyPart attachmentPart = new MimeBodyPart();
+        FileDataSource fileDataSource = new FileDataSource(filePath);
+        attachmentPart.setDataHandler(new DataHandler(fileDataSource));
+        attachmentPart.setFileName(fileName);
+        Multipart multipart = new MimeMultipart();
+        multipart.addBodyPart(new MimeBodyPart(body));
+        multipart.addBodyPart(attachmentPart);
+        message.setContent(multipart);
+
+        // 메일 전송
+        Transport.send(message);
+    }
+}
+```
+
+**2. Apache Commons Email 사용:**
+
+Apache Commons Email 라이브러리를 사용하여 첨부파일 기능을 구현하는 방법입니다. Commons Email은 JavaMail보다 간편하게 첨부파일 기능을 사용할 수 있도록 지원합니다.
+
+**예시 코드:**
+
+```java
+import org.apache.commons.mail.EmailAttachment;
+import org.apache.commons.mail.EmailException;
+import org.apache.commons.mail.SimpleEmail;
+
+public class SendEmailWithAttachmentUsingCommonsEmail {
+
+    public static void main(String[] args) throws EmailException {
+        // 메일 정보 설정
+        String fromEmail = "your_email@example.com"; // 보내는 사람 이메일 주소
+        String toEmail = "recipient_email@example.com"; // 받는 사람 이메일 주소
+        String subject = "Email with Attachment"; // 제목
+        String body = "This is an email with an attachment."; // 본문
+
+        // 첨부파일 정보 설정
+        String filePath = "/path/to/your/file.txt"; // 첨부파일 경로
+        String fileName = "your_file.txt"; // 첨부파일 이름
+
+        // 메일 전송
+        sendWithAttachment(fromEmail, toEmail, subject, body, filePath, fileName);
+    }
+
+    private static void sendWithAttachment(String fromEmail, String toEmail, String subject, String body, String filePath, String fileName) throws EmailException {
+        // 메일 작성
+        SimpleEmail email = new SimpleEmail();
+        email.setFrom(fromEmail);
+        email.addTo(toEmail);
+        email.setSubject(subject);
+        email.setMsg(body);
+
+        // 첨부파일 추가
+        EmailAttachment attachment = new
