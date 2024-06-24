@@ -1,0 +1,49 @@
+자바 프로젝트에서 `src` 디렉토리는 일반적으로 소스 파일이 저장되는 기본 디렉토리입니다. 클래스패스(Classpath)는 자바 프로그램이 실행될 때 클래스 파일을 찾는 경로를 지정하는 설정입니다.
+
+`src` 디렉토리가 패키지 경로에 포함되는 이유는 다음과 같습니다:
+
+1. **프로젝트 구조 설정**: `src` 디렉토리는 소스 파일을 모아놓는 기본 위치로, 이 디렉토리 아래에 패키지 구조가 잡힙니다. 예를 들어, 패키지가 `com.example.project`라면, 소스 파일은 `src/com/example/project` 디렉토리에 위치합니다.
+
+2. **빌드 도구 설정**: 빌드 도구(예: Maven, Gradle) 또는 IDE(예: Eclipse, IntelliJ)는 기본적으로 `src/main/java` 디렉토리를 소스 루트로 인식합니다. 따라서, 클래스 파일을 컴파일할 때 `src` 디렉토리가 포함되지 않도록 설정하는 것이 중요합니다.
+
+### 클래스패스 설정 방법
+
+클래스패스에서 `src` 디렉토리를 포함시키지 않고 올바르게 설정하려면 다음과 같은 방법을 따를 수 있습니다:
+
+1. **IDE 설정**: 사용 중인 IDE에서 소스 폴더와 클래스패스를 올바르게 설정합니다.
+   - **IntelliJ**: 프로젝트 구조(Project Structure)에서 `src` 디렉토리를 소스 폴더로 설정합니다. `File > Project Structure > Modules`에서 `src` 폴더를 선택하고 `Sources`로 지정합니다.
+   - **Eclipse**: 프로젝트 속성(Properties)에서 `Java Build Path`를 설정합니다. `src` 폴더가 소스 폴더로 설정되어 있는지 확인합니다.
+
+2. **빌드 도구 사용**: Maven 또는 Gradle과 같은 빌드 도구를 사용하여 프로젝트를 관리하는 경우, `src` 폴더는 자동으로 소스 루트로 인식됩니다.
+   - **Maven**: `pom.xml` 파일에 소스 디렉토리를 설정할 필요가 없으며, 기본적으로 `src/main/java`가 소스 루트로 사용됩니다.
+   - **Gradle**: `build.gradle` 파일에서도 기본적으로 `src/main/java`가 소스 루트로 사용됩니다.
+
+3. **명령줄에서 컴파일 및 실행**: `javac`와 `java` 명령을 사용할 때 클래스패스를 올바르게 설정합니다.
+   ```sh
+   javac -d bin src/com/example/project/*.java
+   java -cp bin com.example.project.MainClass
+   ```
+   여기서 `-d bin` 옵션은 클래스 파일을 저장할 디렉토리를 지정하며, `-cp bin` 옵션은 클래스패스를 설정합니다.
+
+### 클래스패스 예제
+프로젝트 구조가 다음과 같다고 가정합니다:
+```
+project/
+├── src/
+│   └── com/
+│       └── example/
+│           └── project/
+│               └── MainClass.java
+├── bin/
+```
+
+이 경우, 컴파일 및 실행 명령은 다음과 같이 할 수 있습니다:
+```sh
+cd project
+javac -d bin src/com/example/project/MainClass.java
+java -cp bin com.example.project.MainClass
+```
+
+이렇게 하면 `src` 디렉토리는 클래스패스에 포함되지 않으며, `bin` 디렉토리에 컴파일된 클래스 파일이 저장됩니다.
+
+클래스패스에서 `src` 경로를 없애는 설정을 위와 같이 변경하여 사용하면 됩니다.
