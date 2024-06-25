@@ -1,0 +1,59 @@
+자바 프로젝트를 클린하면 `src.com.package명` 형식으로 결과가 출력되는 이유와 `src` 경로를 생략하는 방법에 대해 알려드릴게요.
+
+**1. `src.com.package명` 형식으로 출력되는 이유**
+
+이는 Java의 소스 코드를 구성하는 기본적인 디렉토리 구조와 관련이 있습니다. 일반적으로 Java 프로젝트는 다음과 같은 디렉토리 구조를 따릅니다.
+
+```
+project_root
+├── src
+│   ├── main
+│   │   ├── java
+│   │   │   └── com
+│   │   │       └── package명
+│   │   │           └── 클래스명.java
+│   └── test
+└── ...
+```
+
+여기서 `src`는 "소스 코드"를 의미하는 약자이며, `main` 디렉토리는 실제로 실행되는 코드를 포함하고 있습니다. `java` 디렉토리는 Java 소스 코드 파일을 그룹화하는 데 사용되는 패키지 구조를 나타냅니다.
+
+따라서 `com.package명`은 프로젝트의 도메인 이름을 거꾸로 작성한 다음 하위 패키지 이름을 점으로 구분하여 연결한 형식입니다. 예를 들어, 프로젝트의 도메인 이름이 `example.com`이고 패키지 이름이 `mypackage`인 경우 `src.com.example.mypackage`와 같은 형식으로 출력됩니다.
+
+**2. `src` 경로 생략 방법**
+
+`src` 경로를 생략하고 싶다면 다음과 같은 방법을 사용할 수 있습니다.
+
+**방법 1: IDE 설정 변경**
+
+대부분의 IDE에는 Java 소스 코드를 위한 기본 디렉토리를 설정하는 기능이 있습니다. 이 설정을 변경하여 `src` 디렉토리를 제외할 수 있습니다. 예를 들어, Eclipse에서 다음 단계를 수행할 수 있습니다.
+
+1. **Window** 메뉴 > **Preferences**를 선택합니다.
+2. **Java** > **Build** > **Output Location**으로 이동합니다.
+3. **Source Folder** 탭에서 `src` 디렉토리를 선택하고 **Remove** 버튼을 클릭합니다.
+4. **Apply** 및 **OK** 버튼을 클릭합니다.
+
+**방법 2: Maven 또는 Gradle 사용**
+
+Maven 또는 Gradle과 같은 빌드 도구를 사용하는 경우 `src` 경로를 명시적으로 설정할 필요가 없습니다. 빌드 도구는 기본 디렉토리 구조를 사용하거나 pom.xml 또는 build.gradle 파일에서 소스 디렉토리를 정의하도록 설정됩니다.
+
+**방법 3: 명령줄 컴파일러 사용**
+
+명령줄 컴파일러를 사용하여 Java 코드를 컴파일하는 경우 `-d` 옵션을 사용하여 클래스 파일의 대상 디렉토리를 지정할 수 있습니다. 예를 들어 다음 명령을 사용하여 `com.example.mypackage` 패키지의 모든 Java 파일을 컴파일하고 `target` 디렉토리에 클래스 파일을 저장할 수 있습니다.
+
+```
+javac -d target src/com/example/mypackage/*.java
+```
+
+**주의 사항**
+
+* `src` 경로를 생략하면 프로젝트 구조가 변경될 수 있으며 다른 개발자들이 코드를 이해하거나 사용하는 데 어려움을 겪을 수 있습니다.
+* IDE 또는 빌드 도구 설정을 변경하기 전에 항상 백업을 수행하는 것이 좋습니다.
+
+**추가 정보**
+
+* [Java packages](https://docs.oracle.com/javase/tutorial/java/javaOO/packages.html)
+* Maven pom.xml reference [유효하지 않은 URL 삭제됨]
+* Gradle build configuration [유효하지 않은 URL 삭제됨]
+
+이 답변이 도움이 되었기를 바랍니다. 혹시 다른 궁금한 점이 있으면 언제든지 물어보세요.
