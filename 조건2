@@ -1,0 +1,62 @@
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class CsvWriter {
+    
+    public static void writeCsv(List<columnRecord> list) {
+        Set<String> writtenFiles = new HashSet<>(); // 이미 헤더가 작성된 파일 경로를 저장하는 Set
+
+        for (columnRecord entity : list) {
+            String filePath = "output_" + entity.getId() + ".csv"; // 각 entity에 대한 파일 경로
+
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
+                if (!writtenFiles.contains(filePath)) {
+                    // 파일에 헤더가 아직 쓰이지 않았다면 헤더 쓰기
+                    writer.write("column1,column2,column3\n"); // 예시 헤더
+                    writtenFiles.add(filePath); // 헤더가 쓰인 파일 경로를 Set에 추가
+                }
+
+                // 엔티티의 값 쓰기
+                writer.write(entity.getColumn1() + "," + entity.getColumn2() + "," + entity.getColumn3() + "\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    // columnRecord 클래스는 사용자의 구조에 맞게 정의되어야 합니다.
+    public static class columnRecord {
+        private String id;
+        private String column1;
+        private String column2;
+        private String column3;
+
+        // 생성자 및 getter 메서드들
+        public columnRecord(String id, String column1, String column2, String column3) {
+            this.id = id;
+            this.column1 = column1;
+            this.column2 = column2;
+            this.column3 = column3;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getColumn1() {
+            return column1;
+        }
+
+        public String getColumn2() {
+            return column2;
+        }
+
+        public String getColumn3() {
+            return column3;
+        }
+    }
+}
