@@ -1,0 +1,77 @@
+Zip4j 외에도 다른 라이브러리를 사용하여 ZIP 파일에 비밀번호를 설정할 수 있습니다. 몇 가지 대안으로는 다음이 있습니다:
+
+1. **Apache Commons Compress**와 **ZipCrypto**를 결합하여 사용하는 방법:
+    - Apache Commons Compress는 압축 및 압축 해제를 지원하는 라이브러리이며, ZipCrypto는 ZIP 파일 암호화를 지원하는 라이브러리입니다.
+
+2. **TrueVFS**:
+    - TrueVFS는 다양한 파일 시스템과 압축 형식을 지원하는 가상 파일 시스템 라이브러리입니다. TrueVFS를 사용하면 비밀번호로 보호된 ZIP 파일을 생성할 수 있습니다.
+
+3. **SevenZipJBinding**:
+    - 7-Zip 압축 형식을 지원하는 라이브러리로, 암호화 기능을 포함하고 있습니다.
+
+아래는 Apache Commons Compress와 ZipCrypto를 함께 사용하여 비밀번호 보호 ZIP 파일을 생성하는 예제입니다:
+
+### Maven 종속성 추가
+```xml
+<dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-compress</artifactId>
+    <version>1.20</version>
+</dependency>
+<dependency>
+    <groupId>com.github.junrar</groupId>
+    <artifactId>junrar</artifactId>
+    <version>1.0.0</version>
+</dependency>
+<dependency>
+    <groupId>org.bouncycastle</groupId>
+    <artifactId>bcpkix-jdk15on</artifactId>
+    <version>1.68</version>
+</dependency>
+```
+
+### Java 코드
+```java
+import org.apache.commons.compress.archivers.zip.*;
+import org.apache.commons.compress.utils.IOUtils;
+import org.bouncycastle.crypto.engines.ZipCryptoEngine;
+import org.bouncycastle.crypto.params.KeyParameter;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+public class ZipWithPasswordExample {
+    public static void main(String[] args) {
+        String zipFilePath = "example.zip";
+        String password = "yourPassword";
+        String fileToCompress = "fileToCompress.txt";
+
+        try (FileOutputStream fos = new FileOutputStream(zipFilePath);
+             ZipArchiveOutputStream zos = new ZipArchiveOutputStream(fos)) {
+
+            ZipArchiveEntry entry = new ZipArchiveEntry(fileToCompress);
+            entry.setMethod(ZipMethod.ZIP_DEFLATED.getCode());
+            zos.putArchiveEntry(entry);
+
+            try (InputStream is = Files.newInputStream(Paths.get(fileToCompress))) {
+                IOUtils.copy(is, zos);
+            }
+            zos.closeArchiveEntry();
+
+            // 암호화 설정
+            byte[] passwordBytes = password.getBytes();
+            ZipCryptoEngine zipCryptoEngine = new ZipCryptoEngine();
+            zipCryptoEngine.init(true, new KeyParameter(passwordBytes));
+            zos.setEncryption(zipCryptoEngine);
+            
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+이 예제에서는 Apache Commons Compress와 ZipCrypto를 사용하여 ZIP 파일을 생성하고 암호화하는 방법을 보여줍니다. 암호화 부분은 Bouncy Castle을 사용하여 구현되었습니다.
+
+이 방법 외에도 TrueVFS 또는 SevenZipJBinding과 같은 다른 라이브러리를 탐색할 수 있습니다. 각 라이브러리는 다양한 기능과 사용법을 제공하므로 프로젝트 요구 사항에 가장 적합한 라이브러리를 선택하는 것이 중요합니다.
