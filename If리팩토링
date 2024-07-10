@@ -1,0 +1,105 @@
+받는 값이 `long`이나 `LocalDateTime`일 경우에도 비슷한 방식으로 처리할 수 있습니다. 모든 유형의 입력 값을 처리할 수 있도록 보조 메서드를 오버로딩하여 사용할 수 있습니다.
+
+다음은 그 예시입니다:
+
+```java
+import java.time.LocalDateTime;
+
+public class StudentController {
+
+    public static void main(String[] args) {
+        // 예제 데이터
+        String id = null;
+        String name = "홍길동";
+        String studentNumber = "12345";
+        String email = null;
+        Long enrollmentDate = null; // long 타입 예제
+        LocalDateTime lastLogin = null; // LocalDateTime 타입 예제
+
+        // 변수를 설정
+        Student student = new Student(
+            getOrDefault(id),
+            getOrDefault(name),
+            getOrDefault(studentNumber),
+            getOrDefault(email),
+            getOrDefault(enrollmentDate),
+            getOrDefault(lastLogin)
+        );
+
+        // 기존 값 출력
+        System.out.println("ID: " + student.getId());
+        System.out.println("이름: " + student.getName());
+        System.out.println("학생번호: " + student.getStudentNumber());
+        System.out.println("이메일: " + student.getEmail());
+        System.out.println("등록 날짜: " + student.getEnrollmentDate());
+        System.out.println("마지막 로그인: " + student.getLastLogin());
+    }
+
+    // null일 경우 공란으로 설정하는 보조 메소드 (String)
+    private static String getOrDefault(String value) {
+        return (value != null) ? value : "";
+    }
+
+    // null일 경우 0으로 설정하는 보조 메소드 (Long)
+    private static Long getOrDefault(Long value) {
+        return (value != null) ? value : 0L;
+    }
+
+    // null일 경우 현재 시간으로 설정하는 보조 메소드 (LocalDateTime)
+    private static LocalDateTime getOrDefault(LocalDateTime value) {
+        return (value != null) ? value : LocalDateTime.now();
+    }
+}
+```
+
+그리고, `Student` 클래스는 다음과 같이 수정될 수 있습니다:
+
+```java
+import java.time.LocalDateTime;
+
+public class Student {
+    private String id;
+    private String name;
+    private String studentNumber;
+    private String email;
+    private Long enrollmentDate;
+    private LocalDateTime lastLogin;
+
+    // 생성자
+    public Student(String id, String name, String studentNumber, String email, Long enrollmentDate, LocalDateTime lastLogin) {
+        this.id = id;
+        this.name = name;
+        this.studentNumber = studentNumber;
+        this.email = email;
+        this.enrollmentDate = enrollmentDate;
+        this.lastLogin = lastLogin;
+    }
+
+    // getter 메소드
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getStudentNumber() {
+        return studentNumber;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public Long getEnrollmentDate() {
+        return enrollmentDate;
+    }
+
+    public LocalDateTime getLastLogin() {
+        return lastLogin;
+    }
+}
+```
+
+이렇게 하면 `null` 값에 대해 각각 적절한 기본 값을 설정할 수 있습니다. `String` 값은 공란으로, `Long` 값은 `0L`로, `LocalDateTime` 값은 현재 시간으로 설정합니다. `Student` 클래스는 getter 메소드와 생성자를 통해 값을 설정하고 반환합니다.
