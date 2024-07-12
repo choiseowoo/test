@@ -1,0 +1,35 @@
+UTF-8 인코딩을 사용할 때 글자가 깨지는 문제는 종종 UTF-8 BOM(Byte Order Mark)을 포함하지 않아서 발생할 수 있습니다. BOM을 추가하면 일부 프로그램에서 UTF-8 인코딩으로 올바르게 인식하게 할 수 있습니다.
+
+다음은 자바에서 CSV 파일을 작성할 때 UTF-8 BOM을 추가하는 방법입니다:
+
+```java
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+
+public class CsvWithBomExample {
+
+    public static void main(String[] args) {
+        String filePath = "example.csv";
+        
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath), "UTF-8"))) {
+            // UTF-8 BOM 추가
+            writer.write('\ufeff');
+            
+            // CSV 내용 작성
+            writer.write("header1,header2,header3\n");
+            writer.write("row1col1,row1col2,row1col3\n");
+            writer.write("row2col1,row2col2,row2col3\n");
+
+            System.out.println("CSV file created successfully with UTF-8 BOM!");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+위의 코드에서 BOM을 추가하는 부분은 `writer.write('\ufeff');`입니다. 이는 UTF-8 BOM을 파일의 시작 부분에 추가합니다. 이후에 CSV 내용을 작성하면 BOM이 포함된 상태로 파일이 생성됩니다.
+
+이 방법을 사용하면 UTF-8 인코딩을 사용하는 프로그램에서 CSV 파일을 읽을 때 인코딩 문제를 피할 수 있습니다.
