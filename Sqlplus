@@ -1,0 +1,47 @@
+맞습니다. `WHENEVER SQLERROR EXIT SQL.SQLCODE;`를 사용하면 SQL*Plus는 다음과 같은 방식으로 동작합니다:
+
+- **정상 실행 시**: SQL*Plus는 `0`을 반환하고 종료합니다.
+- **비정상 실행 시**: SQL 오류가 발생하면, 오류 코드 (`SQL.SQLCODE`)를 반환하며 종료합니다. 일반적으로 이 오류 코드는 `1`로 간주되며, 배치 파일에서는 이를 통해 비정상 종료를 감지할 수 있습니다.
+
+### 예제
+
+**`output.sql` 스크립트**:
+
+```sql
+WHENEVER SQLERROR EXIT SQL.SQLCODE;
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SPOOL c:\path\to\output.csv;
+
+-- SQL 쿼리 작성
+SELECT * FROM your_table;
+
+SPOOL OFF;
+EXIT;
+```
+
+**BAT 파일**:
+
+```bat
+@echo off
+REM SQL*Plus 실행
+sqlplus id/password@dbname @c:\path\to\output.sql > c:\path\to\logfile.log 2>&1
+
+REM SQL*Plus 실행 결과 확인
+IF ERRORLEVEL 1 (
+    echo SQL*Plus execution failed
+    type c:\path\to\logfile.log
+    exit /b 1
+) ELSE (
+    echo SQL*Plus execution succeeded
+)
+
+REM 나머지 배치 처리...
+```
+
+### 설명
+
+- **`WHENEVER SQLERROR EXIT SQL.SQLCODE;`**: SQL 오류 발생 시 SQL*Plus가 오류 코드를 반환하고 종료합니다.
+- **BAT 파일에서 `ERRORLEVEL` 체크**: BAT 파일에서 `ERRORLEVEL 1`로 SQL*Plus 실행 결과를 확인하고, 오류가 발생했을 때 적절히 처리합니다.
+
+이 설정으로 `output.sql`이 정상적으로 실행되면 `0`이 반환되고, 오류가 발생하면 오류 코드가 반환되어 BAT 파일에서 이를 감지할 수 있습니다.
