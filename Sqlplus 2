@@ -1,0 +1,72 @@
+SQL*Plus가 오류 코드를 반환하지 않는 이유는 기본적으로 데이터베이스 연결 오류가 발생했을 때, SQL*Plus 자체가 명시적으로 종료되지 않고, 명령어가 단순히 실패하기 때문일 수 있습니다. 
+
+이를 해결하려면, SQL*Plus 실행 시 명령어 자체가 실패할 경우, 오류 코드를 반환하도록 설정해야 합니다. 이를 위해 몇 가지 추가 설정을 통해 문제를 해결할 수 있습니다.
+
+### 문제 원인
+
+1. **SQL*Plus 기본 설정**: SQL*Plus는 기본적으로 데이터베이스 연결 실패 시 종료하지 않으며, 오류 코드를 반환하지 않습니다.
+2. **명령어 종료 설정 없음**: SQL*Plus 명령어 실행 실패 시, 명시적으로 종료되지 않아서 오류 코드가 반환되지 않습니다.
+
+### 해결 방법
+
+1. **SQL*Plus 명령어 실행 시 오류 코드를 반환하도록 설정**:
+   - SQL*Plus 명령어 앞에 `WHENEVER SQLERROR EXIT SQL.SQLCODE;` 또는 `WHENEVER OSERROR EXIT FAILURE;` 명령어를 사용합니다.
+   - 데이터베이스 연결 실패 시, SQL*Plus가 명시적으로 종료되도록 합니다.
+
+2. **BAT 파일에서 명확한 오류 코드 검사**:
+   - SQL*Plus 명령어 실행 후 `ERRORLEVEL`을 확인하여, 오류 코드를 반환하도록 합니다.
+
+### 수정된 BAT 파일 예제
+
+다음은 문제를 해결하기 위한 수정된 BAT 파일 예제입니다:
+
+```bat
+@echo off
+REM 로그 파일 설정
+set LOGFILE=c:\path\to\logfile.log
+
+REM SQL*Plus 실행 (DB 연결 시도 포함)
+(
+echo WHENEVER SQLERROR EXIT SQL.SQLCODE;
+echo WHENEVER OSERROR EXIT FAILURE;
+echo exit;
+) | sqlplus id/password@dbnam > %LOGFILE% 2>&1
+
+REM SQL*Plus 실행 결과 확인
+IF ERRORLEVEL 1 (
+    echo SQL*Plus execution failed due to connection error or SQL error
+    type %LOGFILE%  REM 로그 파일 내용 출력
+    exit /b 1
+) ELSE (
+    echo SQL*Plus execution succeeded
+)
+
+REM 나머지 배치 처리...
+```
+
+### `output.sql` 수정
+
+`output.sql` 파일에 `WHENEVER SQLERROR EXIT SQL.SQLCODE;`를 추가하여, SQL 오류 발생 시 SQL*Plus가 적절히 종료되도록 합니다:
+
+```sql
+WHENEVER SQLERROR EXIT SQL.SQLCODE;
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SPOOL c:\path\to\output.csv;
+
+-- SQL 쿼리 작성
+SELECT * FROM your_table;
+
+SPOOL OFF;
+EXIT;
+```
+
+### 설명
+
+1. **SQL*Plus 명령어 앞에 설정 추가**: `WHENEVER SQLERROR EXIT SQL.SQLCODE;`와 `WHENEVER OSERROR EXIT FAILURE;`를 사용하여, SQL 오류나 OS 오류 발생 시 SQL*Plus가 종료되도록 설정합니다.
+2. **로그 파일 설정**: `set LOGFILE=c:\path\to\logfile.log`로 로그 파일을 설정합니다.
+3. **SQL*Plus 실행 결과를 로그 파일에 기록**: `sqlplus id/password@dbnam > %LOGFILE% 2>&1`로 SQL*Plus 실행 결과를 로그 파일에 기록합니다.
+4. **오류 발생 시 로그 파일 내용 출력**: 오류가 발생하면 로그 파일 내용을 출력하여, 오류 메시지를 명확히 확인할 수 있도록 합니다.
+5. **`output.sql` 수정**: `WHENEVER SQLERROR EXIT SQL.SQLCODE;`를 추가하여, SQL 오류 발생 시 적절히 종료되도록 합니다.
+
+이렇게 설정하면, 잘못된 연결 정보로 인해 SQL*Plus 실행이 실패했을 때, 오류 메시지를 명확하게 로그 파일에 기록하고, BAT 파일에서 이를 처리할 수 있습니다.
