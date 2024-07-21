@@ -1,0 +1,133 @@
+SQL*Plus 명령어 실행 시 오류 발생 여부에 따라 적절한 종료 코드를 반환하도록 설정하는 방법에는 다양한 접근 방식이 있지만, 가장 기본적인 방법은 이미 언급한 `WHENEVER SQLERROR EXIT SQL.SQLCODE;`와 `WHENEVER OSERROR EXIT FAILURE;` 명령어를 사용하는 것입니다. 추가적으로, 몇 가지 다른 접근 방식을 제안할 수 있습니다.
+
+### 1. SQL*Plus의 직접 실행 결과 검사
+
+SQL*Plus 실행 결과를 직접 변수에 할당하고 이를 기반으로 조건을 처리하는 방법입니다.
+
+```bat
+@echo off
+REM 로그 파일 설정
+set LOGFILE=c:\path\to\logfile.log
+
+REM SQL*Plus 실행
+sqlplus -s id/password@dbname @c:\path\to\output.sql > %LOGFILE% 2>&1
+
+REM SQL*Plus 실행 결과 확인
+findstr /r /c:"ORA-" %LOGFILE% >nul
+IF %ERRORLEVEL% NEQ 0 (
+    echo SQL*Plus execution failed due to connection error or SQL error
+    exit /b 1
+) ELSE (
+    echo SQL*Plus execution succeeded
+    exit /b 0
+)
+
+REM 나머지 배치 처리...
+```
+
+이 방법은 로그 파일에서 "ORA-" 오류 메시지를 검색하여 SQL*Plus 실행 결과를 확인합니다.
+
+### 2. SQL*Plus 내에서 사용자 정의 메시지 출력
+
+SQL*Plus 스크립트 내에서 사용자 정의 메시지를 출력하고, BAT 파일에서 이를 기반으로 오류를 처리하는 방법입니다.
+
+#### `output.sql` 파일
+
+```sql
+WHENEVER SQLERROR EXIT SQL.SQLCODE;
+WHENEVER OSERROR EXIT FAILURE;
+
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SPOOL c:\path\to\output.csv;
+
+-- SQL 쿼리 작성
+SELECT * FROM your_table;
+
+SPOOL OFF;
+
+-- 사용자 정의 메시지 출력
+PROMPT SUCCESS
+EXIT 0;
+```
+
+#### BAT 파일
+
+```bat
+@echo off
+REM 로그 파일 설정
+set LOGFILE=c:\path\to\logfile.log
+
+REM SQL*Plus 실행
+sqlplus -s id/password@dbname @c:\path\to\output.sql > %LOGFILE% 2>&1
+
+REM 사용자 정의 메시지 검색
+findstr /r /c:"SUCCESS" %LOGFILE% >nul
+IF %ERRORLEVEL% NEQ 0 (
+    echo SQL*Plus execution failed due to connection error or SQL error
+    exit /b 1
+) ELSE (
+    echo SQL*Plus execution succeeded
+    exit /b 0
+)
+
+REM 나머지 배치 처리...
+```
+
+이 방법은 SQL*Plus 스크립트가 정상적으로 실행된 경우 "SUCCESS" 메시지를 출력하고, BAT 파일에서 이를 검색하여 성공 여부를 확인합니다.
+
+### 3. SQL*Plus 실행 결과를 환경 변수로 설정
+
+SQL*Plus 실행 결과를 환경 변수에 저장하고, BAT 파일에서 이를 기반으로 조건을 처리하는 방법입니다.
+
+#### `output.sql` 파일
+
+```sql
+WHENEVER SQLERROR EXIT SQL.SQLCODE;
+WHENEVER OSERROR EXIT FAILURE;
+
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SPOOL c:\path\to\output.csv;
+
+-- SQL 쿼리 작성
+SELECT * FROM your_table;
+
+SPOOL OFF;
+
+-- 환경 변수 설정 명령어 출력
+PROMPT SET RESULT=0
+EXIT 0;
+```
+
+#### BAT 파일
+
+```bat
+@echo off
+REM 로그 파일 설정
+set LOGFILE=c:\path\to\logfile.log
+
+REM 초기 환경 변수 설정
+set RESULT=1
+
+REM SQL*Plus 실행
+sqlplus -s id/password@dbname @c:\path\to\output.sql > %LOGFILE% 2>&1
+
+REM 환경 변수 설정 명령어 실행
+for /f "delims=" %%a in ('type %LOGFILE% ^| findstr /r /c:"SET RESULT="') do %%a
+
+REM SQL*Plus 실행 결과 확인
+IF %RESULT% NEQ 0 (
+    echo SQL*Plus execution failed due to connection error or SQL error
+    exit /b 1
+) ELSE (
+    echo SQL*Plus execution succeeded
+    exit /b 0
+)
+
+REM 나머지 배치 처리...
+```
+
+이 방법은 SQL*Plus 스크립트가 정상적으로 실행된 경우 환경 변수를 설정하고, BAT 파일에서 이를 기반으로 성공 여부를 확인합니다.
+
+이 세 가지 방법을 통해 SQL*Plus 실행 결과를 보다 유연하게 처리할 수 있습니다. 각 방법은 특정 상황에 맞게 조정될 수 있으며, 필요에 따라 더 많은 사용자 정의 및 오류 처리가 가능합니다.
