@@ -1,0 +1,69 @@
+SQL*Plus 명령어를 사용하는 경우, 오류 발생 시 적절히 종료 코드를 반환하도록 설정하는 방법에는 여러 가지가 있지만, 기본적으로는 `WHENEVER SQLERROR EXIT SQL.SQLCODE;`와 `WHENEVER OSERROR EXIT FAILURE;` 명령어를 사용하는 방법이 가장 일반적입니다.
+
+다른 접근 방식으로는 다음과 같은 방법을 고려할 수 있습니다:
+
+1. **SQL*Plus 스크립트 내에서 사용자 정의 오류 코드 반환**:
+   - SQL*Plus 스크립트에서 사용자 정의 오류 코드를 반환하도록 설정할 수 있습니다.
+
+2. **SQL*Plus 실행 결과를 로그 파일에서 분석**:
+   - BAT 파일에서 SQL*Plus 실행 후 로그 파일을 분석하여 오류 메시지를 찾아 반환 코드를 설정할 수 있습니다.
+
+### 사용자 정의 오류 코드 반환
+
+SQL*Plus 스크립트 내에서 특정 조건에 따라 사용자 정의 오류 코드를 반환하도록 설정할 수 있습니다.
+
+```sql
+WHENEVER SQLERROR EXIT 1;
+WHENEVER OSERROR EXIT 1;
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SPOOL c:\path\to\output.csv;
+
+-- 여기에 SQL 쿼리 작성
+SELECT * FROM your_table;
+
+SPOOL OFF;
+EXIT 0;
+```
+
+이렇게 설정하면 SQL 오류 또는 OS 오류 발생 시 1을 반환하고, 정상 실행 시 0을 반환합니다.
+
+### 로그 파일 분석
+
+SQL*Plus 실행 후 로그 파일을 분석하여 오류 메시지를 찾아 반환 코드를 설정할 수 있습니다. 이는 추가적인 복잡성을 가지지만, 보다 유연하게 오류를 처리할 수 있습니다.
+
+```bat
+@echo off
+REM 로그 파일 설정
+set LOGFILE=c:\path\to\logfile.log
+
+REM SQL*Plus 실행
+sqlplus id/password@dbname @c:\path\to\output.sql > %LOGFILE% 2>&1
+
+REM 로그 파일에서 오류 메시지 검색
+findstr /c:"ORA-" %LOGFILE%
+IF %ERRORLEVEL% NEQ 0 (
+    echo SQL*Plus execution failed due to connection error or SQL error
+    type %LOGFILE%  REM 로그 파일 내용 출력
+    exit /b 1
+) ELSE (
+    echo SQL*Plus execution succeeded
+    exit /b 0
+)
+
+REM 나머지 배치 처리...
+```
+
+### 설명
+
+1. **사용자 정의 오류 코드 반환**:
+   - `WHENEVER SQLERROR EXIT 1;`와 `WHENEVER OSERROR EXIT 1;`를 사용하여 SQL 오류나 OS 오류 발생 시 SQL*Plus가 1을 반환하도록 설정합니다.
+   - SQL문이 정상적으로 실행될 경우 `EXIT 0;`을 사용하여 0을 반환합니다.
+
+2. **로그 파일 분석**:
+   - `sqlplus` 명령어 실행 후 로그 파일을 생성합니다.
+   - `findstr` 명령어를 사용하여 로그 파일에서 `"ORA-"` 문자열을 검색합니다.
+   - 오류 메시지가 발견되면 `ERRORLEVEL`이 0이 아니므로, 1을 반환합니다.
+   - 오류 메시지가 발견되지 않으면, 0을 반환합니다.
+
+이 두 가지 방법을 통해 SQL*Plus 실행 결과를 보다 유연하게 처리할 수 있습니다. 첫 번째 방법은 더 간단하고 직접적이지만, 두 번째 방법은 로그 파일을 분석하여 보다 정교하게 오류를 처리할 수 있습니다.
