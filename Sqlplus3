@@ -1,0 +1,59 @@
+제가 제시한 부분은 잘못된 접근이었습니다. BAT 파일 내에서 `echo` 명령어를 통해 SQL*Plus에 명령을 전달하려는 의도였지만, 이는 혼란을 줄 수 있습니다. 
+
+대신, `output.sql` 파일에 적절한 오류 처리를 추가하고, BAT 파일에서 SQL*Plus 실행 결과를 정확히 확인하도록 설정하는 것이 더 효과적입니다.
+
+### 수정된 접근 방식
+
+1. **`output.sql` 파일에 오류 처리 추가**: `WHENEVER SQLERROR EXIT SQL.SQLCODE;`와 `WHENEVER OSERROR EXIT FAILURE;` 명령어를 추가하여 SQL 오류 발생 시 SQL*Plus가 적절히 종료되도록 합니다.
+2. **BAT 파일에서 `ERRORLEVEL` 검사**: SQL*Plus 실행 후 반환된 `ERRORLEVEL`을 확인하여 오류를 처리합니다.
+
+### `output.sql` 파일
+
+```sql
+WHENEVER SQLERROR EXIT SQL.SQLCODE;
+WHENEVER OSERROR EXIT FAILURE;
+SET HEADING OFF;
+SET FEEDBACK OFF;
+SPOOL c:\path\to\output.csv;
+
+-- SQL 쿼리 작성
+SELECT * FROM your_table;
+
+SPOOL OFF;
+EXIT;
+```
+
+### 수정된 BAT 파일 예제
+
+```bat
+@echo off
+REM 로그 파일 설정
+set LOGFILE=c:\path\to\logfile.log
+
+REM SQL*Plus 실행 (DB 연결 시도 포함)
+sqlplus id/password@dbnam @c:\path\to\output.sql > %LOGFILE% 2>&1
+
+REM SQL*Plus 실행 결과 확인
+IF ERRORLEVEL 1 (
+    echo SQL*Plus execution failed due to connection error or SQL error
+    type %LOGFILE%  REM 로그 파일 내용 출력
+    exit /b 1
+) ELSE (
+    echo SQL*Plus execution succeeded
+)
+
+REM 나머지 배치 처리...
+```
+
+### 설명
+
+1. **`output.sql` 파일**:
+   - `WHENEVER SQLERROR EXIT SQL.SQLCODE;`와 `WHENEVER OSERROR EXIT FAILURE;`를 추가하여 SQL 오류나 OS 오류 발생 시 SQL*Plus가 즉시 종료되도록 설정합니다.
+   - 데이터베이스 쿼리를 수행하고 결과를 `output.csv` 파일에 스풀합니다.
+
+2. **BAT 파일**:
+   - SQL*Plus를 실행하고 로그 파일(`%LOGFILE%`)에 출력을 기록합니다.
+   - `ERRORLEVEL`을 확인하여 SQL*Plus 실행이 실패했는지 여부를 판단합니다.
+   - 실패한 경우 오류 메시지를 출력하고, 성공한 경우 성공 메시지를 출력합니다.
+
+이렇게 설정하면, 잘못된 연결 정보로 인해 SQL*Plus 실행이 실패했을 때, BAT 파일에서 이를 정확히 감지하고 적절히 처리할 수 있습니다.
