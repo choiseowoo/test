@@ -1,0 +1,83 @@
+접속 실패와 해제 실패를 `IOException`으로 구분 없이 던질 경우, 이를 다른 메소드에서 구분하려면 예외 메시지나 다른 방법을 통해 어떤 상황에서 예외가 발생했는지 확인해야 합니다. 아래 예시에서는 예외 메시지에 키워드를 추가하여 예외를 구분하는 방법을 보여줍니다.
+
+### 예외 던지기
+
+```java
+public void manageServerConnection() throws IOException {
+    if (/* 접속 실패 조건 */) {
+        throw new IOException("Connection Failure: 서버 접속 실패");
+    }
+
+    if (/* 해제 실패 조건 */) {
+        throw new IOException("Disconnection Failure: 서버 접속 해제 실패");
+    }
+}
+```
+
+### 다른 메소드에서 예외 처리
+
+```java
+public void handleServerOperations() {
+    try {
+        manageServerConnection();
+    } catch (IOException e) {
+        if (e.getMessage().contains("Connection Failure")) {
+            System.out.println("Error during server connection: " + e.getMessage());
+        } else if (e.getMessage().contains("Disconnection Failure")) {
+            System.out.println("Error during server disconnection: " + e.getMessage());
+        } else {
+            System.out.println("General IO error: " + e.getMessage());
+        }
+    }
+}
+```
+
+이 방법을 사용하면 동일한 `IOException`을 던지면서도 예외 메시지에 키워드를 추가하여 어떤 상황에서 예외가 발생했는지 구분할 수 있습니다. `handleServerOperations` 메소드에서 메시지에 포함된 키워드를 확인하여 적절하게 처리합니다.
+
+또는, 예외를 구분하기 위해 상태 코드를 사용할 수도 있습니다.
+
+### 상태 코드를 사용한 예외 처리
+
+```java
+public class CustomIOException extends IOException {
+    private final int errorCode;
+
+    public static final int CONNECTION_FAILURE = 1;
+    public static final int DISCONNECTION_FAILURE = 2;
+
+    public CustomIOException(String message, int errorCode) {
+        super(message);
+        this.errorCode = errorCode;
+    }
+
+    public int getErrorCode() {
+        return errorCode;
+    }
+}
+
+public void manageServerConnection() throws CustomIOException {
+    if (/* 접속 실패 조건 */) {
+        throw new CustomIOException("서버 접속 실패", CustomIOException.CONNECTION_FAILURE);
+    }
+
+    if (/* 해제 실패 조건 */) {
+        throw new CustomIOException("서버 접속 해제 실패", CustomIOException.DISCONNECTION_FAILURE);
+    }
+}
+
+public void handleServerOperations() {
+    try {
+        manageServerConnection();
+    } catch (CustomIOException e) {
+        if (e.getErrorCode() == CustomIOException.CONNECTION_FAILURE) {
+            System.out.println("Error during server connection: " + e.getMessage());
+        } else if (e.getErrorCode() == CustomIOException.DISCONNECTION_FAILURE) {
+            System.out.println("Error during server disconnection: " + e.getMessage());
+        } else {
+            System.out.println("General custom IO error: " + e.getMessage());
+        }
+    }
+}
+```
+
+이 방법을 사용하면 예외에 상태 코드를 추가하여 예외를 명확히 구분할 수 있습니다. `CustomIOException`을 사용하여 어떤 상황에서 예외가 발생했는지 코드로 구분하고, 이를 처리하는 메소드에서 상태 코드를 확인하여 적절하게 처리합니다.
