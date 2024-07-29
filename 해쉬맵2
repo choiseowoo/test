@@ -1,0 +1,98 @@
+네, 프로퍼티 파일을 `objecttable` 형태로 저장하고 그 값을 `HashMap<Long, String>`으로 읽어올 수 있습니다. 이를 위해 프로퍼티 파일에서 객체의 형식을 지정하고, 해당 값을 파싱하여 `HashMap`에 추가하면 됩니다.
+
+예를 들어, 프로퍼티 파일을 다음과 같이 작성할 수 있습니다:
+
+```properties
+typecode.10L=출력
+typecode.20L=갱신
+typecode.30L=삭제
+typecode.40L=입력
+```
+
+여기서는 `typecode`라는 접두사를 사용하여 코드와 해당 문자열을 구분합니다. 이제 이 값을 자바 코드에서 읽어와 `HashMap<Long, String>`으로 변환하는 방법을 보겠습니다.
+
+### 수정된 자바 코드
+```java
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+public class OracleToCSV {
+    public static void main(String[] args) {
+        String jdbcUrl = "jdbc:oracle:thin:@localhost:1521:xe"; // Oracle DB URL
+        String username = "your_username"; // DB username
+        String password = "your_password"; // DB password
+
+        String csvFile = "output.csv";
+        String propertiesFile = "codes.properties"; // 프로퍼티 파일 경로
+
+        try {
+            // 코드번호를 문자열로 변환하기 위한 HashMap 생성
+            HashMap<Long, String> codeMap = getCodeMap(propertiesFile);
+
+            try (Connection connection = DriverManager.getConnection(jdbcUrl, username, password);
+                 Statement statement = connection.createStatement();
+                 ResultSet resultSet = statement.executeQuery("SELECT id, 이름, 코드번호, 전화번호, 이메일 FROM your_table");
+                 FileWriter fileWriter = new FileWriter(csvFile)) {
+
+                // Write CSV header
+                fileWriter.append("id,이름,코드번호,전화번호,이메일\n");
+
+                // Write data to CSV
+                while (resultSet.next()) {
+                    fileWriter.append(resultSet.getString("id")).append(',')
+                              .append(resultSet.getString("이름")).append(',');
+
+                    Long codeNumber = resultSet.getLong("코드번호");
+                    String codeString = codeMap.getOrDefault(codeNumber, "알수없음");
+                    fileWriter.append(codeString).append(',');
+
+                    fileWriter.append(resultSet.getString("전화번호")).append(',')
+                              .append(resultSet.getString("이메일")).append('\n');
+                }
+
+                System.out.println("Data exported to CSV file successfully.");
+
+            } catch (SQLException | IOException e) {
+                e.printStackTrace();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static HashMap<Long, String> getCodeMap(String propertiesFile) throws IOException {
+        Properties properties = new Properties();
+        try (FileInputStream fis = new FileInputStream(propertiesFile)) {
+            properties.load(fis);
+        }
+
+        HashMap<Long, String> codeMap = new HashMap<>();
+        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+            String key = (String) entry.getKey();
+            if (key.startsWith("typecode.")) {
+                Long code = Long.parseLong(key.substring("typecode.".length()));
+                String description = (String) entry.getValue();
+                codeMap.put(code, description);
+            }
+        }
+
+        return codeMap;
+    }
+}
+```
+
+### 주요 변경 사항:
+1. **프로퍼티 파일 형식**: 프로퍼티 파일에서 각 키는 `typecode.`로 시작하고, 그 뒤에 코드 번호가 붙습니다.
+2. **키 필터링 및 파싱**: `getCodeMap` 메소드에서 키가 `typecode.`로 시작하는지 확인한 후, 해당 부분을 제거하고 `Long` 타입으로 변환합니다.
+3. **HashMap 초기화**: 필터링된 키와 값을 `HashMap<Long, String>`에 추가합니다.
+
+이 코드를 실행하면, `codes.properties` 파일에서 값을 읽어와 `HashMap`을 초기화하고, 이를 이용해 CSV 파일을 생성합니다.
