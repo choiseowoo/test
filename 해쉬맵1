@@ -1,0 +1,72 @@
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+public class OracleToCSV {
+    public static void main(String[] args) {
+        String jdbcUrl = "jdbc:oracle:thin:@localhost:1521:xe"; // Oracle DB URL
+        String username = "your_username"; // DB username
+        String password = "your_password"; // DB password
+
+        String csvFile = "output.csv";
+        String propertiesFile = "codes.properties"; // 프로퍼티 파일 경로
+
+        try {
+            // 코드번호를 문자열로 변환하기 위한 HashMap 생성
+            HashMap<Long, String> codeMap = getCodeMap(propertiesFile);
+
+            try (Connection connection = DriverManager.getConnection(jdbcUrl, username, password);
+                 Statement statement = connection.createStatement();
+                 ResultSet resultSet = statement.executeQuery("SELECT id, 이름, 코드번호, 전화번호, 이메일 FROM your_table");
+                 FileWriter fileWriter = new FileWriter(csvFile)) {
+
+                // Write CSV header
+                fileWriter.append("id,이름,코드번호,전화번호,이메일\n");
+
+                // Write data to CSV
+                while (resultSet.next()) {
+                    fileWriter.append(resultSet.getString("id")).append(',')
+                              .append(resultSet.getString("이름")).append(',');
+
+                    Long codeNumber = resultSet.getLong("코드번호");
+                    String codeString = codeMap.getOrDefault(codeNumber, "알수없음");
+                    fileWriter.append(codeString).append(',');
+
+                    fileWriter.append(resultSet.getString("전화번호")).append(',')
+                              .append(resultSet.getString("이메일")).append('\n');
+                }
+
+                System.out.println("Data exported to CSV file successfully.");
+
+            } catch (SQLException | IOException e) {
+                e.printStackTrace();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static HashMap<Long, String> getCodeMap(String propertiesFile) throws IOException {
+        Properties properties = new Properties();
+        try (FileInputStream fis = new FileInputStream(propertiesFile)) {
+            properties.load(fis);
+        }
+
+        HashMap<Long, String> codeMap = new HashMap<>();
+        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+            Long code = Long.parseLong((String) entry.getKey());
+            String description = (String) entry.getValue();
+            codeMap.put(code, description);
+        }
+
+        return codeMap;
+    }
+}
