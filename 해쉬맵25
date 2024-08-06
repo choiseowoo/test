@@ -1,0 +1,98 @@
+네, 지금 코드에서는 `logcode` 값이 `HashMap`에 없는 경우, `logcode` 값을 `String`으로 변환하여 그대로 출력하도록 되어 있습니다. 다시 한 번 이 점을 명확히 하도록 코드를 리뷰하고 필요한 부분을 강조해보겠습니다.
+
+### 수정된 코드
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.io.FileWriter;
+import java.io.IOException;
+
+public class ObjectTableExample {
+
+    public static void main(String[] args) {
+        // 예시 ObjectTable 생성
+        ObjectTable objectTable = new ObjectTable();
+        objectTable.addRecord(Map.of("Logcode", 10L, "Logname", "갱신"));
+        objectTable.addRecord(Map.of("Logcode", 20L, "Logname", "작성"));
+        objectTable.addRecord(Map.of("Logcode", 30L, "Logname", "삭제"));
+
+        // 예시 logcode 값
+        long logcode = 40L;
+
+        // ObjectTable에서 HashMap으로 변환 및 출력 문자열 생성
+        String csvContent = convertToHashMapAndGetCSV(objectTable, logcode);
+
+        // CSV 파일로 출력
+        try (FileWriter fileWriter = new FileWriter("output.csv")) {
+            fileWriter.write(csvContent);
+            System.out.println("CSV 파일 생성 완료");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ObjectTable을 HashMap으로 변환하고 CSV 형식의 문자열을 반환하는 메소드
+    private static String convertToHashMapAndGetCSV(ObjectTable objectTable, long logcode) {
+        Map<Long, String> codeMap = new HashMap<>();
+        StringBuilder csvBuilder = new StringBuilder();
+        csvBuilder.append("코드번호,설명\n"); // CSV 헤더
+
+        // ObjectTable에서 데이터를 HashMap으로 변환
+        for (int i = 0; i < objectTable.getRecordCount(); i++) {
+            Map<String, Object> record = objectTable.getRecord(i);
+            Object logCodeObj = record.get("Logcode");
+            Object logNameObj = record.get("Logname");
+
+            if (logCodeObj instanceof Long && logNameObj instanceof String) {
+                Long logCode = (Long) logCodeObj;
+                String logName = (String) logNameObj;
+                codeMap.put(logCode, logName);
+            } else {
+                System.err.println("데이터 타입 불일치: Logcode=" + logCodeObj + " (타입: " + (logCodeObj == null ? "null" : logCodeObj.getClass().getName()) + "), Logname=" + logNameObj + " (타입: " + (logNameObj == null ? "null" : logNameObj.getClass().getName()) + ")");
+            }
+        }
+
+        // logcode 값을 포함한 CSV 내용 생성
+        for (Long key : codeMap.keySet()) {
+            String description = codeMap.getOrDefault(key, String.valueOf(key));
+            csvBuilder.append(key).append(',').append(description).append('\n');
+        }
+
+        // 입력받은 logcode 값 추가
+        if (!codeMap.containsKey(logcode)) {
+            csvBuilder.append(logcode).append(',').append(String.valueOf(logcode)).append('\n');
+        }
+
+        return csvBuilder.toString();
+    }
+}
+
+// ObjectTable 클래스의 예시
+class ObjectTable {
+    private final List<Map<String, Object>> records = new ArrayList<>();
+
+    public void addRecord(Map<String, Object> record) {
+        records.add(record);
+    }
+
+    public Map<String, Object> getRecord(int index) {
+        return records.get(index);
+    }
+
+    public int getRecordCount() {
+        return records.size();
+    }
+}
+```
+
+### 설명
+
+1. `ObjectTable`의 데이터를 `HashMap`으로 변환하고, `logcode` 값이 `HashMap`에 없으면 그 값을 `String`으로 변환하여 그대로 출력합니다.
+2. `convertToHashMapAndGetCSV` 메소드에서는 `ObjectTable`의 데이터를 `HashMap`으로 변환한 후, `CSV` 형식의 문자열을 만듭니다.
+3. `HashMap`에 없는 `logcode` 값은 `String`으로 변환하여 `CSV` 문자열에 추가합니다.
+4. 메인 메소드에서는 반환된 `CSV` 형식의 문자열을 파일로 출력합니다.
+
+이렇게 하면 `logcode` 값이 `HashMap`에 없을 때 공란이 아닌 `logcode` 값 자체를 출력할 수 있습니다.
