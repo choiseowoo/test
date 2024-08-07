@@ -1,0 +1,85 @@
+자바에서 `Objecttable` 데이터를 `HashMap<Long, String>`으로 변환하고 SQL 조건문에 모든 값을 넣기 위해서는, SQL 조건문을 동적으로 생성해야 합니다. 다음은 그 방법에 대한 예제입니다.
+
+1. `Objecttable` 데이터를 `HashMap<Long, String>`으로 변환합니다.
+2. `HashMap`의 모든 값을 SQL 조건문에 넣기 위한 문자열로 변환합니다.
+3. 동적으로 생성된 SQL 조건문을 사용하여 데이터베이스 쿼리를 수행합니다.
+
+아래는 예제 코드입니다:
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+public class Main {
+    public static void main(String[] args) {
+        // 예제 Objecttable 데이터를 HashMap으로 변환
+        HashMap<Long, String> dataMap = new HashMap<>();
+        dataMap.put(1L, "value1");
+        dataMap.put(2L, "value2");
+        dataMap.put(3L, "value3");
+
+        // SQL 조건문 생성
+        StringBuilder condition = new StringBuilder("WHERE columnName IN (");
+        for (String value : dataMap.values()) {
+            condition.append("'").append(value).append("',");
+        }
+        // 마지막 콤마 제거
+        condition.setLength(condition.length() - 1);
+        condition.append(")");
+
+        // 생성된 SQL 조건문 출력
+        String sqlQuery = "SELECT * FROM tableName " + condition.toString();
+        System.out.println(sqlQuery);
+
+        // 데이터베이스 쿼리 수행 (예시 코드)
+        // executeQuery(sqlQuery);
+    }
+}
+```
+
+이 코드는 `HashMap`의 모든 값을 순회하면서 `WHERE columnName IN ('value1', 'value2', 'value3')`와 같은 형식의 조건문을 생성합니다. 마지막에 콤마를 제거한 후 조건문을 완성하고, 이를 사용하여 데이터베이스 쿼리를 수행할 수 있습니다. 
+
+필요에 따라 SQL 인젝션을 방지하기 위해 PreparedStatement를 사용하는 것이 좋습니다:
+
+```java
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+
+public class Main {
+    public static void main(String[] args) {
+        // 예제 Objecttable 데이터를 HashMap으로 변환
+        HashMap<Long, String> dataMap = new HashMap<>();
+        dataMap.put(1L, "value1");
+        dataMap.put(2L, "value2");
+        dataMap.put(3L, "value3");
+
+        // SQL 조건문 생성
+        StringBuilder condition = new StringBuilder("?");
+        for (int i = 1; i < dataMap.size(); i++) {
+            condition.append(",?");
+        }
+
+        // 생성된 SQL 조건문 출력
+        String sqlQuery = "SELECT * FROM tableName WHERE columnName IN (" + condition.toString() + ")";
+        System.out.println(sqlQuery);
+
+        // 데이터베이스 쿼리 수행 (예시 코드)
+        try (Connection connection = // 데이터베이스 연결 코드;
+             PreparedStatement preparedStatement = connection.prepareStatement(sqlQuery)) {
+            int index = 1;
+            for (String value : dataMap.values()) {
+                preparedStatement.setString(index++, value);
+            }
+            // ResultSet resultSet = preparedStatement.executeQuery();
+            // 결과 처리 코드
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+이 코드는 `PreparedStatement`를 사용하여 안전하게 값을 SQL 쿼리에 바인딩합니다.
