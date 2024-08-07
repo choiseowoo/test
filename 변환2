@@ -1,0 +1,21 @@
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+public class HashMapExample {
+
+    public static void main(String[] args) {
+        // 예시 HashMap 생성
+        Map<Long, Object> map = new HashMap<>();
+        map.put(10L, "갱신");
+        map.put(20L, "작성");
+        map.put(30L, "삭제");
+
+        // HashMap에서 Long 키들을 String으로 변환하고, 한 줄로 출력
+        String result = map.keySet().stream()
+                           .map(String::valueOf)
+                           .collect(Collectors.joining(", "));
+
+        System.out.println(result); // 출력: 10, 20, 30
+    }
+}
