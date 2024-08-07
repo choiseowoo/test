@@ -1,0 +1,85 @@
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.io.FileWriter;
+import java.io.IOException;
+
+public class ObjectTableExample {
+
+    public static void main(String[] args) {
+        // 예시 ObjectTable 생성
+        ObjectTable objectTable = new ObjectTable();
+        objectTable.addRecord(Map.of("Logcode", 10L, "Logname", "갱신"));
+        objectTable.addRecord(Map.of("Logcode", 20L, "Logname", "작성"));
+        objectTable.addRecord(Map.of("Logcode", 30L, "Logname", "삭제"));
+
+        // 예시 logcode 값
+        long logcode = 40L;
+
+        // ObjectTable에서 HashMap으로 변환 및 출력 문자열 생성
+        String csvContent = convertToHashMapAndGetCSV(objectTable, logcode);
+
+        // CSV 파일로 출력
+        try (FileWriter fileWriter = new FileWriter("output.csv")) {
+            fileWriter.write(csvContent);
+            System.out.println("CSV 파일 생성 완료");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ObjectTable을 HashMap으로 변환하고 CSV 형식의 문자열을 반환하는 메소드
+    private static String convertToHashMapAndGetCSV(ObjectTable objectTable, long logcode) {
+        Map<Long, String> codeMap = new HashMap<>();
+        StringBuilder csvBuilder = new StringBuilder();
+        csvBuilder.append("코드번호,설명\n"); // CSV 헤더
+
+        // ObjectTable에서 데이터를 HashMap으로 변환
+        for (int i = 0; i < objectTable.getRecordCount(); i++) {
+            Map<String, Object> record = objectTable.getRecord(i);
+            Object logCodeObj = record.get("Logcode");
+            Object logNameObj = record.get("Logname");
+
+            if (logCodeObj instanceof Long && logNameObj instanceof String) {
+                Long logCode = (Long) logCodeObj;
+                String logName = (String) logNameObj;
+                codeMap.put(logCode, logName);
+            } else {
+                System.err.println("데이터 타입 불일치: Logcode=" + logCodeObj + " (타입: " + (logCodeObj == null ? "null" : logCodeObj.getClass().getName()) + "), Logname=" + logNameObj + " (타입: " + (logNameObj == null ? "null" : logNameObj.getClass().getName()) + ")");
+            }
+        }
+
+        // logcode 값을 포함한 CSV 내용 생성
+        for (Long key : codeMap.keySet()) {
+            String description = codeMap.getOrDefault(key, String.valueOf(key));
+            csvBuilder.append(key).append(',').append(description).append('\n');
+        }
+
+        // 입력받은 logcode 값 추가
+        if (!codeMap.containsKey(logcode)) {
+            // logcode 값을 String으로 변환
+            String logcodeStr = String.valueOf(logcode);
+            csvBuilder.append(logcodeStr).append(',').append(logcodeStr).append('\n');
+        }
+
+        return csvBuilder.toString();
+    }
+}
+
+// ObjectTable 클래스의 예시
+class ObjectTable {
+    private final List<Map<String, Object>> records = new ArrayList<>();
+
+    public void addRecord(Map<String, Object> record) {
+        records.add(record);
+    }
+
+    public Map<String, Object> getRecord(int index) {
+        return records.get(index);
+    }
+
+    public int getRecordCount() {
+        return records.size();
+    }
+}
