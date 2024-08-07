@@ -1,0 +1,38 @@
+해당 코드를 조금 수정하여 `HashMap`의 `Long` 키를 한 줄의 문자열로 결합해보겠습니다. 예를 들어, `10, 20, 30`과 같이 출력되도록 변경할 수 있습니다. 여기서는 `HashMap`의 키들을 반복하면서 `StringBuilder`를 사용해 문자열을 만들고, 마지막에 한 번에 출력하는 방법을 사용하겠습니다.
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+public class HashMapExample {
+
+    public static void main(String[] args) {
+        // 예시 HashMap 생성
+        Map<Long, Object> map = new HashMap<>();
+        map.put(10L, "갱신");
+        map.put(20L, "작성");
+        map.put(30L, "삭제");
+
+        // StringBuilder를 사용하여 Long 키를 String으로 변환하고 한 줄로 결합
+        StringBuilder sb = new StringBuilder();
+        int size = map.size();
+        int i = 0;
+        for (Long key : map.keySet()) {
+            sb.append(key);
+            if (i < size - 1) {
+                sb.append(", ");
+            }
+            i++;
+        }
+        String result = sb.toString();
+        System.out.println(result); // 출력: 10, 20, 30
+    }
+}
+```
+
+### 설명
+- `StringBuilder`를 사용하여 반복문을 통해 각 키를 추가합니다.
+- 각 키를 추가한 후 마지막 키가 아니라면 `", "`를 추가합니다.
+- `StringBuilder`의 내용을 문자열로 변환하여 출력합니다.
+
+이 방법은 `HashMap`의 모든 키를 한 줄로 결합하여 원하는 형식으로 출력합니다.
