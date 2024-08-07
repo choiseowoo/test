@@ -1,0 +1,24 @@
+import java.util.HashMap;
+import java.util.Map;
+
+public class HashMapExample {
+
+    public static void main(String[] args) {
+        // 예시 HashMap 생성
+        Map<String, Object> map = new HashMap<>();
+        map.put("10", "갱신");
+        map.put("20", "작성");
+        map.put("30", "삭제");
+
+        // StringBuilder를 사용하여 키를 한 줄로 결합
+        StringBuilder sb = new StringBuilder();
+        for (String key : map.keySet()) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(key);
+        }
+        String result = sb.toString();
+        System.out.println(result); // 출력: 10, 20, 30
+    }
+}
