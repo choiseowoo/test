@@ -1,0 +1,78 @@
+현재 상황을 잘 이해했습니다. `ObjectTable`에서 `Map`의 키 값들을 가져와서 하나의 문자열로 결합하는 것을 목표로 하고 있습니다. 
+
+아래는 `ObjectTable`의 레코드를 순회하여 `logcode` 키의 값을 하나의 문자열로 결합하는 방법을 보여줍니다:
+
+### 예시 코드:
+
+```java
+import java.util.*;
+
+public class ObjectTableExample {
+
+    public static void main(String[] args) {
+        // 예시 ObjectTable 생성
+        ObjectTable objectTable = new ObjectTable();
+        objectTable.addRecord(Map.of("Logcode", 10L, "Logname", "갱신"));
+        objectTable.addRecord(Map.of("Logcode", 20L, "Logname", "작성"));
+        objectTable.addRecord(Map.of("Logcode", 30L, "Logname", "삭제"));
+
+        // logcode 값을 하나의 문자열로 결합하여 출력
+        String result = getLogcodesAsString(objectTable);
+        System.out.println(result); // 출력: 10, 20, 30
+    }
+
+    // ObjectTable에서 logcode 값을 추출하여 하나의 문자열로 결합하는 메소드
+    private static String getLogcodesAsString(ObjectTable objectTable) {
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < objectTable.getRecordCount(); i++) {
+            Map<String, Object> record = objectTable.getRecord(i);
+            Object logCodeObj = record.get("Logcode");
+
+            if (logCodeObj instanceof Long) {
+                Long logCode = (Long) logCodeObj;
+                String logCodeStr = String.valueOf(logCode); // Long 값을 String으로 변환
+
+                if (sb.length() > 0) {
+                    sb.append(", ");
+                }
+                sb.append(logCodeStr);
+            }
+        }
+
+        return sb.toString();
+    }
+}
+
+// ObjectTable 클래스의 예시
+class ObjectTable {
+    private final List<Map<String, Object>> records = new ArrayList<>();
+
+    public void addRecord(Map<String, Object> record) {
+        records.add(record);
+    }
+
+    public Map<String, Object> getRecord(int index) {
+        return records.get(index);
+    }
+
+    public int getRecordCount() {
+        return records.size();
+    }
+}
+```
+
+### 설명:
+
+1. **ObjectTable 생성**:
+    - `ObjectTable` 클래스를 정의하고, `Map<String, Object>` 타입의 레코드를 추가합니다.
+
+2. **getLogcodesAsString 메소드**:
+    - `ObjectTable`의 모든 레코드를 순회하면서 `logcode` 값을 추출하여 `StringBuilder`에 추가합니다.
+    - `Long` 타입의 `logcode` 값을 `String`으로 변환하여 결합합니다.
+    - 첫 번째 이후의 값 앞에는 `", "`를 추가합니다.
+
+3. **main 메소드**:
+    - 예시 데이터를 `ObjectTable`에 추가하고, `getLogcodesAsString` 메소드를 호출하여 결과를 출력합니다.
+
+이 코드는 `ObjectTable`에서 `logcode` 값을 추출하여 한 줄의 문자열로 결합하고 출력하는 예시를 보여줍니다. 결과는 "10, 20, 30" 형식으로 출력됩니다.
