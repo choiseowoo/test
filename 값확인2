@@ -1,0 +1,31 @@
+`String[] cmds` 배열에 값을 담는다면, 그 값들을 출력할 수 있습니다. 배열에 들어 있는 각 요소를 `System.out.println`을 통해 하나씩 출력할 수 있습니다.
+
+### 예시 코드
+
+```java
+public class CmdArrayExample {
+    public static void main(String[] args) {
+        // 예: 명령어 문자열 배열
+        String[] cmds = {"ping", "google.com", "-n", "4"};
+
+        // 배열의 각 요소를 출력
+        for (String cmd : cmds) {
+            System.out.println(cmd);
+        }
+    }
+}
+```
+
+### 출력 결과
+이 예시에서 `cmds` 배열에 `"ping"`, `"google.com"`, `"-n"`, `"4"`가 포함되어 있습니다. 실행하면 다음과 같은 출력이 나타납니다:
+
+```
+ping
+google.com
+-n
+4
+```
+
+### 요약
+- `String[] cmds` 배열에 담긴 값들을 출력하기 위해서는 `for` 루프를 사용하여 배열의 각 요소를 순차적으로 `System.out.println`을 통해 출력하면 됩니다.
+- 이렇게 하면 `cmds` 배열에 어떤 값들이 담겨 있는지 확인할 수 있습니다.
