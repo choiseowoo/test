@@ -1,0 +1,78 @@
+스프링 프레임워크 자체에서는 프로퍼티 파일(`.properties`)이나 YAML 파일(`.yml`, `.yaml`)을 통해 PC의 레지스트리 정보를 직접 매핑해서 가져오는 기능은 제공하지 않습니다. 그러나, Spring의 `@ConfigurationProperties` 또는 `@Value` 어노테이션을 사용하여 프로퍼티나 YAML 파일에서 설정값을 읽어올 수는 있습니다.
+
+Windows 레지스트리 정보를 프로퍼티나 YAML 파일로부터 직접적으로 가져오는 것은 불가능하지만, 간접적으로 구현할 수 있습니다. 즉, Java 코드에서 레지스트리 정보를 읽어오고, 이를 스프링 빈에 설정하여 사용하는 방식입니다.
+
+### 방법 요약
+1. **Java 코드로 레지스트리 정보 읽기**: JNA 등을 사용해 레지스트리 정보를 Java 코드에서 읽어옵니다.
+2. **스프링 빈에 설정하기**: 이 레지스트리 정보를 스프링 빈에 설정하여 애플리케이션 전반에서 사용할 수 있게 합니다.
+
+### 구현 예시
+
+1. **YAML 설정 파일 예시 (application.yml)**
+
+   YAML 파일에서는 레지스트리 정보를 직접적으로 매핑할 수 없기 때문에, 여기서는 이 값을 나중에 설정할 수 있는 구조만 정의합니다.
+
+   ```yaml
+   registry:
+     desktop-path: ${desktop.path:default_value} # 여기에 실제 레지스트리 값을 나중에 설정
+   ```
+
+2. **Java 코드로 레지스트리 정보 읽기 및 설정**
+
+   레지스트리 정보를 읽어와서 스프링 애플리케이션에 적용할 수 있는 빈을 정의합니다.
+
+   ```java
+   import com.sun.jna.platform.win32.Advapi32Util;
+   import com.sun.jna.platform.win32.WinReg;
+   import org.springframework.beans.factory.annotation.Value;
+   import org.springframework.boot.context.properties.ConfigurationProperties;
+   import org.springframework.stereotype.Component;
+
+   @Component
+   @ConfigurationProperties(prefix = "registry")
+   public class RegistryConfig {
+
+       @Value("${desktop.path}")
+       private String desktopPath;
+
+       public RegistryConfig() {
+           String key = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders";
+           String valueName = "Desktop";
+           this.desktopPath = Advapi32Util.registryGetStringValue(WinReg.HKEY_CURRENT_USER, key, valueName);
+       }
+
+       public String getDesktopPath() {
+           return desktopPath;
+       }
+   }
+   ```
+
+3. **스프링에서 이 값 사용하기**
+
+   이제 다른 스프링 컴포넌트나 서비스에서 이 레지스트리 값을 사용할 수 있습니다.
+
+   ```java
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.web.bind.annotation.GetMapping;
+   import org.springframework.web.bind.annotation.RestController;
+
+   @RestController
+   public class RegistryController {
+
+       @Autowired
+       private RegistryConfig registryConfig;
+
+       @GetMapping("/desktop-path")
+       public String getDesktopPath() {
+           return registryConfig.getDesktopPath();
+       }
+   }
+   ```
+
+### 설명
+- **YAML 파일** (`application.yml`)은 단순히 설정 파일로서 역할을 하며, 레지스트리 값을 직접 참조하지는 않습니다.
+- **Java 코드**에서 레지스트리 값을 읽어와, 이 값을 스프링 빈(`RegistryConfig`)에 설정합니다.
+- **`@Value` 어노테이션**을 사용해 레지스트리 값을 읽어와서 `RegistryConfig` 빈에 설정합니다.
+- **스프링 컨트롤러**에서 이 빈을 사용해 레지스트리 값을 출력하거나 다른 작업에 활용할 수 있습니다.
+
+이 방법을 통해, Windows 레지스트리 정보를 스프링 애플리케이션에서 프로퍼티나 YAML 파일을 통해 사용하는 것처럼 처리할 수 있습니다.
