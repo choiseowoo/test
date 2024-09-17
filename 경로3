@@ -1,0 +1,79 @@
+`./.tmp`와 외부 프로젝트(B, C, D, E)의 경로 설정을 통합하여 설정하는 방법을 설명드리겠습니다.
+
+### **상황 정리**
+
+1. **디렉토리 구조**:
+   - `app-build.xml` 위치: `app-build/appbuild/`
+   - 외부 프로젝트 위치:
+     ```
+     /workspace/
+     ├── app-build/
+     │   └── appbuild/
+     │       └── app-build.xml
+     ├── b-project/
+     ├── c-project/
+     ├── d-project/
+     └── e-project/
+     ```
+   - `.tmp` 디렉토리: `app-build/appbuild/.tmp`
+
+2. **목표**:
+   - `.tmp` 디렉토리를 사용하여 외부 프로젝트(B, C, D, E)의 배치 파일을 처리하고자 함.
+
+### **경로 설정 방법**
+
+1. **`.tmp` 디렉토리 설정**:
+   - `app-build.xml`에서 `.tmp` 디렉토리 경로를 설정합니다. 이 디렉토리는 임시 파일을 저장하는 공간으로 사용됩니다.
+
+2. **외부 프로젝트의 경로 설정**:
+   - `.tmp` 디렉토리 내에 외부 프로젝트의 배치 파일을 복사하거나 참조할 때, 올바른 상대 경로를 설정해야 합니다.
+
+### **설정 예시**
+
+**1. `app-build.xml` 파일에서 상대 경로 설정**:
+
+```xml
+<property name="tmp.dir" value="./.tmp" />
+<property name="b.project.path" value="../../b-project/batch" />
+<property name="c.project.path" value="../../c-project/batch" />
+<property name="d.project.path" value="../../d-project/batch" />
+<property name="e.project.path" value="../../e-project/batch" />
+
+<target name="prepare">
+    <mkdir dir="${tmp.dir}" />
+</target>
+
+<target name="build" depends="prepare">
+    <!-- 외부 프로젝트의 배치 파일을 .tmp 디렉토리로 복사 -->
+    <copy todir="${tmp.dir}/batch">
+        <fileset dir="${b.project.path}" includes="**/*.bat" />
+        <fileset dir="${c.project.path}" includes="**/*.bat" />
+        <fileset dir="${d.project.path}" includes="**/*.bat" />
+        <fileset dir="${e.project.path}" includes="**/*.bat" />
+    </copy>
+</target>
+
+<target name="clean">
+    <delete dir="${tmp.dir}" />
+</target>
+```
+
+### **설명**
+
+1. **디렉토리 설정**:
+   - `tmp.dir`는 `.tmp` 디렉토리의 경로를 설정합니다. `./.tmp`는 `app-build/appbuild/.tmp`를 의미합니다.
+   - `b.project.path`, `c.project.path`, `d.project.path`, `e.project.path`는 외부 프로젝트의 경로를 설정합니다.
+
+2. **빌드 과정**:
+   - `prepare` 타겟에서 `.tmp` 디렉토리를 생성합니다.
+   - `build` 타겟에서 각 외부 프로젝트의 배치 파일을 `.tmp` 디렉토리로 복사합니다. 이 과정에서 상대 경로를 사용하여 외부 프로젝트의 파일을 참조합니다.
+   - `clean` 타겟에서 빌드 후 `.tmp` 디렉토리를 삭제하여 공간을 확보합니다.
+
+### **Jenkins 빌드 환경에서의 확인**
+
+- Jenkins에서 빌드 시, 작업 디렉토리와 상대 경로가 올바르게 설정되어 있는지 확인합니다. Jenkins의 작업 공간 구조에 따라 경로가 달라질 수 있으므로, Jenkins에서 실제 파일 경로를 검토하고 필요에 따라 조정합니다.
+
+### **요약**
+
+- `app-build.xml` 파일에서 `.tmp` 디렉토리와 외부 프로젝트의 경로를 올바르게 설정하여, 빌드 과정 중 임시 파일을 관리하고 외부 프로젝트의 파일을 참조할 수 있도록 합니다.
+- 상대 경로를 정확하게 설정하고, Jenkins 빌드 환경에서 경로가 올바르게 적용되도록 확인합니다.
