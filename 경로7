@@ -1,0 +1,99 @@
+하나의 워크스페이스 내에 여러 프로젝트가 있을 때, 특정 프로젝트에서 다른 프로젝트의 파일을 읽어야 하는 경우, 다음과 같은 방법으로 경로를 설정할 수 있습니다:
+
+### **1. 프로젝트 간 상대 경로 사용**
+
+워크스페이스 내의 프로젝트 간에 상대 경로를 설정할 수 있습니다. 이 방법은 상대 경로를 사용하여 다른 프로젝트의 파일을 참조합니다.
+
+**예시**:
+
+- **디렉토리 구조**:
+  ```
+  /workspace/
+  ├── projectA/
+  │   └── build.xml
+  └── projectB/
+      └── file.txt
+  ```
+
+- **`build.xml`에서 경로 설정**:
+  ```xml
+  <property name="projectB.path" value="../projectB" />
+
+  <target name="copy-file">
+      <copy file="${projectB.path}/file.txt" todir="${basedir}/output" />
+  </target>
+  ```
+
+### **2. IDE의 프로젝트 종속성 설정**
+
+IDE에서 프로젝트 간의 종속성을 설정하여 경로를 자동으로 관리할 수 있습니다. 예를 들어, Eclipse와 IntelliJ IDEA에서는 프로젝트의 종속성을 설정할 수 있습니다.
+
+- **Eclipse**:
+  - **프로젝트 속성**: `Right-click on Project A` → `Properties` → `Project References` → 체크박스에서 `Project B`를 선택하여 종속성을 설정합니다.
+  - **빌드 경로**: `Right-click on Project A` → `Properties` → `Java Build Path` → `Projects` 탭에서 `Project B`를 추가합니다.
+
+- **IntelliJ IDEA**:
+  - **프로젝트 구조**: `File` → `Project Structure` → `Modules` → `Dependencies` 탭에서 `Project B`를 추가합니다.
+
+### **3. 환경 변수 사용**
+
+환경 변수를 설정하여 각 프로젝트에서 다른 프로젝트의 경로를 참조할 수 있습니다.
+
+**예시**:
+
+- **환경 변수 설정** (시스템 환경 변수 또는 IDE 설정):
+  - `export PROJECT_B_PATH=/absolute/path/to/projectB`
+
+- **`build.xml`에서 경로 설정**:
+  ```xml
+  <property name="projectB.path" value="${env.PROJECT_B_PATH}" />
+
+  <target name="copy-file">
+      <copy file="${projectB.path}/file.txt" todir="${basedir}/output" />
+  </target>
+  ```
+
+### **4. 빌드 스크립트에서 절대 경로 사용**
+
+절대 경로를 직접 설정하여 파일을 참조할 수 있습니다. 이 방법은 프로젝트 구조가 변경되지 않는 한 안정적입니다.
+
+**예시**:
+
+- **절대 경로 설정**:
+  ```xml
+  <property name="projectB.path" value="/absolute/path/to/projectB" />
+
+  <target name="copy-file">
+      <copy file="${projectB.path}/file.txt" todir="${basedir}/output" />
+  </target>
+  ```
+
+### **5. 빌드 도구 사용**
+
+Maven이나 Gradle과 같은 빌드 도구를 사용하여 외부 의존성을 관리하고, 필요한 프로젝트를 모듈로 추가할 수 있습니다.
+
+**Maven 예시**:
+```xml
+<dependency>
+    <groupId>com.example</groupId>
+    <artifactId>projectB</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+**Gradle 예시**:
+```gradle
+dependencies {
+    implementation project(':projectB')
+}
+```
+
+### **요약**
+
+- **상대 경로**: 워크스페이스 내의 다른 프로젝트를 참조할 때 상대 경로를 사용할 수 있습니다.
+- **IDE의 프로젝트 종속성**: IDE에서 프로젝트 간 종속성을 설정하여 경로를 관리합니다.
+- **환경 변수**: 환경 변수를 사용하여 동적으로 경로를 설정할 수 있습니다.
+- **절대 경로**: 절대 경로를 직접 설정하여 파일을 참조합니다.
+- **빌드 도구**: Maven, Gradle 등을 사용하여 프로젝트 간 의존성을 관리합니다.
+
+이 방법들을 활용하여 프로젝트 간에 파일을 효율적으로 읽고 참조할 수 있습니다.
