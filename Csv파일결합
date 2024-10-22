@@ -1,0 +1,84 @@
+두 개의 CSV 파일을 비교하고, 고유번호 컬럼에서 CWAT에서는 `null`을 `"stg_x"`로, Tanium에서는 `"n/a"`를 `"stg_x"`로 변환하여 데이터를 합치는 사양을 설정하려면 다음과 같은 절차를 따를 수 있습니다:
+
+### 1. **두 CSV 파일을 읽어들이기**
+   - 두 CSV 파일(CWAT와 Tanium에서 취득한 파일)을 각각 읽어들입니다.
+
+### 2. **고유번호 처리**
+   - 두 파일의 고유번호 열을 비교하여, CWAT 파일의 `null` 값은 `"stg_x"`로, Tanium 파일의 `"n/a"` 값도 `"stg_x"`로 통일합니다.
+
+### 3. **두 파일을 병합**
+   - 공통된 고유번호를 기준으로 데이터를 병합합니다. 고유번호가 없는 경우는 누락되거나 빈 데이터를 처리할 수 있도록 합니다.
+
+### 사양 방법
+
+#### 데이터 처리 흐름
+1. **CSV 파일 읽기**:
+   - CWAT와 Tanium에서 각각 취득한 CSV 파일을 VBS 또는 Python 같은 스크립트를 통해 읽어들입니다.
+   
+2. **고유번호 열 처리**:
+   - **CWAT 파일**에서 고유번호 값이 `null`인 경우 `"stg_x"`로 변환합니다.
+   - **Tanium 파일**에서 고유번호 값이 `"n/a"`인 경우 `"stg_x"`로 변환합니다.
+   
+3. **병합 규칙**:
+   - 고유번호를 기준으로 병합합니다. 두 파일에 동일한 고유번호가 있는 경우, 병합된 데이터를 하나의 CSV로 출력합니다.
+   - 한쪽에만 존재하는 고유번호는 그대로 남겨두고, 필요시 다른 컬럼에 빈 데이터를 삽입합니다.
+
+#### 예시 코드 (Python으로 예시)
+
+```python
+import csv
+
+# CWAT와 Tanium에서 읽은 두 파일을 합치기 위한 함수
+def merge_csv(cwat_file, tanium_file, output_file):
+    cwat_data = []
+    tanium_data = []
+
+    # CWAT 파일 읽기
+    with open(cwat_file, 'r', newline='', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        cwat_data = list(reader)
+    
+    # Tanium 파일 읽기
+    with open(tanium_file, 'r', newline='', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        tanium_data = list(reader)
+
+    # 고유번호 열을 비교하여 변환 및 병합
+    merged_data = []
+
+    # 헤더 처리
+    header = cwat_data[0] + tanium_data[0][1:]  # 헤더 합치기
+    merged_data.append(header)
+
+    # CWAT 데이터 처리
+    for row in cwat_data[1:]:
+        if row[2] == "" or row[2] is None:  # 고유번호가 null인 경우
+            row[2] = "stg_x"
+        merged_data.append(row)
+
+    # Tanium 데이터 처리
+    for row in tanium_data[1:]:
+        if row[2].lower() == "n/a":  # 고유번호가 n/a인 경우
+            row[2] = "stg_x"
+        merged_data.append(row)
+
+    # 결과 CSV 파일에 쓰기
+    with open(output_file, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerows(merged_data)
+
+# 예시 실행
+merge_csv("cwat.csv", "tanium.csv", "merged_output.csv")
+```
+
+### 설명:
+1. **고유번호 처리**:
+   - `CWAT` 파일의 고유번호에서 빈 값이나 `null`을 `"stg_x"`로 변환.
+   - `Tanium` 파일의 고유번호에서 `"n/a"`를 `"stg_x"`로 변환.
+   
+2. **병합**:
+   - 두 파일을 행 단위로 읽어 병합하고, 하나의 CSV 파일로 출력.
+
+### 이 사양에 맞춰 출력된 CSV 파일은, 두 소스의 고유번호 데이터가 통일된 상태로 저장됩니다.
+
+이 방식으로 데이터를 비교하고 변환하는 프로세스를 구현하면 두 파일 간의 출력 데이터 차이를 해결하고 일관된 결과를 얻을 수 있습니다.
