@@ -1,0 +1,90 @@
+VBScript로 CWAT와 Tanium에서 취득한 CSV 파일을 읽고 고유번호를 기준으로 비교 및 변환하여 병합하는 방법을 구현할 수 있습니다. 아래는 고유번호에서 `null`과 `"n/a"`를 `"stg_x"`로 변환하고, 두 CSV 파일을 병합하는 VBScript 예제입니다.
+
+### VBScript 예제
+
+```vbscript
+Const ForReading = 1
+Const ForWriting = 2
+
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+' CWAT 파일 읽기
+Set cwatFile = objFSO.OpenTextFile("cwat.csv", ForReading)
+Set taniumFile = objFSO.OpenTextFile("tanium.csv", ForReading)
+
+' 출력 파일 생성
+Set outputFile = objFSO.CreateTextFile("merged_output.csv", True)
+
+Dim cwatData, taniumData, mergedData
+
+' CWAT 파일 읽기 및 처리
+Do Until cwatFile.AtEndOfStream
+    strLine = cwatFile.ReadLine
+    arrData = Split(strLine, ",")
+
+    ' 3열(고유번호) 값이 null(빈 값)인 경우 stg_x로 변환
+    If Trim(arrData(2)) = "" Then
+        arrData(2) = "stg_x"
+    End If
+
+    ' 데이터 저장
+    If IsEmpty(cwatData) Then
+        cwatData = Array(arrData)
+    Else
+        ReDim Preserve cwatData(UBound(cwatData) + 1)
+        cwatData(UBound(cwatData)) = arrData
+    End If
+Loop
+cwatFile.Close
+
+' Tanium 파일 읽기 및 처리
+Do Until taniumFile.AtEndOfStream
+    strLine = taniumFile.ReadLine
+    arrData = Split(strLine, ",")
+
+    ' 3열(고유번호) 값이 n/a인 경우 stg_x로 변환
+    If LCase(Trim(arrData(2))) = "n/a" Then
+        arrData(2) = "stg_x"
+    End If
+
+    ' 데이터 저장
+    If IsEmpty(taniumData) Then
+        taniumData = Array(arrData)
+    Else
+        ReDim Preserve taniumData(UBound(taniumData) + 1)
+        taniumData(UBound(taniumData)) = arrData
+    End If
+Loop
+taniumFile.Close
+
+' 데이터 병합
+mergedData = cwatData
+
+For Each taniumRow In taniumData
+    ReDim Preserve mergedData(UBound(mergedData) + 1)
+    mergedData(UBound(mergedData)) = taniumRow
+Next
+
+' 병합된 데이터를 파일로 출력
+For Each row In mergedData
+    outputFile.WriteLine Join(row, ",")
+Next
+
+outputFile.Close
+```
+
+### 설명:
+1. **CSV 파일 읽기**: 
+   - `cwat.csv`와 `tanium.csv` 파일을 각각 읽어들입니다.
+   
+2. **고유번호 처리**: 
+   - `CWAT` 파일에서 3열(고유번호)이 `null`인 경우 `"stg_x"`로 변환.
+   - `Tanium` 파일에서 3열(고유번호)이 `"n/a"`인 경우 `"stg_x"`로 변환.
+   
+3. **데이터 병합**: 
+   - `cwatData`와 `taniumData`를 각각 배열로 저장하고, 두 데이터를 병합합니다.
+   
+4. **병합된 데이터를 파일로 출력**: 
+   - `merged_output.csv`라는 새 파일에 병합된 데이터를 출력합니다.
+
+이 스크립트는 CWAT와 Tanium 파일을 각각 읽어들인 후, 고유번호에 따라 변환 및 병합을 수행한 후 하나의 CSV 파일로 출력합니다.
