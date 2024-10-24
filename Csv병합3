@@ -1,0 +1,68 @@
+' 파일 경로 정의
+filePath1 = "C:\path\to\file1.csv"
+filePath2 = "C:\path\to\file2.csv"
+outputFilePath = "C:\path\to\merged.csv"
+
+' 파일 시스템 객체 생성
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set file1 = objFSO.OpenTextFile(filePath1, 1) ' 첫 번째 CSV 파일 읽기 모드로 열기
+Set file2 = objFSO.OpenTextFile(filePath2, 1) ' 두 번째 CSV 파일 읽기 모드로 열기
+Set outputFile = objFSO.CreateTextFile(outputFilePath, True) ' 병합된 파일 작성
+
+' 특정 값을 변환하는 함수
+Function ReplaceNull(value)
+    If value = "n/a" Or value = "<null>" Or Trim(value) = "" Then
+        ReplaceNull = "stg-x" ' null 값을 stg-x로 변환
+    Else
+        ReplaceNull = value ' null이 아닌 경우 원래 값 유지
+    End If
+End Function
+
+' 각 행을 파일에 기록하는 함수
+Sub WriteCsvLine(values, outputFile)
+    line = ""
+    For i = 0 To UBound(values)
+        ' 쉼표로 구분
+        If i = UBound(values) Then
+            line = line & values(i) ' 마지막 값은 쉼표 추가 안 함
+        Else
+            line = line & values(i) & ","
+        End If
+    Next
+    outputFile.WriteLine line
+End Sub
+
+' 첫 번째 파일 내용 복사 및 변환
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine
+    values = Split(line, ",")
+    
+    ' 각 값에서 null 값 변환
+    For i = 0 To UBound(values)
+        values(i) = ReplaceNull(values(i))
+    Next
+    
+    ' 변환된 값을 CSV에 기록
+    WriteCsvLine values, outputFile
+Loop
+
+' 두 번째 파일 내용 복사 및 변환
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine
+    values = Split(line, ",")
+    
+    ' 각 값에서 null 값 변환
+    For i = 0 To UBound(values)
+        values(i) = ReplaceNull(values(i))
+    Next
+    
+    ' 변환된 값을 CSV에 기록
+    WriteCsvLine values, outputFile
+Loop
+
+' 파일 닫기
+file1.Close
+file2.Close
+outputFile.Close
+
+WScript.Echo "CSV 파일 병합 및 null 값 변환 완료"
