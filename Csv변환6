@@ -1,0 +1,87 @@
+위의 코드에서는 Tanium 데이터를 덮어쓰면서 CWAT 데이터를 비교하고 동일한 값은 그대로 유지하는 로직이 포함되지 않았습니다. 따라서, 제가 수정한 코드를 제공해드리겠습니다. 
+
+수정된 스크립트는 Tanium 데이터를 덮어쓰되, CWAT 데이터와 동일한 값은 유지하고, 다른 값이 있을 경우 Tanium 데이터를 사용하여 덮어씁니다. 또한, Tanium에서 `n/a` 값은 `"stg-x"`로 변환해 줍니다.
+
+### 수정된 VBS 스크립트 (동일한 값 유지, 다른 값 덮어쓰기)
+
+```vbs
+' 파일 경로 정의
+cwatFilePath = "C:\path\to\cwat.csv"
+taniumFilePath = "C:\path\to\tanium.csv"
+outputFilePath = "C:\path\to\merged.csv"
+
+' 파일 시스템 객체 생성
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set cwatFile = objFSO.OpenTextFile(cwatFilePath, 1) ' CWAT CSV 읽기 모드로 열기
+Set taniumFile = objFSO.OpenTextFile(taniumFilePath, 1) ' Tanium CSV 읽기 모드로 열기
+Set outputFile = objFSO.CreateTextFile(outputFilePath, True) ' 병합된 파일 작성
+
+' 특정 값을 변환하는 함수
+Function ReplaceNull(value)
+    If value = "n/a" Then
+        ReplaceNull = "stg-x" ' n/a 값을 stg-x로 변환
+    Else
+        ReplaceNull = value ' 그대로 유지
+    End If
+End Function
+
+' 첫 번째 파일(CWAT) 내용 복사 및 배열로 저장
+Dim cwatData()
+rowCount = 0
+
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    cwatData = cwatData & Split(line, ",") ' CWAT 데이터를 배열에 저장
+    rowCount = rowCount + 1
+Loop
+cwatFile.Close
+
+' 두 번째 파일(Tanium) 데이터를 읽어서 덮어쓰기
+lineNumber = 0
+
+Do Until taniumFile.AtEndOfStream
+    taniumLine = taniumFile.ReadLine
+    taniumValues = Split(taniumLine, ",")
+    
+    ' CWAT 데이터를 가져옴
+    cwatValues = Split(cwatData(lineNumber), ",")
+    
+    ' Tanium 데이터와 CWAT 데이터 비교
+    For i = 0 To UBound(taniumValues)
+        taniumValues(i) = ReplaceNull(taniumValues(i)) ' n/a 값은 stg-x로 변환
+        If cwatValues(i) = taniumValues(i) Then
+            ' 동일한 값은 그대로 둠
+            mergedValue = cwatValues(i)
+        Else
+            ' 다른 값은 Tanium 값으로 덮어씌움
+            mergedValue = taniumValues(i)
+        End If
+        ' 쉼표로 구분하여 값을 출력
+        If i = UBound(taniumValues) Then
+            outputFile.Write mergedValue ' 마지막 값에는 쉼표 추가 안 함
+        Else
+            outputFile.Write mergedValue & ","
+        End If
+    Next
+    outputFile.WriteLine ' 줄바꿈
+    
+    lineNumber = lineNumber + 1
+Loop
+
+' 파일 닫기
+taniumFile.Close
+outputFile.Close
+
+WScript.Echo "CSV 파일 병합 및 null 값 변환 완료"
+```
+
+### 코드 설명:
+1. **CWAT 데이터 복사**: CWAT 파일을 먼저 읽어 배열(`cwatData`)에 저장합니다. 이 배열을 사용하여 나중에 Tanium 데이터와 비교합니다.
+2. **Tanium 데이터 덮어쓰기**: Tanium 데이터를 읽어 각 값을 CWAT 데이터와 비교합니다.
+   - **동일한 값**: Tanium 데이터와 CWAT 데이터가 동일하면 CWAT 값을 그대로 유지합니다.
+   - **다른 값**: Tanium 데이터가 CWAT 데이터와 다르면 Tanium 값으로 덮어씁니다.
+3. **`ReplaceNull` 함수**: Tanium 데이터에서 `n/a` 값을 `"stg-x"`로 변환합니다.
+4. **출력**: 최종 병합된 데이터를 쉼표로 구분하여 출력하고, 줄바꿈 처리를 해줍니다.
+
+### 요약:
+이제 Tanium 데이터를 덮어씌우면서, 동일한 값은 그대로 유지하고, 다른 값은 Tanium 데이터로 변경하며, Tanium의 `n/a`는 `"stg-x"`로 변환하는 로직이 제대로 동작할 것입니다.
