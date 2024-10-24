@@ -1,0 +1,73 @@
+그 방법은 효율성 면에서 크게 나쁘지 않으며, 상황에 따라 적합할 수 있습니다. 특히 두 데이터셋에서 동일한 값이 많고, Tanium 데이터를 더 신뢰하거나 우선시할 때 유용할 수 있습니다. 이 과정에서 불필요한 중복 작업만 최소화된다면 효율적인 해결책이 될 수 있습니다.
+
+### 사양의 요점:
+1. **CWAT 데이터 먼저 작성**: CWAT 데이터를 기준으로 먼저 CSV 파일을 작성합니다.
+2. **Tanium 데이터로 덮어쓰기**: 동일한 값은 그대로 두고, 다른 값이 있을 경우 Tanium 데이터를 사용하여 덮어씁니다.
+3. **Tanium의 `n/a` 값 처리**: Tanium에서 `n/a`는 `"stg-x"`로 변환하면서 처리합니다.
+
+이 방법은 다음과 같은 상황에서 효율적일 수 있습니다:
+- **데이터 일관성**: 동일한 데이터를 유지하고 싶고, Tanium 데이터는 변동이 있을 때만 반영하고 싶을 때.
+- **간단한 데이터 비교**: 전체 데이터를 비교하기보다는 변경된 값만 Tanium 데이터를 우선시할 때.
+
+단점은:
+- 두 데이터셋이 매우 큰 경우, 한 번 덮어쓰는 것이 아니라 데이터 비교 후 각 값마다 처리하기 때문에 성능에 약간의 영향을 줄 수 있습니다. 하지만 일반적인 CSV 병합 작업에서는 이 정도의 로직은 큰 성능 문제를 일으키지 않습니다.
+
+### VBS 스크립트 예시:
+```vbs
+' 파일 경로 정의
+cwatFilePath = "C:\path\to\cwat.csv"
+taniumFilePath = "C:\path\to\tanium.csv"
+outputFilePath = "C:\path\to\merged.csv"
+
+' 파일 시스템 객체 생성
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set cwatFile = objFSO.OpenTextFile(cwatFilePath, 1) ' CWAT CSV 읽기 모드로 열기
+Set taniumFile = objFSO.OpenTextFile(taniumFilePath, 1) ' Tanium CSV 읽기 모드로 열기
+Set outputFile = objFSO.CreateTextFile(outputFilePath, True) ' 병합된 파일 작성
+
+' 특정 값을 변환하는 함수
+Function ReplaceNull(value)
+    If value = "n/a" Then
+        ReplaceNull = "stg-x" ' n/a 값을 stg-x로 변환
+    Else
+        ReplaceNull = value ' 그대로 유지
+    End If
+End Function
+
+' 첫 번째 파일(CWAT) 내용 그대로 복사
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    outputFile.WriteLine line
+Loop
+
+' CWAT 파일 닫기
+cwatFile.Close
+
+' 두 번째 파일(Tanium) 데이터 덮어쓰기 및 비교
+Set outputFile = objFSO.OpenTextFile(outputFilePath, 2) ' 파일 추가 모드로 열기
+
+Do Until taniumFile.AtEndOfStream
+    line = taniumFile.ReadLine
+    values = Split(line, ",")
+    
+    ' 각 값에서 null 값 변환 및 CWAT 값과 비교
+    For i = 0 To UBound(values)
+        values(i) = ReplaceNull(values(i))
+        ' Tanium 데이터로 덮어쓰는 로직 (필요 시 비교)
+    Next
+    
+    ' 변환된 값을 CSV에 기록
+    outputFile.WriteLine Join(values, ",")
+Loop
+
+' 파일 닫기
+taniumFile.Close
+outputFile.Close
+
+WScript.Echo "CSV 파일 병합 및 null 값 변환 완료"
+```
+
+### 요약:
+- 두 단계로 처리하여 덮어쓰는 방식은 효율적일 수 있습니다.
+- 각 데이터셋이 크지 않다면 성능 문제는 없을 것으로 보이며, 전체 흐름도 이해하기 쉽고 유지보수하기도 좋습니다.
+- 추가적으로 성능 최적화가 필요하다면, 데이터 크기나 구조에 따라 병합 전략을 변경할 수 있습니다.
