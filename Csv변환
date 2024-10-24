@@ -1,0 +1,49 @@
+' 파일 경로 정의
+cwatFilePath = "C:\path\to\cwat.csv"
+taniumFilePath = "C:\path\to\tanium.csv"
+outputFilePath = "C:\path\to\merged.csv"
+
+' 파일 객체 생성
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set cwatFile = objFSO.OpenTextFile(cwatFilePath, 1)
+Set taniumFile = objFSO.OpenTextFile(taniumFilePath, 1)
+Set outputFile = objFSO.CreateTextFile(outputFilePath, True)
+
+' 파일을 한 줄씩 읽음
+Do Until cwatFile.AtEndOfStream Or taniumFile.AtEndOfStream
+    cwatLine = cwatFile.ReadLine
+    taniumLine = taniumFile.ReadLine
+    
+    ' CSV에서 각 값 분리
+    cwatValues = Split(cwatLine, ",")
+    taniumValues = Split(taniumLine, ",")
+
+    ' null 값 비교 및 통합
+    For i = 0 To UBound(cwatValues)
+        If cwatValues(i) = "<null>" And taniumValues(i) = "n/a" Then
+            mergedValue = "n/a" ' null 값 통일
+        ElseIf cwatValues(i) = "<null>" Then
+            mergedValue = "n/a"
+        ElseIf taniumValues(i) = "n/a" Then
+            mergedValue = "n/a"
+        Else
+            mergedValue = cwatValues(i) ' 동일한 값 유지
+        End If
+        
+        ' 결과 작성
+        If i = UBound(cwatValues) Then
+            outputFile.Write mergedValue
+        Else
+            outputFile.Write mergedValue & ","
+        End If
+    Next
+    
+    outputFile.WriteLine ""
+Loop
+
+' 파일 닫기
+cwatFile.Close
+taniumFile.Close
+outputFile.Close
+
+WScript.Echo "CSV 파일 병합 완료"
