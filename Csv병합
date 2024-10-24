@@ -1,0 +1,45 @@
+두 개의 CSV 파일을 단순히 하나로 합치는 방법은, 각 파일의 내용을 순서대로 읽고 그대로 출력하는 방식입니다. 아래는 VBS 스크립트를 사용해 두 개의 CSV 파일을 순차적으로 하나의 파일로 합치는 간단한 코드입니다.
+
+### VBS 코드 예시
+
+```vbs
+' 파일 경로 정의
+filePath1 = "C:\path\to\file1.csv"
+filePath2 = "C:\path\to\file2.csv"
+outputFilePath = "C:\path\to\merged.csv"
+
+' 파일 시스템 객체 생성
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set file1 = objFSO.OpenTextFile(filePath1, 1) ' 첫 번째 CSV 파일 읽기 모드로 열기
+Set file2 = objFSO.OpenTextFile(filePath2, 1) ' 두 번째 CSV 파일 읽기 모드로 열기
+Set outputFile = objFSO.CreateTextFile(outputFilePath, True) ' 병합된 파일 작성
+
+' 첫 번째 파일 내용 복사
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine
+    outputFile.WriteLine line
+Loop
+
+' 두 번째 파일 내용 복사
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine
+    outputFile.WriteLine line
+Loop
+
+' 파일 닫기
+file1.Close
+file2.Close
+outputFile.Close
+
+WScript.Echo "CSV 파일 병합 완료"
+```
+
+### 코드 설명
+1. **파일 경로 설정**: 두 개의 CSV 파일(`file1.csv`와 `file2.csv`)과 병합 후 저장할 파일 경로(`merged.csv`)를 설정합니다.
+2. **파일 읽기 및 쓰기**: `OpenTextFile`을 사용해 두 CSV 파일을 차례대로 읽고, `WriteLine`을 통해 병합된 파일에 내용을 작성합니다.
+3. **파일 복사 순서**:
+   - 첫 번째 CSV 파일의 모든 줄을 읽고 병합 파일에 복사.
+   - 두 번째 CSV 파일의 모든 줄을 이어서 병합 파일에 복사.
+4. **결과 파일**: `merged.csv` 파일에 두 파일의 내용이 순서대로 출력됩니다.
+
+이 방법은 두 파일의 데이터를 단순히 합치는 데 사용되며, CSV 파일의 형식이 동일할 때 유용합니다.
