@@ -1,0 +1,64 @@
+' 파일 경로 정의
+cwatFilePath = "C:\path\to\cwat.csv"
+taniumFilePath = "C:\path\to\tanium.csv"
+outputFilePath = "C:\path\to\merged.xlsx" ' Excel 파일로 저장
+
+' Excel 애플리케이션 객체 생성
+Set objExcel = CreateObject("Excel.Application")
+Set objWorkbook = objExcel.Workbooks.Add
+Set objSheet = objWorkbook.Sheets(1)
+
+' 특정 값을 변환하는 함수
+Function ReplaceNull(value)
+    If value = "n/a" Then
+        ReplaceNull = "stg-x" ' n/a 값을 stg-x로 변환
+    Else
+        ReplaceNull = value ' 그대로 유지
+    End If
+End Function
+
+' CWAT 데이터 입력
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set cwatFile = objFSO.OpenTextFile(cwatFilePath, 1) ' CWAT CSV 읽기 모드로 열기
+row = 1
+
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    values = Split(line, ",")
+    
+    ' 각 값을 Excel 셀에 입력
+    For col = 0 To UBound(values)
+        objSheet.Cells(row, col + 1).Value = values(col)
+    Next
+    row = row + 1
+Loop
+cwatFile.Close
+
+' Tanium 데이터 읽고 덮어쓰기
+Set taniumFile = objFSO.OpenTextFile(taniumFilePath, 1)
+row = 1
+
+Do Until taniumFile.AtEndOfStream
+    taniumLine = taniumFile.ReadLine
+    taniumValues = Split(taniumLine, ",")
+    
+    ' CWAT 데이터 가져오기
+    For col = 0 To UBound(taniumValues)
+        taniumValues(col) = ReplaceNull(taniumValues(col)) ' n/a 값은 stg-x로 변환
+        cwatValue = objSheet.Cells(row, col + 1).Value ' CWAT 셀 값 가져오기
+
+        ' 동일한 값은 그대로, 다른 값은 Tanium 데이터로 덮어씌움
+        If cwatValue <> taniumValues(col) Then
+            objSheet.Cells(row, col + 1).Value = taniumValues(col)
+        End If
+    Next
+    row = row + 1
+Loop
+taniumFile.Close
+
+' 병합된 데이터를 Excel 파일로 저장
+objWorkbook.SaveAs outputFilePath
+objWorkbook.Close
+objExcel.Quit
+
+WScript.Echo "Excel 파일 병합 및 null 값 변환 완료"
