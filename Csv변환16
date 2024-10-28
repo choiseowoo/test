@@ -1,0 +1,46 @@
+Dim fso, file1, file2, outputFile, line, fields
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 파일 경로 설정
+Const filePath1 = "C:\path\to\file1.csv" ' UTF-8 without BOM
+Const filePath2 = "C:\path\to\file2.csv" ' UTF-16 with BOM
+Const outputPath = "C:\path\to\output.csv" ' UTF-8 without BOM으로 저장할 파일
+
+' 파일 열기
+Set file1 = fso.OpenTextFile(filePath1, 1, False) ' 파일1은 UTF-8
+Set file2 = fso.OpenTextFile(filePath2, 1, False, -1) ' 파일2는 UTF-16 (대응값 -1 사용)
+Set outputFile = fso.CreateTextFile(outputPath, True, False) ' UTF-8 without BOM으로 생성
+
+' 파일1 내용 쓰기
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine
+    fields = Split(line, ",") ' CSV 필드를 쉼표로 분리
+
+    ' 조건에 따른 변환 적용
+    If UCase(fields(0)) = "MC" Then ' saitename이 'mc'인 경우
+        If UCase(fields(1)) = "N/A" Then fields(1) = "stg-x" ' areaname이 'n/a'인 경우 'stg-x'로 변경
+        fields(2) = "stg-v" ' Dest 값을 항상 'stg-v'로 변경
+    End If
+
+    ' 수정된 행을 파일에 쓰기
+    outputFile.WriteLine Join(fields, ",")
+Loop
+file1.Close
+
+' 파일2 내용 쓰기
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine
+    fields = Split(line, ",") ' CSV 필드를 쉼표로 분리
+
+    ' 조건에 따른 변환 적용
+    If UCase(fields(0)) = "MC" Then ' saitename이 'mc'인 경우
+        If UCase(fields(1)) = "N/A" Then fields(1) = "stg-x" ' areaname이 'n/a'인 경우 'stg-x'로 변경
+        fields(2) = "stg-v" ' Dest 값을 항상 'stg-v'로 변경
+    End If
+
+    ' 수정된 행을 파일에 쓰기
+    outputFile.WriteLine Join(fields, ",")
+Loop
+file2.Close
+outputFile.Close
