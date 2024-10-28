@@ -1,0 +1,97 @@
+UTF-8 BOM 없이 CSV 파일을 출력할 때 데이터가 깨지는 문제는 주로 파일 인코딩이나 글꼴 문제로 인해 발생할 수 있습니다. 이를 해결하기 위해 다음 사항을 확인하고 적용해 보세요.
+
+### 1. **파일 출력 시 인코딩 확인**
+- VBScript에서 파일을 생성할 때 인코딩을 제대로 설정해야 합니다. UTF-8 BOM 없이 파일을 생성하는 방법은 `CreateTextFile` 메소드를 사용하여 `False`를 설정하는 것입니다. 이는 이미 코드에서 반영되어 있습니다.
+
+### 2. **파일 내용 확인**
+- `CWAT` CSV 파일의 내용이 올바르게 UTF-8로 인코딩되어 있는지 확인합니다. 다른 인코딩 형식(예: UTF-16)으로 저장된 경우, UTF-8로 변환해야 합니다.
+
+### 3. **CSV 파일의 특수 문자 처리**
+- CSV 파일 내의 데이터에 특수 문자가 포함되어 있다면, 이를 적절히 이스케이프 처리하거나 CSV 형식에 맞춰 인용부호로 묶어야 합니다. 예를 들어, 쉼표(,)나 줄바꿈 문자 등의 특수 문자가 포함되어 있으면 문제가 발생할 수 있습니다.
+
+### 4. **파일 열기/읽기 방법**
+- 출력한 CSV 파일을 열 때 사용하는 프로그램이 UTF-8 인코딩을 지원하는지 확인합니다. 예를 들어, Notepad++나 Visual Studio Code와 같은 텍스트 편집기를 사용하면 인코딩을 올바르게 표시할 수 있습니다.
+
+### 코드 예시 (최종 출력 확인)
+아래의 코드는 CWAT 데이터 출력 시 문제가 발생하지 않도록 개선된 예시입니다.
+
+```vbscript
+Dim fso, file1, file2, outputFile, line, fields, dict, compName, macAddresses, i
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' 파일 경로 설정
+Const filePath1 = "C:\path\to\cwat.csv" ' CWAT에서 추출한 파일 (UTF-8 without BOM)
+Const filePath2 = "C:\path\to\tanium.csv" ' Tanium에서 추출한 파일 (UTF-16 with BOM)
+Const outputPath = "C:\path\to\output.csv" ' UTF-8 without BOM으로 저장할 파일
+
+' 파일 열기
+Set file1 = fso.OpenTextFile(filePath1, 1, False) ' CWAT 파일을 UTF-8로 읽기
+Set file2 = fso.OpenTextFile(filePath2, 1, False, -1) ' Tanium 파일을 UTF-16으로 읽기
+Set outputFile = fso.CreateTextFile(outputPath, True, False) ' UTF-8 without BOM으로 생성
+
+' CWAT 데이터 읽기 및 저장
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine
+    fields = Split(line, ",") ' CWAT 파일의 필드를 쉼표로 분리
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름 (메인키)
+    
+    ' Dictionary에 컴퓨터 이름을 키로 하고 전체 레코드를 값으로 저장
+    dict(compName) = fields
+Loop
+file1.Close
+
+' Tanium 데이터 읽기 및 병합
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine
+    fields = Split(line, ",") ' Tanium 파일의 필드를 쉼표로 분리
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름 (메인키)
+
+    ' Tanium의 macaddress를 한 줄로 읽어온다
+    Dim taniumMacAddress
+    taniumMacAddress = fields(6) ' 7번째 필드가 macaddress
+
+    ' CWAT 데이터와 동일한 컴퓨터 이름이 있을 때 병합 처리
+    If dict.Exists(compName) Then
+        ' CWAT의 macaddress를 가져온다
+        macAddresses = ""
+        For i = 6 To 8 ' CWAT의 macaddress가 7번째, 8번째, 9번째 셀에 있다고 가정
+            If i <= UBound(dict(compName)) Then ' 배열 범위 체크
+                If dict(compName)(i) <> "" Then
+                    If macAddresses = "" Then
+                        macAddresses = dict(compName)(i) ' 첫 값 추가
+                    Else
+                        macAddresses = macAddresses & "," & dict(compName)(i) ' 이후 값 추가
+                    End If
+                End If
+            End If
+        Next
+
+        ' 최종적으로 Tanium의 macaddress와 병합하여 CWAT에 저장
+        If macAddresses <> "" Then
+            dict(compName)(6) = macAddresses & "," & taniumMacAddress ' CWAT의 macaddress에 Tanium 추가
+        Else
+            dict(compName)(6) = taniumMacAddress ' CWAT에 macaddress가 없으면 Tanium 값을 추가
+        End If
+    Else
+        ' Tanium에만 있는 컴퓨터는 추가
+        dict(compName) = fields
+    End If
+Loop
+file2.Close
+
+' Dictionary에서 최종 병합된 데이터를 output 파일에 쓰기
+For Each compName In dict.Keys
+    outputFile.WriteLine Join(dict(compName), ",")
+Next
+
+outputFile.Close
+```
+
+### 최종 확인
+1. **인코딩**: 출력된 CSV 파일을 확인할 때, UTF-8 인코딩이 제대로 되어 있는지 확인합니다.
+2. **특수 문자**: CSV 내용에 특수 문자가 있다면, 적절하게 이스케이프 처리하거나 따옴표로 감싸는 등의 추가 처리가 필요할 수 있습니다.
+3. **프로그램**: CSV 파일을 열 때, UTF-8 인코딩을 지원하는 프로그램을 사용하여 내용을 확인합니다.
+
+이렇게 하면 CSV 파일의 인코딩 문제를 해결하고, 데이터가 올바르게 출력될 수 있습니다.
