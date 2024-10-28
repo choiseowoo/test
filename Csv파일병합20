@@ -1,0 +1,95 @@
+아, 이해했습니다. `CWAT`와 `Tanium`에서 `macaddress`가 중복되는 경우를 각각 다르게 처리하려는 상황이군요. 즉, `CWAT`에서는 각 `macaddress`가 별도의 셀에 저장되고, `Tanium`에서는 하나의 셀에 모든 `macaddress`가 결합되어 저장되는 경우입니다.
+
+이 경우, `CWAT`에서 `macaddress`를 읽고, `Tanium`의 `computername`과 병합할 때 `Tanium`의 `macaddress`를 `CWAT`의 각각의 `macaddress` 값이 있는 위치에 추가하면 됩니다. 
+
+아래의 코드는 이러한 로직을 구현한 것입니다:
+
+```vbscript
+Dim fso, file1, file2, outputFile, line, fields, dict, compName, macAddresses, i
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' 파일 경로 설정
+Const filePath1 = "C:\path\to\cwat.csv" ' CWAT에서 추출한 파일 (UTF-8 without BOM)
+Const filePath2 = "C:\path\to\tanium.csv" ' Tanium에서 추출한 파일 (UTF-16 with BOM)
+Const outputPath = "C:\path\to\output.csv" ' UTF-8 without BOM으로 저장할 파일
+
+' 파일 열기
+Set file1 = fso.OpenTextFile(filePath1, 1, False) ' UTF-8 파일
+Set file2 = fso.OpenTextFile(filePath2, 1, False, -1) ' UTF-16 파일 (대응값 -1 사용)
+Set outputFile = fso.CreateTextFile(outputPath, True, False) ' UTF-8 without BOM으로 생성
+
+' CWAT 데이터 읽기 및 저장
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine
+    fields = Split(line, ",") ' CWAT 파일의 필드를 쉼표로 분리
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름 (메인키)
+    
+    ' Dictionary에 컴퓨터 이름을 키로 하고 전체 레코드를 값으로 저장
+    dict(compName) = fields
+Loop
+file1.Close
+
+' Tanium 데이터 읽기 및 병합
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine
+    fields = Split(line, ",") ' Tanium 파일의 필드를 쉼표로 분리
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름 (메인키)
+
+    ' Tanium의 macaddress를 한 줄로 읽어온다
+    Dim taniumMacAddress
+    taniumMacAddress = fields(6) ' 7번째 필드가 macaddress
+
+    ' CWAT 데이터와 동일한 컴퓨터 이름이 있을 때 병합 처리
+    If dict.Exists(compName) Then
+        ' CWAT의 macaddress를 가져온다
+        macAddresses = ""
+        For i = 6 To 8 ' CWAT의 macaddress가 7번째, 8번째, 9번째 셀에 있다고 가정
+            If i <= UBound(dict(compName)) Then ' 배열 범위 체크
+                If dict(compName)(i) <> "" Then
+                    If macAddresses = "" Then
+                        macAddresses = dict(compName)(i) ' 첫 값 추가
+                    Else
+                        macAddresses = macAddresses & "," & dict(compName)(i) ' 이후 값 추가
+                    End If
+                End If
+            End If
+        Next
+
+        ' 최종적으로 Tanium의 macaddress와 병합하여 CWAT에 저장
+        If macAddresses <> "" Then
+            dict(compName)(6) = macAddresses & "," & taniumMacAddress ' CWAT의 macaddress에 Tanium 추가
+        Else
+            dict(compName)(6) = taniumMacAddress ' CWAT에 macaddress가 없으면 Tanium 값을 추가
+        End If
+    Else
+        ' Tanium에만 있는 컴퓨터는 추가
+        dict(compName) = fields
+    End If
+Loop
+file2.Close
+
+' Dictionary에서 최종 병합된 데이터를 output 파일에 쓰기
+For Each compName In dict.Keys
+    outputFile.WriteLine Join(dict(compName), ",")
+Next
+
+outputFile.Close
+```
+
+### 코드 설명
+1. **CWAT 데이터 읽기**: 
+   - `CWAT`의 `macaddress`는 여러 개의 셀에 나뉘어져 있다고 가정하고, 각각의 값을 읽어서 `macAddresses`에 저장합니다.
+
+2. **Tanium 데이터 읽기**:
+   - `Tanium`의 `macaddress`는 하나의 셀에 저장되어 있으며, 해당 값을 읽습니다.
+
+3. **병합 로직**:
+   - `CWAT`에서 읽은 `macaddress`를 `Tanium`의 `macaddress`와 결합하여 `CWAT`의 `macaddress` 필드에 업데이트합니다.
+   - `CWAT`에 `macaddress`가 없다면, `Tanium`의 `macaddress`를 그대로 추가합니다.
+
+4. **최종 출력**:
+   - 병합된 데이터를 최종 CSV 파일로 출력합니다.
+
+이렇게 하면 `CWAT`의 여러 개의 `macaddress`와 `Tanium`의 단일 `macaddress`를 결합하여 올바른 형식으로 출력할 수 있습니다.
