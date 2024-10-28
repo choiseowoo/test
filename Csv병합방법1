@@ -1,0 +1,45 @@
+네, 맞습니다. `dict(compName) = fields`에서 `fields`는 배열로, `dict`는 Dictionary 객체입니다. 이 코드의 작동 방식을 좀 더 자세히 설명하겠습니다.
+
+### Dictionary와 배열의 관계
+
+1. **Dictionary 객체**: VBScript에서 Dictionary 객체는 키-값 쌍을 저장하는 구조입니다. 각 키는 고유해야 하며, 해당 키에 대한 값을 저장합니다.
+
+2. **배열**: `fields`는 `Split` 함수를 사용하여 문자열을 쉼표(,)로 나누어 생성된 배열입니다. 각 배열 요소는 CSV 파일의 특정 필드 값을 나타냅니다.
+
+3. **배열 저장**: 
+   - `dict(compName) = fields` 코드에서 `compName`을 키로 하고, `fields` 배열을 그 키에 대한 값으로 저장하는 것입니다.
+   - 이 경우 `dict(compName)`은 `fields` 배열의 참조를 가리키게 되며, `dict`의 `compName` 키를 통해 `fields`의 모든 요소에 접근할 수 있습니다.
+
+### 예시
+아래는 `fields`를 사용하여 Dictionary에 데이터를 저장하는 예시입니다.
+
+```vbscript
+Dim fso, file, line, fields, dict, compName
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' CSV 파일 열기 (여기서는 예시로 직접 문자열을 사용)
+line = "computer1,sitename1,value1,value2,value3"
+
+' 쉼표로 나누어 배열 생성
+fields = Split(line, ",")
+compName = fields(0) ' 첫 번째 요소가 컴퓨터 이름
+
+' Dictionary에 컴퓨터 이름을 키로 하고 전체 레코드를 값으로 저장
+dict(compName) = fields
+
+' Dictionary에서 데이터 읽기
+If dict.Exists(compName) Then
+    ' 배열에 저장된 데이터에 접근
+    WScript.Echo "Computer Name: " & dict(compName)(0) ' "computer1"
+    WScript.Echo "Site Name: " & dict(compName)(1) ' "sitename1"
+    WScript.Echo "Value 1: " & dict(compName)(2) ' "value1"
+End If
+```
+
+### 요약
+- `dict(compName)`에 `fields` 배열을 저장하면, `compName` 키를 통해 `fields` 배열의 모든 값을 쉽게 접근하고 사용할 수 있습니다.
+- 배열은 동적으로 크기가 조정될 수 있으며, 이를 통해 다양한 CSV 레코드의 정보를 손쉽게 관리할 수 있습니다. 
+
+이런 방식으로 데이터를 관리하면 병합, 변환 등 다양한 작업을 효율적으로 처리할 수 있습니다.
