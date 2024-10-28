@@ -1,0 +1,57 @@
+Dim fso, file1, file2, outputFile, line, fields, dict, compName
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' 파일 경로 설정
+Const filePath1 = "C:\path\to\cwat.csv" ' CWAT에서 추출한 파일 (UTF-8 without BOM)
+Const filePath2 = "C:\path\to\tanium.csv" ' Tanium에서 추출한 파일 (UTF-16 with BOM)
+Const outputPath = "C:\path\to\output.csv" ' UTF-8 without BOM으로 저장할 파일
+
+' 파일 열기
+Set file1 = fso.OpenTextFile(filePath1, 1, False) ' UTF-8 파일
+Set file2 = fso.OpenTextFile(filePath2, 1, False, -1) ' UTF-16 파일 (대응값 -1 사용)
+Set outputFile = fso.CreateTextFile(outputPath, True, False) ' UTF-8 without BOM으로 생성
+
+' CWAT 데이터 읽기 및 저장
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine
+    fields = Split(line, ",") ' CWAT 파일의 필드를 쉼표로 분리
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름이라고 가정
+
+    ' Dictionary에 컴퓨터 이름을 키로 하고 전체 레코드를 값으로 저장
+    dict(compName) = fields
+Loop
+file1.Close
+
+' Tanium 데이터 읽기 및 병합
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine
+    fields = Split(line, ",") ' Tanium 파일의 필드를 쉼표로 분리
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름이라고 가정
+
+    ' CWAT 데이터와 동일한 컴퓨터 이름이 있을 때 병합 처리
+    If dict.Exists(compName) Then
+        If UCase(dict(compName)(1)) = "MC" Or UCase(fields(1)) = "MC" Then
+            ' 조건에 따라 병합 (areaname과 Dest 값 변경)
+            If UCase(dict(compName)(8)) = "N/A" Then dict(compName)(8) = "stg-x"
+            If UCase(fields(8)) = "N/A" Then fields(8) = "stg-x"
+
+            dict(compName)(14) = "stg-v" ' Dest를 'stg-v'로 설정
+            fields(14) = "stg-v" ' Dest를 'stg-v'로 설정
+        End If
+        ' Tanium 데이터가 CWAT 데이터와 다를 경우, CWAT 데이터와 병합 (이 경우, Tanium 데이터를 우선 사용)
+        dict(compName) = fields
+    Else
+        ' Tanium에만 있는 컴퓨터는 추가
+        dict(compName) = fields
+    End If
+Loop
+file2.Close
+
+' Dictionary에서 최종 병합된 데이터를 output 파일에 쓰기
+For Each compName In dict.Keys
+    outputFile.WriteLine Join(dict(compName), ",")
+Next
+
+outputFile.Close
