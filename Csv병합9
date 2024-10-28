@@ -1,0 +1,60 @@
+네, 맞습니다. `Join` 함수는 기본적으로 각 요소를 쉼표(`,`)로 연결해서 문자열로 만듭니다. 그래서 `WriteLine Join(values, ",")` 같은 코드가 있다면, 쉼표가 포함된 단일 문자열이 만들어져 파일에 기록되게 됩니다. 
+
+만약 쉼표 없이 각 셀에 개별적으로 데이터를 기록하고 싶다면, `Join`을 사용하지 않고 **각 값을 직접 `Write` 메서드를 통해 한 셀씩 작성**하면 됩니다.
+
+아래는 `Join` 없이 개별 값만 기록하는 방법입니다:
+
+### `WriteLine` 사용하지 않고 개별 값 기록
+
+아래는 CSV 형식에서 쉼표 없이 각 셀에 데이터를 쓰는 예시입니다.
+
+```vbs
+' 파일 경로 정의
+cwatFilePath = "C:\path\to\cwat.csv"
+taniumFilePath = "C:\path\to\tanium.csv"
+outputFilePath = "C:\path\to\merged.csv"
+
+' 파일 시스템 객체 생성
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set cwatFile = objFSO.OpenTextFile(cwatFilePath, 1)
+Set taniumFile = objFSO.OpenTextFile(taniumFilePath, 1)
+Set outputFile = objFSO.CreateTextFile(outputFilePath, True)
+
+' CWAT 파일 내용 작성
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    values = Split(line, ",")
+    
+    ' 개별 셀 단위로 기록 (쉼표 없이)
+    For i = 0 To UBound(values)
+        If i > 0 Then outputFile.Write Chr(9) ' 탭으로 구분
+        outputFile.Write Trim(Replace(values(i), """", ""))
+    Next
+    outputFile.WriteLine
+Loop
+cwatFile.Close
+
+' Tanium 파일 덮어쓰기
+Do Until taniumFile.AtEndOfStream
+    taniumLine = taniumFile.ReadLine
+    taniumValues = Split(taniumLine, ",")
+    
+    ' 각 값을 비교하고, 다르면 Tanium 값으로 업데이트
+    For i = 0 To UBound(taniumValues)
+        If i > 0 Then outputFile.Write Chr(9) ' 탭으로 구분
+        outputFile.Write Trim(Replace(taniumValues(i), """", ""))
+    Next
+    outputFile.WriteLine
+Loop
+taniumFile.Close
+outputFile.Close
+
+WScript.Echo "CSV 병합 및 개별 셀 기록 완료"
+```
+
+### 코드 설명
+1. **개별 값 기록**: `Join` 대신 `outputFile.Write`와 `outputFile.WriteLine`을 사용해 각 값을 파일에 개별적으로 기록합니다.
+2. **탭 구분**: 쉼표 대신 `Chr(9)` (탭 문자)를 사용해 각 셀을 구분합니다.
+3. **마지막 `WriteLine`**: 각 행이 끝날 때 `outputFile.WriteLine`을 사용하여 줄바꿈을 추가합니다. 
+
+이 코드로 실행하면 쉼표 없이 각 데이터가 CSV 파일의 개별 셀에 기록됩니다.
