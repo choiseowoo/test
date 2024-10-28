@@ -1,0 +1,45 @@
+' 파일 경로 정의
+cwatFilePath = "C:\path\to\cwat.csv"
+taniumFilePath = "C:\path\to\tanium.csv"
+outputFilePath = "C:\path\to\merged.csv"
+
+' 파일 시스템 객체 생성
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set cwatFile = objFSO.OpenTextFile(cwatFilePath, 1) ' CWAT CSV 읽기 모드로 열기
+Set taniumFile = objFSO.OpenTextFile(taniumFilePath, 1) ' Tanium CSV 읽기 모드로 열기
+Set outputFile = objFSO.CreateTextFile(outputFilePath, True) ' 병합된 파일 작성
+
+' 특정 값을 변환하는 함수
+Function ReplaceNull(value)
+    If value = "n/a" Then
+        ReplaceNull = "stg-x" ' n/a 값을 stg-x로 변환
+    Else
+        ReplaceNull = value ' 그대로 유지
+    End If
+End Function
+
+' CWAT 파일 읽기
+Dim cwatData()
+rowCount = 0
+
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    ReDim Preserve cwatData(rowCount) ' 배열 크기 증가
+    cwatData(rowCount) = line ' 각 행을 배열에 저장
+    rowCount = rowCount + 1
+Loop
+cwatFile.Close
+
+' Tanium 데이터 읽고 덮어쓰기
+lineNumber = 0
+
+Do Until taniumFile.AtEndOfStream
+    taniumLine = taniumFile.ReadLine
+    taniumValues = Split(taniumLine, ",")
+    
+    ' CWAT 데이터를 가져옴
+    cwatValues = Split(cwatData(lineNumber), ",")
+    
+    ' Tanium 데이터와 CWAT 데이터 비교
+    For i = 0 To UBound(taniumValues)
+        taniumValues(i) = ReplaceNull(taniumValues(i)) ' n/a 값은 stg-x로 변환
