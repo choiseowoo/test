@@ -1,0 +1,71 @@
+알겠습니다. CSV 파일에서 `computername`이 첫 번째 값이고, `sitename`과 `areaname`이 각각 두 번째와 여덟 번째 위치에 있는 경우에 맞게 코드를 조정하겠습니다.
+
+아래 코드는 `computername`을 기준으로 CWAT과 Tanium의 데이터를 병합하며, `sitename` 값이 "mc"일 때 `areaname`을 조건에 맞게 변환하는 방법을 보여줍니다.
+
+```vbscript
+Dim fso, file1, file2, outputFile, line, fields, dict, compName
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' 파일 경로 설정
+Const filePath1 = "C:\path\to\cwat.csv" ' CWAT에서 추출한 파일 (UTF-8 without BOM)
+Const filePath2 = "C:\path\to\tanium.csv" ' Tanium에서 추출한 파일 (UTF-16 with BOM)
+Const outputPath = "C:\path\to\output.csv" ' UTF-8 without BOM으로 저장할 파일
+
+' 파일 열기
+Set file1 = fso.OpenTextFile(filePath1, 1, False) ' UTF-8 파일
+Set file2 = fso.OpenTextFile(filePath2, 1, False, -1) ' UTF-16 파일 (대응값 -1 사용)
+Set outputFile = fso.CreateTextFile(outputPath, True, False) ' UTF-8 without BOM으로 생성
+
+' CWAT 데이터 읽기 및 저장
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine
+    fields = Split(line, ",") ' CWAT 파일의 필드를 쉼표로 분리
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름 (메인키)
+
+    ' Dictionary에 컴퓨터 이름을 키로 하고 전체 레코드를 값으로 저장
+    dict(compName) = fields
+Loop
+file1.Close
+
+' Tanium 데이터 읽기 및 병합
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine
+    fields = Split(line, ",") ' Tanium 파일의 필드를 쉼표로 분리
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름 (메인키)
+
+    ' CWAT 데이터와 동일한 컴퓨터 이름이 있을 때 병합 처리
+    If dict.Exists(compName) Then
+        ' sitename이 "mc"인 경우 조건에 맞게 변경
+        If UCase(fields(1)) = "MC" Then ' Tanium의 sitename이 mc인 경우
+            If UCase(dict(compName)(7)) = "N/A" Then dict(compName)(7) = "stg-x" ' CWAT에서 areaname이 n/a인 경우
+            If UCase(fields(7)) = "N/A" Then fields(7) = "stg-x" ' Tanium에서도 동일한 조건 적용
+            dict(compName)(14) = "stg-v" ' CWAT의 Dest를 'stg-v'로 설정
+            fields(14) = "stg-v" ' Tanium의 Dest를 'stg-v'로 설정
+        End If
+        
+        ' Tanium 데이터를 우선으로 하여 병합
+        dict(compName) = fields
+    Else
+        ' Tanium에만 있는 컴퓨터는 추가
+        dict(compName) = fields
+    End If
+Loop
+file2.Close
+
+' Dictionary에서 최종 병합된 데이터를 output 파일에 쓰기
+For Each compName In dict.Keys
+    outputFile.WriteLine Join(dict(compName), ",")
+Next
+
+outputFile.Close
+```
+
+### 코드 설명
+1. **`computername` 사용**: `computername`은 첫 번째 필드에 위치하므로 `compName`으로 사용하여 `Dictionary`에 저장합니다.
+2. **조건 변환**: `sitename`이 "mc"인 경우, 8번째 필드(`areaname`)가 "n/a"일 때 "stg-x"로 변환하고, `Dest`는 "stg-v"로 설정합니다. 
+3. **병합**: 동일한 `computername`이 있을 때, Tanium 데이터를 우선하여 병합합니다.
+4. **출력**: 최종적으로 병합된 레코드를 하나의 CSV 파일로 출력합니다.
+
+이렇게 하면 `computername`이 같은 경우, 조건에 맞춰서 변환 및 병합이 이루어집니다.
