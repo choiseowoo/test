@@ -1,0 +1,63 @@
+' 파일 경로 정의
+cwatFilePath = "C:\path\to\cwat.csv"
+taniumFilePath = "C:\path\to\tanium.csv"
+outputFilePath = "C:\path\to\merged.csv"
+
+' 파일 시스템 객체 생성
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set cwatFile = objFSO.OpenTextFile(cwatFilePath, 1)
+Set taniumFile = objFSO.OpenTextFile(taniumFilePath, 1)
+Set outputFile = objFSO.CreateTextFile(outputFilePath, True)
+
+' 시간 변환 함수
+Function FormatTime(value)
+    On Error Resume Next ' 에러 방지
+    FormatTime = FormatDateTime(value, 4) ' 짧은 시간 형식 (HH:mm:ss)
+    If Err.Number <> 0 Then ' 변환 실패 시 원래 값 반환
+        FormatTime = value
+    End If
+    On Error GoTo 0
+End Function
+
+' CWAT 파일 내용 작성
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    values = Split(line, ",")
+    
+    ' 개별 셀 단위로 탭 구분자를 사용해 기록
+    For i = 0 To UBound(values)
+        If i > 0 Then outputFile.Write Chr(9) ' 탭으로 구분
+
+        ' 13~15번째 인덱스는 시간 형식으로 변환
+        If i = 12 Or i = 13 Or i = 14 Then
+            outputFile.Write FormatTime(Trim(Replace(values(i), """", "")))
+        Else
+            outputFile.Write Trim(Replace(values(i), """", ""))
+        End If
+    Next
+    outputFile.WriteLine
+Loop
+cwatFile.Close
+
+' Tanium 파일 덮어쓰기
+Do Until taniumFile.AtEndOfStream
+    taniumLine = taniumFile.ReadLine
+    taniumValues = Split(taniumLine, ",")
+    
+    ' 각 값을 비교하고, 다르면 Tanium 값으로 업데이트
+    For i = 0 To UBound(taniumValues)
+        If i > 0 Then outputFile.Write Chr(9) ' 탭으로 구분
+
+        ' 13~15번째 인덱스는 시간 형식으로 변환
+        If i = 12 Or i = 13 Or i = 14 Then
+            outputFile.Write FormatTime(Trim(Replace(taniumValues(i), """", "")))
+        Else
+            outputFile.Write Trim(Replace(taniumValues(i), """", ""))
+        End If
+    Next
+    outputFile.WriteLine
+Loop
+taniumFile.Close
+outputFile.Close
+
+WScript.Echo "CSV 병합 및 시간 형식 적용 완료"
