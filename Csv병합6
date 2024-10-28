@@ -1,0 +1,81 @@
+`Split` 함수를 사용할 때 쉼표(`","`)로 분할하면 각 값이 개별 셀에 들어가야 하지만, 데이터에 이미 쉼표가 포함되어 있을 경우 엑셀에서 쉼표를 값의 일부로 인식할 수 있습니다. 
+
+이 문제를 해결하려면 **CSV 데이터를 각 셀에 올바르게 넣도록 쉼표 없이 직접 데이터만 가져와** Excel의 셀에 입력할 수 있습니다. 쉼표가 포함된 CSV 파일을 정확하게 처리하려면 CSV의 각 값을 따로 읽어서 Excel의 셀에 삽입하는 방식으로 접근해야 합니다.
+
+아래는 이를 처리하기 위한 VBS 코드입니다.
+
+### 수정된 VBS 코드 (쉼표 없이 데이터만 각 셀에 넣기)
+
+```vbs
+' 파일 경로 정의
+cwatFilePath = "C:\path\to\cwat.csv"
+taniumFilePath = "C:\path\to\tanium.csv"
+outputFilePath = "C:\path\to\merged.xlsx" ' Excel 파일로 저장
+
+' Excel 애플리케이션 객체 생성
+Set objExcel = CreateObject("Excel.Application")
+Set objWorkbook = objExcel.Workbooks.Add
+Set objSheet = objWorkbook.Sheets(1)
+
+' 특정 값을 변환하는 함수
+Function ReplaceNull(value)
+    If value = "n/a" Then
+        ReplaceNull = "stg-x" ' n/a 값을 stg-x로 변환
+    Else
+        ReplaceNull = value ' 그대로 유지
+    End If
+End Function
+
+' CWAT 데이터 입력
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set cwatFile = objFSO.OpenTextFile(cwatFilePath, 1) ' CWAT CSV 읽기 모드로 열기
+row = 1
+
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    values = Split(line, ",") ' 쉼표를 기준으로 분리
+
+    ' 각 값을 Excel 셀에 입력, 공백 제거 및 데이터만 삽입
+    For col = 0 To UBound(values)
+        values(col) = Trim(Replace(values(col), """", "")) ' 따옴표 제거 및 공백 정리
+        objSheet.Cells(row, col + 1).Value = values(col)
+    Next
+    row = row + 1
+Loop
+cwatFile.Close
+
+' Tanium 데이터 읽고 덮어쓰기
+Set taniumFile = objFSO.OpenTextFile(taniumFilePath, 1)
+row = 1
+
+Do Until taniumFile.AtEndOfStream
+    taniumLine = taniumFile.ReadLine
+    taniumValues = Split(taniumLine, ",")
+    
+    ' CWAT 데이터 가져오기
+    For col = 0 To UBound(taniumValues)
+        taniumValues(col) = ReplaceNull(Trim(Replace(taniumValues(col), """", ""))) ' n/a 값은 stg-x로 변환
+        cwatValue = objSheet.Cells(row, col + 1).Value ' CWAT 셀 값 가져오기
+
+        ' 동일한 값은 그대로, 다른 값은 Tanium 데이터로 덮어씌움
+        If cwatValue <> taniumValues(col) Then
+            objSheet.Cells(row, col + 1).Value = taniumValues(col)
+        End If
+    Next
+    row = row + 1
+Loop
+taniumFile.Close
+
+' 병합된 데이터를 Excel 파일로 저장
+objWorkbook.SaveAs outputFilePath
+objWorkbook.Close
+objExcel.Quit
+
+WScript.Echo "Excel 파일 병합 및 null 값 변환 완료"
+```
+
+### 코드 설명:
+- **Trim 및 Replace 사용**: 각 값에서 공백과 따옴표(`"`)를 제거하여 쉼표 없이 순수한 데이터만 각 셀에 입력됩니다.
+- **Excel 셀에 직접 입력**: 각 값을 개별적으로 다루어 각 셀에 정확히 기록합니다.
+
+이렇게 하면 쉼표 없이 각 데이터가 Excel 셀에 입력되므로, 불필요한 쉼표가 남지 않게 됩니다.
