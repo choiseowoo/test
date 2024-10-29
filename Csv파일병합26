@@ -1,0 +1,62 @@
+네, Tanium CSV 파일에 컬럼명이 포함되어 있다면 첫 줄을 건너뛰고 그다음 줄부터 검색을 시작하면 됩니다. 아래 코드에서는 첫 줄을 읽어서 컬럼명을 무시하고, 두 번째 줄부터 `compName` 값을 Dictionary에 추가하도록 수정했습니다.
+
+### 수정된 코드
+
+```vbscript
+Dim fso, cwatFile, taniumFile, outputFile, line, fields, dict, compName
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' 파일 경로 설정
+Const cwatFilePath = "C:\path\to\cwat.csv"    ' CWAT CSV 파일 경로
+Const taniumFilePath = "C:\path\to\tanium.csv" ' Tanium CSV 파일 경로
+Const outputPath = "C:\path\to\output.csv"     ' 출력 CSV 파일 경로
+
+' Tanium 파일을 Dictionary에 읽어들이기
+Set taniumFile = fso.OpenTextFile(taniumFilePath, 1, False)
+
+' 첫 줄(컬럼명) 건너뛰기
+If Not taniumFile.AtEndOfStream Then
+    taniumFile.ReadLine
+End If
+
+' Tanium 파일의 데이터 부분 읽기
+Do Until taniumFile.AtEndOfStream
+    line = taniumFile.ReadLine
+    fields = Split(line, ",")
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름
+
+    ' Tanium의 컴퓨터 이름을 Dictionary에 키로 저장
+    dict(compName) = True
+Loop
+taniumFile.Close
+
+' CWAT 파일 읽기 및 중복 체크 후 출력 파일에 추가
+Set cwatFile = fso.OpenTextFile(cwatFilePath, 1, False)
+Set outputFile = fso.CreateTextFile(outputPath, True, False)
+
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    fields = Split(line, ",")
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름
+
+    ' Tanium에 compName이 없으면 출력 파일에 추가
+    If Not dict.Exists(compName) Then
+        ' 조건에 맞는 변환 (예: sitename이 "mc"일 때 areaname을 "stg-x"로 변경)
+        If fields(1) = "mc" And fields(8) = "n/a" Then
+            fields(8) = "stg-x"
+        End If
+        outputFile.WriteLine Join(fields, ",")
+    End If
+Loop
+cwatFile.Close
+outputFile.Close
+```
+
+### 코드 설명
+
+- **첫 줄 건너뛰기**: `taniumFile.ReadLine`을 사용해 첫 줄을 읽고 무시하여 컬럼명을 건너뛰도록 했습니다.
+- 그 외의 코드 흐름은 동일하게 유지됩니다.
+
+이제 Tanium 파일에서 첫 줄을 건너뛴 후 데이터 검색이 가능하므로, 컬럼명이 포함된 CSV 파일에도 적용할 수 있습니다.
