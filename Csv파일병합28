@@ -1,0 +1,49 @@
+Dim fso, cwatFile, taniumFile, outputFile, line, fields, dict, compName
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' 파일 경로 설정
+Const cwatFilePath = "C:\path\to\cwat.csv"    ' CWAT CSV 파일 경로
+Const taniumFilePath = "C:\path\to\tanium.csv" ' Tanium CSV 파일 경로
+Const outputPath = "C:\path\to\output.csv"     ' 출력 CSV 파일 경로
+
+' CWAT 파일을 읽어서 그대로 출력 파일에 추가하고 Dictionary에 저장
+Set cwatFile = fso.OpenTextFile(cwatFilePath, 1, False)
+Set outputFile = fso.CreateTextFile(outputPath, True, False)
+
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    fields = Split(line, ",")
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름
+
+    ' CWAT의 데이터를 그대로 출력 파일에 기록
+    outputFile.WriteLine line
+
+    ' CWAT의 컴퓨터 이름을 Dictionary에 키로 저장 (중복 체크용)
+    dict(compName) = True
+Loop
+cwatFile.Close
+
+' Tanium 파일 읽기 및 중복 체크 후 출력 파일에 추가
+Set taniumFile = fso.OpenTextFile(taniumFilePath, 1, False)
+
+Do Until taniumFile.AtEndOfStream
+    line = taniumFile.ReadLine
+    fields = Split(line, ",")
+    compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름
+
+    ' 필드 개수가 충분한지 확인
+    If UBound(fields) >= 8 Then
+        ' CWAT에 없는 compName이면 출력 파일에 추가
+        If Not dict.Exists(compName) Then
+            ' 조건에 맞는 변환 (예: sitename이 "mc"일 때 areaname을 "stg-x"로 변경)
+            If fields(1) = "mc" And fields(8) = "n/a" Then
+                fields(8) = "stg-x"
+            End If
+            outputFile.WriteLine Join(fields, ",")
+        End If
+    End If
+Loop
+taniumFile.Close
+outputFile.Close
