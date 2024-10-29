@@ -1,0 +1,69 @@
+`fields(1)`에서조차 "인덱스를 찾을 수 없다"는 오류가 발생하는 경우, 그 줄이 쉼표로 나누어져 있는 필드가 거의 없거나 비어 있는 경우가 있을 수 있습니다. 이를 방지하려면, 각 줄에 필드가 존재하는지 확인하는 추가 처리를 해야 합니다.
+
+파일의 각 줄이 비어 있거나 예상한 형식이 아닐 수 있으므로, 우선 해당 줄이 비어 있는지 확인한 후에 `Split` 함수를 사용하도록 코드를 수정하겠습니다.
+
+### 수정된 코드 예시 (비어 있는 줄 확인 추가)
+
+```vbscript
+Dim fso, cwatFile, taniumFile, outputFile, line, fields, dict, compName
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' 파일 경로 설정
+Const cwatFilePath = "C:\path\to\cwat.csv"    ' CWAT CSV 파일 경로
+Const taniumFilePath = "C:\path\to\tanium.csv" ' Tanium CSV 파일 경로
+Const outputPath = "C:\path\to\output.csv"     ' 출력 CSV 파일 경로
+
+' CWAT 파일을 읽어서 그대로 출력 파일에 추가하고 Dictionary에 저장
+Set cwatFile = fso.OpenTextFile(cwatFilePath, 1, False)
+Set outputFile = fso.CreateTextFile(outputPath, True, False)
+
+Do Until cwatFile.AtEndOfStream
+    line = cwatFile.ReadLine
+    If Trim(line) <> "" Then ' 줄이 비어 있지 않은 경우에만 처리
+        fields = Split(line, ",")
+        compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름
+
+        ' CWAT의 데이터를 그대로 출력 파일에 기록
+        outputFile.WriteLine line
+
+        ' CWAT의 컴퓨터 이름을 Dictionary에 키로 저장 (중복 체크용)
+        dict(compName) = True
+    End If
+Loop
+cwatFile.Close
+
+' Tanium 파일 읽기 및 중복 체크 후 출력 파일에 추가
+Set taniumFile = fso.OpenTextFile(taniumFilePath, 1, False)
+
+Do Until taniumFile.AtEndOfStream
+    line = taniumFile.ReadLine
+    If Trim(line) <> "" Then ' 줄이 비어 있지 않은 경우에만 처리
+        fields = Split(line, ",")
+        
+        ' 필드 개수가 충분한지 확인
+        If UBound(fields) >= 8 Then
+            compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름
+
+            ' CWAT에 없는 compName이면 출력 파일에 추가
+            If Not dict.Exists(compName) Then
+                ' 조건에 맞는 변환 (예: sitename이 "mc"일 때 areaname을 "stg-x"로 변경)
+                If fields(1) = "mc" And fields(8) = "n/a" Then
+                    fields(8) = "stg-x"
+                End If
+                outputFile.WriteLine Join(fields, ",")
+            End If
+        End If
+    End If
+Loop
+taniumFile.Close
+outputFile.Close
+```
+
+### 변경 사항 및 설명
+
+1. **빈 줄 체크**: 각 줄을 `Trim(line) <> ""` 조건으로 확인하여 비어 있는 줄을 건너뜁니다.
+2. **필드 개수 확인**: `Split` 후 `UBound(fields) >= 8`을 다시 체크하여 필드가 충분한지 확인합니다.
+
+이렇게 하면 **비어 있는 줄과 필드가 부족한 줄**이 건너뛰어져야 하므로 `fields(1)` 및 `fields(8)` 접근 시 오류가 발생하지 않을 것입니다.
