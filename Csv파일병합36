@@ -1,0 +1,38 @@
+`compName = fields(0)`에서 인덱스 에러가 발생한다면 `Split`으로 분리한 `fields` 배열에 최소 하나 이상의 요소가 없다는 뜻입니다. 이는 `Split(line, vbTab)` 또는 `Split(line, ",")`가 제대로 작동하지 않거나, 빈 줄을 읽어 들였을 때 발생할 수 있습니다.
+
+### 문제 원인 분석 및 해결
+
+1. **빈 줄이나 예기치 않은 형식의 줄을 처리하는 조건 추가**  
+   빈 줄이나 올바른 형식이 아닌 줄을 포함할 수 있으므로, 이 경우를 방지하기 위해 `UBound(fields) >= 8` 조건을 사용해 필드 개수를 확인하고 나머지 로직을 실행해야 합니다.
+
+2. **코드 수정 예시**  
+   아래와 같이 `If UBound(fields) >= 8 Then` 조건문을 통해 필드 개수를 검사하여 인덱스 에러를 방지할 수 있습니다. 이 방식은 첫 번째 필드가 `compName`이 되고, 9번째 필드가 `areaname`이 되도록 보장해 줍니다.
+
+   ```vbscript
+   Do Until taniumFile.AtEndOfStream
+       line = taniumFile.ReadLine
+       If Trim(line) <> "" Then ' 빈 줄이 아닌 경우만 처리
+           fields = Split(line, vbTab) ' 탭으로 분리
+
+           ' 필드 개수가 충분한지 확인하여 인덱스 에러 방지
+           If UBound(fields) >= 8 Then
+               compName = fields(0) ' 첫 번째 필드가 컴퓨터 이름
+
+               ' CWAT에 없는 compName이면 출력 파일에 추가
+               If Not dict.Exists(compName) Then
+                   ' 조건에 맞는 변환 (예: sitename이 "mc"일 때 areaname을 "stg-x"로 변경)
+                   If fields(1) = "mc" And fields(8) = "n/a" Then
+                       fields(8) = "stg-x"
+                   End If
+                   outputFile.WriteLine Join(fields, ",")
+               End If
+           End If
+       End If
+   Loop
+   ```
+
+### 추가 설명
+
+- **필드 개수 확인 (`If UBound(fields) >= 8 Then`)**: 이 조건을 추가해 `fields` 배열에 충분한 필드가 있는지 확인합니다. 이로 인해 `fields(0)`와 `fields(8)`에 접근할 때 안전하게 처리할 수 있습니다.
+  
+이 수정사항으로 인해 `compName = fields(0)`에서 발생하던 인덱스 오류는 해결되고, `If fields(1) = "mc" And fields(8) = "n/a"` 조건도 정상적으로 작동하게 됩니다.
