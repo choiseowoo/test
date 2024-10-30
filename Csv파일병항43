@@ -1,0 +1,89 @@
+맞습니다. 데이터가 메모장에서 여러 줄로 표시되면, 해당 CSV 파일은 한 줄의 레코드로 읽히지 않아 필드 분리가 어렵게 됩니다. 이런 경우, 파일이 정확하게 CSV 형식으로 만들어지지 않은 것이 원인입니다.
+
+이 문제를 해결하기 위해서는 `fields(5)`에서 MAC 주소 부분을 정확히 가져오기 위해 **줄바꿈과 큰따옴표를 포함한 특수 처리가 필요**합니다. 아래는 이러한 경우를 다루기 위한 해결 방법입니다.
+
+### 해결 방법: 여러 줄을 하나로 인식
+
+아래 코드는 `fields(5)`에서 첫 번째 MAC 주소만 가져올 수 있도록 줄바꿈과 큰따옴표를 처리하여 필드를 올바르게 인식하도록 합니다.
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields, macAddressField, firstMacAddress
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading 모드
+
+' 출력 파일 설정
+Set outputStream = CreateObject("ADODB.Stream")
+outputStream.Type = 2 ' 텍스트 모드
+outputStream.Charset = "UTF-8" ' UTF-8 (BOM 없이) 설정
+outputStream.Open
+
+Dim currentLine, fullLine, isMultiLine
+isMultiLine = False
+fullLine = ""
+
+Do Until inputFile.AtEndOfStream
+    currentLine = inputFile.ReadLine
+
+    ' 줄이 큰따옴표로 시작하지만 끝나지 않으면 여러 줄로 이루어진 데이터
+    If InStr(currentLine, """") > 0 And Right(currentLine, 1) <> """" Then
+        fullLine = currentLine ' 여러 줄의 첫 줄
+        isMultiLine = True
+    ElseIf isMultiLine Then
+        fullLine = fullLine & vbCrLf & currentLine ' 여러 줄을 이어서 추가
+
+        ' 끝에 큰따옴표가 있는 줄에서 종료
+        If Right(currentLine, 1) = """" Then
+            line = fullLine
+            isMultiLine = False
+        Else
+            Continue Do
+        End If
+    Else
+        line = currentLine
+    End If
+
+    ' 큰따옴표와 개행 제거 후 필드 분리
+    line = Replace(line, """", "")
+    fields = Split(line, ",")
+
+    ' 필드가 충분한 항목을 가지고 있는지 확인
+    If UBound(fields) >= 5 Then
+        ' MAC 주소 부분 첫 줄만 추출
+        macAddressField = fields(5)
+        firstMacAddress = Split(macAddressField, vbCrLf)(0)
+
+        ' 첫 번째 MAC 주소만 필드에 넣기
+        fields(5) = firstMacAddress
+
+        ' 수정된 필드를 outputStream에 기록
+        outputStream.WriteText Join(fields, ",") & vbCrLf
+    End If
+Loop
+
+' 결과를 UTF-8 BOM 없이 저장
+outputStream.SaveToFile "output.csv", 2 ' 2는 덮어쓰기 모드
+
+' 리소스 정리
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+### 코드 설명
+
+1. **멀티라인 레코드 처리**:
+   - `isMultiLine` 변수를 사용하여, 필드 값이 여러 줄로 되어 있는 경우 줄을 이어서 읽고 완성된 줄이 될 때까지 `fullLine`에 쌓습니다.
+
+2. **큰따옴표와 개행 제거**:
+   - `Replace(line, """", "")`로 큰따옴표를 제거하고 `Split`을 사용해 콤마로 구분합니다.
+   
+3. **첫 번째 MAC 주소만 추출**:
+   - `fields(5)`의 첫 줄만 `firstMacAddress`에 저장하고, 이를 사용하여 최종적으로 정리된 데이터를 기록합니다.
+
+이 코드로 한 셀에 여러 줄이 있는 경우를 처리하면서, 필요한 MAC 주소만 정상적으로 가져올 수 있습니다.
