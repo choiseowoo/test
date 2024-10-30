@@ -1,0 +1,63 @@
+CSV 파일의 `fields(5)` 값이 여러 줄로 되어 있는 경우, **첫 번째 줄의 MAC 주소만 추출**하려면 `Replace`를 사용해 불필요한 `"`(큰따옴표)를 제거하고, `Split`을 사용해 줄바꿈을 기준으로 MAC 주소 목록을 나누는 방법이 효과적입니다.
+
+아래는 이를 구현하는 VBScript 예제입니다.
+
+### 예시 코드
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields, macAddressField, firstMacAddress
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading 모드
+
+' 출력 파일 설정
+Set outputStream = CreateObject("ADODB.Stream")
+outputStream.Type = 2 ' 텍스트 모드
+outputStream.Charset = "UTF-8" ' UTF-8 (BOM 없이) 설정
+outputStream.Open
+
+' 파일 줄별로 읽기
+Do Until inputFile.AtEndOfStream
+    line = inputFile.ReadLine
+    fields = Split(line, ",") ' CSV의 각 필드를 콤마로 나눔
+
+    ' 필드가 충분한 항목을 가지고 있는지 확인
+    If UBound(fields) >= 5 Then
+        ' fields(5)에서 큰따옴표 제거 후 줄바꿈 문자로 Split하여 첫 번째 MAC 주소만 가져오기
+        macAddressField = Replace(fields(5), """", "") ' 큰따옴표 제거
+        firstMacAddress = Split(macAddressField, vbCrLf)(0) ' 첫 번째 줄의 MAC 주소 가져오기
+
+        ' 필드에 첫 번째 MAC 주소를 다시 넣기
+        fields(5) = firstMacAddress
+
+        ' 수정된 필드를 outputStream에 기록
+        outputStream.WriteText Join(fields, ",") & vbCrLf
+    End If
+Loop
+
+' 결과를 UTF-8 BOM 없이 저장
+outputStream.SaveToFile "output.csv", 2 ' 2는 덮어쓰기 모드
+
+' 리소스 정리
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+### 코드 설명
+
+1. **큰따옴표 제거**:
+   - `Replace(fields(5), """", "")`로 `fields(5)`에서 모든 `"` 문자를 제거합니다.
+
+2. **첫 번째 MAC 주소 추출**:
+   - `Split(macAddressField, vbCrLf)(0)`를 사용해 줄바꿈 문자(`vbCrLf`) 기준으로 `macAddressField`를 나눈 후, 첫 번째 항목 `(0)`만 가져옵니다. 이렇게 하면 "11-11-11-11"만 남게 됩니다.
+
+3. **수정된 필드로 CSV 작성**:
+   - 첫 번째 MAC 주소만 남기고 나머지 줄들을 무시하여 출력 파일에 기록합니다.
+
+이 방식으로 **첫 번째 줄의 MAC 주소만 남겨서 `output.csv`에 저장**할 수 있습니다.
