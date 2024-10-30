@@ -1,0 +1,54 @@
+주어진 CSV 파일에서 `fields(5)`의 내용이 다음과 같은 형태로 저장되어 있다고 가정하겠습니다:
+
+```
+"11-11-11-11
+22-22-22-22
+33-33-33-33"
+```
+
+이 경우, 각 데이터는 큰따옴표(`"`)로 감싸져 있고, 줄바꿈 문자(`vbCrLf`)로 나누어져 있습니다. `fields(5)`가 이처럼 여러 줄의 데이터를 포함하는 경우, `fields(5)`를 직접 읽으면 전체 내용이 하나의 셀로 읽히게 됩니다. 그러나 줄바꿈 문자는 이 셀의 데이터를 여러 줄로 표시하게 됩니다.
+
+### 1. **현재 상황 설명**
+- **CSV 파일 내 셀**: CSV 파일에서 이 데이터는 하나의 셀에 들어가지만, 메모장에서 열면 여러 줄로 보입니다.
+- **인식 문제**: `fields(0)`에서 `abcd`가 읽히고, 그 다음 줄에서 `22-22-22-22`와 `33-33-33-33`이 읽히는 경우는, CSV를 처리할 때 각 줄을 읽는 방식에 따라 달라질 수 있습니다.
+
+### 2. **예시 코드**
+아래는 `fields(5)`의 첫 번째 줄만 취득하고, 나머지 줄은 무시하는 방법입니다:
+
+```vbscript
+Dim fso, inputFile, outputFile, line, fields, macAddress
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading
+Set outputFile = fso.CreateTextFile("output.csv", True, False) ' UTF-8 BOM 없음으로 생성
+
+Do Until inputFile.AtEndOfStream
+    line = inputFile.ReadLine
+    fields = Split(line, ",")
+
+    ' 필드가 충분한지 확인
+    If UBound(fields) >= 5 Then
+        ' fields(5)에서 첫 번째 MAC 주소만 추출
+        macAddress = Split(fields(5), vbCrLf)(0) ' 첫 번째 줄만 가져옴
+        fields(5) = macAddress ' 나머지 줄 제거
+
+        ' output 파일에 작성
+        outputFile.WriteLine Join(fields, ",")
+    End If
+Loop
+
+' 리소스 정리
+outputFile.Close
+inputFile.Close
+Set outputFile = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+### 3. **위 코드 설명**
+- **줄 분리**: `Split(fields(5), vbCrLf)(0)`을 사용하여 `fields(5)`의 첫 번째 줄만 취득합니다.
+- **출력**: `Join(fields, ",")`로 나머지 필드와 함께 출력합니다.
+
+### 4. **결론**
+- **`fields(0)`와 `fields(5)`**: CSV의 각 줄을 읽을 때, 개행문자 때문에 여러 줄이 같은 셀에 포함되지만, 위의 방법을 사용하면 원하는 값을 `fields(5)`에서 추출하여 사용할 수 있습니다. 
+- **조정 가능성**: 이렇게 조정하면 `fields(5)`에서 첫 번째 MAC 주소만 가져올 수 있으므로, 필요에 따라 `fields(0)`이나 다른 필드에 영향을 주지 않게 됩니다.
