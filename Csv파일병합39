@@ -1,0 +1,69 @@
+두 개의 CSV 파일을 하나의 CSV 파일로 합치면서, **UTF-8 BOM 없이** 저장하려면 `ADODB.Stream` 객체를 사용해 파일을 읽고 쓰는 방식이 유용합니다. 아래는 두 개의 CSV 파일을 병합하고, 결과를 UTF-8 BOM 없이 저장하는 VBScript 코드입니다.
+
+### 예시 코드
+
+```vbscript
+Dim fso, inputFile1, inputFile2, outputStream, line
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 첫 번째 CSV 파일 열기
+Set inputFile1 = fso.OpenTextFile("file1.csv", 1) ' ForReading 모드
+
+' 두 번째 CSV 파일 열기
+Set inputFile2 = fso.OpenTextFile("file2.csv", 1) ' ForReading 모드
+
+' 출력 파일 생성 및 UTF-8 BOM 없이 열기
+Set outputStream = CreateObject("ADODB.Stream")
+outputStream.Type = 2 ' 텍스트 모드
+outputStream.Charset = "UTF-8" ' UTF-8 설정 (BOM 없이)
+outputStream.Open
+
+' 첫 번째 파일의 모든 줄을 읽어 출력 스트림에 쓰기
+Do Until inputFile1.AtEndOfStream
+    line = inputFile1.ReadLine
+    outputStream.WriteText line & vbCrLf
+Loop
+
+' 첫 번째 파일 닫기
+inputFile1.Close
+
+' 두 번째 파일의 모든 줄을 읽어 출력 스트림에 쓰기
+Do Until inputFile2.AtEndOfStream
+    line = inputFile2.ReadLine
+    outputStream.WriteText line & vbCrLf
+Loop
+
+' 두 번째 파일 닫기
+inputFile2.Close
+
+' 결과를 UTF-8 BOM 없이 저장
+outputStream.SaveToFile "output.csv", 2 ' 2는 덮어쓰기 모드
+
+' 리소스 정리
+outputStream.Close
+Set outputStream = Nothing
+Set inputFile1 = Nothing
+Set inputFile2 = Nothing
+Set fso = Nothing
+```
+
+### 코드 설명
+
+1. **파일 열기**:
+   - `inputFile1`과 `inputFile2`로 각각 두 개의 CSV 파일을 읽기 모드(`1`)로 엽니다.
+
+2. **UTF-8 BOM 없는 출력 설정**:
+   - `ADODB.Stream` 객체를 사용해 `Charset`을 "UTF-8"로 지정하고, BOM이 없이 텍스트를 출력할 수 있게 합니다.
+
+3. **파일 병합**:
+   - 첫 번째 파일과 두 번째 파일의 모든 줄을 차례대로 `outputStream`에 기록합니다. 각 줄 끝에 줄바꿈(`vbCrLf`)을 추가하여 형식을 유지합니다.
+
+4. **파일 저장**:
+   - `outputStream.SaveToFile` 메서드를 통해 결과를 "output.csv"에 저장하며, BOM 없는 UTF-8 형식으로 작성합니다.
+
+5. **파일 닫기 및 리소스 정리**:
+   - 모든 파일과 개체를 닫아 메모리에서 해제합니다.
+
+이 코드로 생성된 `output.csv` 파일은 UTF-8 인코딩(BOM 없음)으로 저장되며, 두 파일의 내용을 병합한 결과가 담깁니다.
