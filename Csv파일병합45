@@ -1,0 +1,64 @@
+네, 가능합니다. `Line`에서 큰따옴표 안에 있는 개행 코드와 이후의 텍스트를 무시하도록 처리할 수 있습니다. 먼저 큰따옴표 안에 포함된 첫 번째 줄만 남기고, 이후 텍스트를 제거하는 방법을 사용할 수 있습니다.
+
+아래 코드는 `line`에서 큰따옴표 안에 있는 첫 번째 줄의 텍스트만 남기고 이후 텍스트는 제거하는 예시입니다:
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading 모드
+
+' 출력 파일 설정
+Set outputStream = CreateObject("ADODB.Stream")
+outputStream.Type = 2 ' 텍스트 모드
+outputStream.Charset = "UTF-8" ' UTF-8 (BOM 없이) 설정
+outputStream.Open
+
+Do Until inputFile.AtEndOfStream
+    line = inputFile.ReadLine
+
+    ' 큰따옴표가 포함된 경우
+    If InStr(line, """") > 0 Then
+        ' 큰따옴표 안의 첫 번째 줄만 가져오기
+        Dim quoteContent, parts, firstPart
+
+        ' 큰따옴표로 감싼 내용 가져오기
+        quoteContent = Mid(line, InStr(line, """") + 1, InStrRev(line, """") - InStr(line, """") - 1)
+
+        ' 개행 제거 후 첫 번째 줄만 추출
+        parts = Split(quoteContent, vbCrLf)
+        firstPart = parts(0) ' 첫 번째 줄만 남기기
+
+        ' 첫 번째 줄로 원본 line을 업데이트 (다른 필드는 유지)
+        line = Replace(line, quoteContent, firstPart)
+    End If
+
+    ' 필드로 분리
+    fields = Split(line, ",")
+
+    ' 필드가 충분한 항목을 가지고 있는지 확인
+    If UBound(fields) >= 5 Then
+        ' 필요한 변환 또는 추가 작업
+        outputStream.WriteText Join(fields, ",") & vbCrLf
+    End If
+Loop
+
+' 결과를 UTF-8 BOM 없이 저장
+outputStream.SaveToFile "output.csv", 2 ' 2는 덮어쓰기 모드
+
+' 리소스 정리
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+### 요약
+1. **큰따옴표 안의 텍스트**: 큰따옴표(`"`)로 감싸진 부분에서 개행 코드(`vbCrLf`)를 제거하고, 첫 번째 줄만 남기도록 합니다.
+2. **불필요한 부분 삭제**: 첫 번째 줄 뒤의 나머지 내용은 제거되므로, `22-22-22-22`, `33-33-33-33` 등이 포함되지 않습니다.
+
+이 방식으로 큰따옴표 내부의 첫 줄만 남기고 나머지 텍스트는 무시할 수 있습니다.
