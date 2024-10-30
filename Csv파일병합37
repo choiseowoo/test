@@ -1,0 +1,29 @@
+하나의 셀에 여러 줄로 적혀 있는 MAC 주소들 중 **첫 번째 줄의 MAC 주소**만 취득하려면, `Split` 함수를 사용해 줄바꿈 문자로 셀 내용을 나누고 첫 번째 항목만 선택하면 됩니다.
+
+일반적으로 줄바꿈 문자는 **CRLF** (`vbCrLf`)이거나 **LF** (`vbLf`)일 수 있습니다. 이 두 경우에 모두 대응하기 위해 `vbCrLf` 또는 `vbLf`를 기준으로 나누는 방식을 사용할 수 있습니다.
+
+### 예시 코드
+
+```vbscript
+Dim macAddress
+macAddress = fields(5) ' 6번째 필드에 MAC 주소가 있다고 가정
+
+' 줄바꿈으로 MAC 주소를 나누고 첫 번째 MAC 주소만 가져오기
+macLines = Split(macAddress, vbCrLf)
+If UBound(macLines) < 0 Then ' 줄바꿈이 없을 때 대비
+    macLines = Split(macAddress, vbLf)
+End If
+
+firstMacAddress = macLines(0) ' 첫 번째 MAC 주소
+```
+
+### 코드 설명
+
+1. **`macAddress = fields(5)`**: `fields(5)`에서 MAC 주소가 들어 있는 필드를 가져옵니다.
+  
+2. **`Split(macAddress, vbCrLf)`**: 줄바꿈(`vbCrLf`)으로 나누어 각 줄을 `macLines` 배열에 저장합니다.
+   - 만약 `vbCrLf`가 줄바꿈으로 인식되지 않는 경우 `Split(macAddress, vbLf)`로 한 번 더 확인해 첫 줄을 가져옵니다.
+   
+3. **`firstMacAddress = macLines(0)`**: 첫 번째 줄의 MAC 주소를 `firstMacAddress` 변수에 저장합니다.
+
+이제 `firstMacAddress`에 첫 번째 줄의 MAC 주소가 저장되어 있으며, 이를 출력 파일에 넣거나 다른 로직에 사용할 수 있습니다.
