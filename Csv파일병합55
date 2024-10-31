@@ -1,0 +1,63 @@
+CSV 파일에서 하나의 셀에 있는 값을 `|`로 나누어 다른 셀에 값을 분리하는 방법을 보여드리겠습니다. 
+
+아래 코드는 `macaddress`와 `ipaddress`를 나누어 `fields(4)`와 `fields(5)`에 각각 넣는 과정을 포함하고 있습니다. 
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading 모드
+
+' 출력 파일 설정
+Set outputStream = CreateObject("ADODB.Stream")
+outputStream.Type = 2 ' 텍스트 모드
+outputStream.Charset = "UTF-8" ' UTF-8 (BOM 없이) 설정
+outputStream.Open
+
+Do Until inputFile.AtEndOfStream
+    line = inputFile.ReadLine
+    
+    ' 큰따옴표 제거
+    line = Replace(line, """", "")
+    
+    ' 필드 분리
+    fields = Split(line, ",")
+    
+    ' 필드가 충분한 항목을 가지고 있는지 확인
+    If UBound(fields) >= 4 Then
+        ' macaddress와 ipaddress를 나누기
+        Dim macAddressParts
+        macAddressParts = Split(fields(4), "|")
+        
+        ' 나눈 값을 필드에 다시 할당
+        fields(4) = Trim(macAddressParts(0)) ' macaddress
+        fields(5) = Trim(macAddressParts(1)) ' ipaddress
+        
+        ' 수정된 필드를 outputStream에 기록
+        outputStream.WriteText Join(fields, ",") & vbCrLf
+    End If
+Loop
+
+' 결과를 UTF-8 BOM 없이 저장
+outputStream.SaveToFile "output.csv", 2 ' 2는 덮어쓰기 모드
+
+' 리소스 정리
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+### 코드 설명
+1. **파일 열기**: 입력 CSV 파일을 읽기 모드로 엽니다.
+2. **줄 읽기**: 파일에서 각 줄을 읽고 큰따옴표를 제거합니다.
+3. **필드 분리**: 각 줄을 쉼표(`,`)로 나누어 `fields` 배열에 저장합니다.
+4. **macaddress와 ipaddress 나누기**: `fields(4)`에서 `|`를 기준으로 나누어 `macAddressParts` 배열에 저장합니다. 첫 번째 값은 `fields(4)`에, 두 번째 값은 `fields(5)`에 할당합니다.
+5. **결과 저장**: 수정된 필드를 `outputStream`에 기록합니다.
+6. **파일 저장**: 결과를 UTF-8 BOM 없이 `output.csv` 파일로 저장합니다.
+
+이렇게 하면 `macaddress`와 `ipaddress`가 각각의 셀에 들어가게 됩니다.
