@@ -1,0 +1,61 @@
+To shift fields dynamically, you can expand the fields array after inserting the `macaddress` and `ipaddress` values at the appropriate indexes. Here’s how you can adjust the fields without disrupting the order:
+
+### Adjusted VBS Code to Shift Fields
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields, macAddressField
+
+' Create File System Object
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' Open input CSV file
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading mode
+
+' Set up output file (no BOM, UTF-8)
+Set outputStream = fso.CreateTextFile("output.csv", True, False)
+
+Do Until inputFile.AtEndOfStream
+    line = inputFile.ReadLine
+    fields = Split(line, ",") ' Split fields by comma
+
+    ' Ensure we have enough fields to modify
+    If UBound(fields) >= 5 Then
+        ' Split macaddress and ipaddress if "|" is present in the macaddress field
+        macAddressField = fields(5)
+        macParts = Split(macAddressField, "|")
+
+        ' Prepare array for shifted values
+        ReDim Preserve fields(UBound(fields) + 1)
+
+        ' Shift fields 6 through end by one position to the right
+        For i = UBound(fields) - 1 To 6 Step -1
+            fields(i + 1) = fields(i)
+        Next
+
+        ' Insert split macaddress and ipaddress
+        fields(5) = Trim(macParts(0)) ' macaddress
+        If UBound(macParts) >= 1 Then
+            fields(6) = Trim(macParts(1)) ' ipaddress if available
+        Else
+            fields(6) = "" ' Leave blank if ipaddress is not provided
+        End If
+
+        ' Write the modified line to output
+        outputStream.WriteLine Join(fields, ",")
+    End If
+Loop
+
+' Close resources
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+### Explanation
+1. **Shift Fields**: We expand the array by one additional slot and then shift the fields starting from index 6 to the end by one position to the right.
+2. **Insert Values**: After shifting, we insert the `macaddress` into index 5 and the `ipaddress` into index 6.
+3. **Write to Output**: Finally, write the modified line to the output file, which will now have properly shifted fields. 
+
+This should ensure your fields are correctly realigned without data loss.
