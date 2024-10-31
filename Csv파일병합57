@@ -1,0 +1,56 @@
+If the `Mid` function is not available, you can use the `Split` function to separate the values in the `macaddress` cell that are delimited by the `|` character. Here's a way to do that using just the `Split` function and then concatenating the results:
+
+### Updated VBS Code
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields, macAddressField
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading 모드
+
+' 출력 파일 설정
+Set outputStream = fso.CreateTextFile("output.csv", True, False) ' BOM 없이 UTF-8 설정
+
+Do Until inputFile.AtEndOfStream
+    line = inputFile.ReadLine
+
+    ' 필드 분리
+    fields = Split(line, ",")
+
+    ' 필드가 충분한 항목을 가지고 있는지 확인
+    If UBound(fields) >= 5 Then
+        ' macaddress 필드에서 |로 나누기
+        macAddressField = fields(5)
+        macParts = Split(macAddressField, "|")
+
+        ' 필요한 값을 가져오기
+        If UBound(macParts) >= 0 Then
+            fields(5) = Trim(macParts(0)) ' 첫 번째 값을 macaddress에 저장
+            If UBound(macParts) >= 1 Then
+                ' ipaddress는 macParts(1)로 가져올 수 있습니다. 필요한 경우 fields 배열에 추가할 수 있습니다.
+                fields(6) = Trim(macParts(1)) ' ipaddress를 fields(6)에 저장 (이 부분은 배열 크기에 맞춰 수정)
+            End If
+        End If
+
+        ' 수정된 필드를 outputStream에 기록
+        outputStream.WriteLine Join(fields, ",")
+    End If
+Loop
+
+' 리소스 정리
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+### 설명
+1. **Split 사용**: `Split` 함수를 사용하여 `macaddress` 필드의 값을 `|`로 나눕니다.
+2. **필드 확인**: 각 부분을 확인한 후 첫 번째 값(맥 주소)과 두 번째 값(아이피 주소)을 적절한 필드에 저장합니다.
+3. **파일 쓰기**: 변경된 필드를 `outputStream`에 기록합니다.
+
+이 방법으로 CSV 파일에서 각 필드의 값을 정확히 분리하고 새로운 형식으로 출력할 수 있습니다.
