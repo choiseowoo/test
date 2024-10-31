@@ -1,0 +1,70 @@
+개행된 내용을 한 줄로 이어붙이고 `33-33-33-33`을 삭제하려면 `isMultiLine`을 활용하여 줄을 병합하고, 병합이 끝나면 필요 없는 데이터를 삭제하도록 코드를 수정할 수 있습니다. 아래 예시는 `33-33-33-33`과 같은 데이터를 삭제하고, 필요한 첫 번째 MAC 주소(`11-11-11-11`)만 남겨 한 줄로 출력하는 방식입니다.
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields, macAddressField, firstMacAddress
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading 모드
+
+' 출력 파일 설정
+Set outputStream = CreateObject("ADODB.Stream")
+outputStream.Type = 2 ' 텍스트 모드
+outputStream.Charset = "UTF-8" ' UTF-8 (BOM 없이) 설정
+outputStream.Open
+
+Dim currentLine, fullLine, isMultiLine
+isMultiLine = False
+fullLine = ""
+
+Do Until inputFile.AtEndOfStream
+    currentLine = inputFile.ReadLine
+
+    ' 큰따옴표와 줄바꿈 처리
+    If InStr(currentLine, """") > 0 And Right(currentLine, 1) <> """" Then
+        fullLine = currentLine
+        isMultiLine = True
+    ElseIf isMultiLine Then
+        fullLine = fullLine & currentLine  ' 개행 없이 이어붙이기
+        If Right(currentLine, 1) = """" Then
+            line = fullLine
+            isMultiLine = False
+        Else
+            Continue Do
+        End If
+    Else
+        line = currentLine
+    End If
+
+    ' 큰따옴표 제거 후 필드 분리
+    line = Replace(line, """", "")
+    fields = Split(line, ",")
+
+    ' 필드가 충분한 항목을 가지고 있는지 확인
+    If UBound(fields) >= 5 Then
+        ' fields(5)에서 첫 번째 줄만 추출 후 불필요한 부분 삭제
+        macAddressField = fields(5)
+        firstMacAddress = Split(macAddressField, vbCrLf)(0) ' 첫 번째 MAC 주소만 추출
+
+        ' 필드에 첫 번째 MAC 주소만 남기기
+        fields(5) = firstMacAddress
+
+        ' 수정된 필드를 outputStream에 기록
+        outputStream.WriteText Join(fields, ",") & vbCrLf
+    End If
+Loop
+
+' 결과를 UTF-8 BOM 없이 저장
+outputStream.SaveToFile "output.csv", 2 ' 2는 덮어쓰기 모드
+
+' 리소스 정리
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+이렇게 하면 `fullLine`에 이어붙이면서 `33-33-33-33`과 같은 불필요한 값들은 한 줄로 합친 후 첫 번째 MAC 주소만 출력됩니다.
