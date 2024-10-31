@@ -1,0 +1,2 @@
+' fullLine에 현재 줄 추가, 줄바꿈 코드 포함
+fullLine = fullLine & vbCrLf & currentLine
