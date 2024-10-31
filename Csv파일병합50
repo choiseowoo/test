@@ -1,0 +1,77 @@
+현재 `fullLine`에서 `fields(5)`에 여러 줄이 포함되어 있어, 이를 한 줄로 변환하고 첫 번째 MAC 주소만 남기려면 개행 코드를 제거해야 합니다. 개행 코드를 제거한 후, `Split`을 사용하여 첫 번째 줄만 가져오면 됩니다. 
+
+아래 수정된 코드는 `macAddressField`에서 개행 코드를 제거하고 첫 번째 MAC 주소만 남기고, 나머지 데이터는 한 줄로 합쳐 출력합니다:
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields, macAddressField, firstMacAddress
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading 모드
+
+' 출력 파일 설정
+Set outputStream = CreateObject("ADODB.Stream")
+outputStream.Type = 2 ' 텍스트 모드
+outputStream.Charset = "UTF-8" ' UTF-8 (BOM 없이) 설정
+outputStream.Open
+
+Dim currentLine, fullLine, isMultiLine
+isMultiLine = False
+fullLine = ""
+
+Do Until inputFile.AtEndOfStream
+    currentLine = inputFile.ReadLine
+
+    ' 큰따옴표와 줄바꿈 처리
+    If InStr(currentLine, """") > 0 And Right(currentLine, 1) <> """" Then
+        fullLine = currentLine
+        isMultiLine = True
+    ElseIf isMultiLine Then
+        fullLine = fullLine & vbCrLf & currentLine
+        If Right(currentLine, 1) = """" Then
+            line = fullLine
+            isMultiLine = False
+        Else
+            Continue Do
+        End If
+    Else
+        line = currentLine
+    End If
+
+    ' 큰따옴표 제거 후 필드 분리
+    line = Replace(line, """", "")
+    fields = Split(line, ",")
+
+    ' 필드가 충분한 항목을 가지고 있는지 확인
+    If UBound(fields) >= 5 Then
+        ' fields(5)에서 첫 번째 줄만 추출
+        macAddressField = fields(5)
+        macAddressField = Replace(macAddressField, vbCrLf, " ") ' 개행을 공백으로 변경
+        firstMacAddress = Split(macAddressField, " ")(0) ' 첫 번째 MAC 주소만 추출
+
+        ' 첫 번째 MAC 주소만 필드에 남기기
+        fields(5) = firstMacAddress
+
+        ' 수정된 필드를 outputStream에 기록
+        outputStream.WriteText Join(fields, ",") & vbCrLf
+    End If
+Loop
+
+' 결과를 UTF-8 BOM 없이 저장
+outputStream.SaveToFile "output.csv", 2 ' 2는 덮어쓰기 모드
+
+' 리소스 정리
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+### 설명
+1. **개행 코드 제거**: `macAddressField = Replace(macAddressField, vbCrLf, " ")`를 통해 개행 코드를 공백으로 변경했습니다. 이렇게 하면 `fields(5)` 안의 줄바꿈이 공백으로 바뀌어 한 줄로 취급됩니다.
+2. **첫 번째 MAC 주소만 추출**: `firstMacAddress = Split(macAddressField, " ")(0)`를 통해 첫 번째 MAC 주소만 남기고 나머지는 무시했습니다.
+
+이렇게 하면 `fields(5)`에 첫 번째 MAC 주소만 남게 되며, 이를 포함해 나머지 데이터를 한 줄로 기록하게 됩니다.
