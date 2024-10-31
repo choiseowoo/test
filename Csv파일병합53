@@ -1,0 +1,76 @@
+지금 상황에서는 `33-33-33-33` 같은 개행된 데이터가 여전히 줄바꿈으로 출력되고 있어서 한 줄로 병합되지 않는 것으로 보입니다. 이 문제를 해결하려면, 병합 중인 줄(`fullLine`)에 개행(`vbCrLf`)을 추가하는 대신 공백 또는 다른 구분자를 사용해야 합니다.
+
+아래는 수정된 코드입니다. 이 코드는 개행 대신 공백을 사용하여 줄을 한 줄로 병합하고, 병합이 완료되면 불필요한 데이터(`33-33-33-33` 등)를 제거합니다.
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields, macAddressField, firstMacAddress
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading 모드
+
+' 출력 파일 설정
+Set outputStream = CreateObject("ADODB.Stream")
+outputStream.Type = 2 ' 텍스트 모드
+outputStream.Charset = "UTF-8" ' UTF-8 (BOM 없이) 설정
+outputStream.Open
+
+Dim currentLine, fullLine, isMultiLine
+isMultiLine = False
+fullLine = ""
+
+Do Until inputFile.AtEndOfStream
+    currentLine = inputFile.ReadLine
+
+    ' 큰따옴표와 줄바꿈 처리
+    If InStr(currentLine, """") > 0 And Right(currentLine, 1) <> """" Then
+        fullLine = currentLine
+        isMultiLine = True
+    ElseIf isMultiLine Then
+        fullLine = fullLine & " " & currentLine  ' 줄을 공백으로 이어붙이기
+        If Right(currentLine, 1) = """" Then
+            line = fullLine
+            isMultiLine = False
+        Else
+            Continue Do
+        End If
+    Else
+        line = currentLine
+    End If
+
+    ' 큰따옴표 제거 후 필드 분리
+    line = Replace(line, """", "")
+    fields = Split(line, ",")
+
+    ' 필드가 충분한 항목을 가지고 있는지 확인
+    If UBound(fields) >= 5 Then
+        ' fields(5)에서 첫 번째 줄만 추출
+        macAddressField = fields(5)
+        firstMacAddress = Split(macAddressField, " ")(0)
+
+        ' 첫 번째 MAC 주소만 필드에 남기기
+        fields(5) = firstMacAddress
+
+        ' 수정된 필드를 outputStream에 기록
+        outputStream.WriteText Join(fields, ",") & vbCrLf
+    End If
+Loop
+
+' 결과를 UTF-8 BOM 없이 저장
+outputStream.SaveToFile "output.csv", 2 ' 2는 덮어쓰기 모드
+
+' 리소스 정리
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+이 코드에서:
+- `fullLine = fullLine & " " & currentLine`가 개행 대신 공백으로 줄을 이어붙입니다.
+- `Split(macAddressField, " ")(0)`는 첫 번째 MAC 주소만 가져오도록 하여 나머지는 무시합니다.
+
+이제 출력 시 `11-11-11-11`만 유지하고 `33-33-33-33` 등의 나머지 데이터는 제거됩니다.
