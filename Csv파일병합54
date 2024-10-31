@@ -1,0 +1,76 @@
+`Replace`로 단순히 `"""`를 다른 문자로 바꾸는 것만으로는 줄을 한 줄로 병합할 수 없습니다. 개행 문자(`vbCrLf` 또는 `vbLf`)가 있는 경우, 그 개행을 공백으로 대체하거나 제거해야 줄이 끊기지 않고 한 줄로 연결됩니다. 
+
+아래 코드는 `currentLine`에서 큰따옴표(`"""`)와 개행을 모두 제거하고, 한 줄로 병합하는 방법을 보여줍니다. 
+
+```vbscript
+Dim fso, inputFile, outputStream, line, fields, macAddressField, firstMacAddress
+
+' 파일 시스템 개체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' ForReading 모드
+
+' 출력 파일 설정
+Set outputStream = CreateObject("ADODB.Stream")
+outputStream.Type = 2 ' 텍스트 모드
+outputStream.Charset = "UTF-8" ' UTF-8 (BOM 없이) 설정
+outputStream.Open
+
+Dim currentLine, fullLine, isMultiLine
+isMultiLine = False
+fullLine = ""
+
+Do Until inputFile.AtEndOfStream
+    currentLine = inputFile.ReadLine
+
+    ' 큰따옴표와 줄바꿈 처리
+    If InStr(currentLine, """") > 0 And Right(currentLine, 1) <> """" Then
+        fullLine = Replace(currentLine, """", "") ' 큰따옴표 제거
+        isMultiLine = True
+    ElseIf isMultiLine Then
+        ' 줄을 공백으로 이어붙이기
+        fullLine = fullLine & " " & Replace(currentLine, """", "")
+        If Right(currentLine, 1) = """" Then
+            line = fullLine
+            isMultiLine = False
+        Else
+            Continue Do
+        End If
+    Else
+        line = Replace(currentLine, """", "")
+    End If
+
+    ' 줄을 한 줄로 만들고 추가 공백 제거
+    line = Replace(line, vbCrLf, "")
+    fields = Split(line, ",")
+
+    ' 필드가 충분한 항목을 가지고 있는지 확인
+    If UBound(fields) >= 5 Then
+        ' fields(5)에서 첫 번째 줄만 추출
+        macAddressField = fields(5)
+        firstMacAddress = Split(macAddressField, " ")(0)
+
+        ' 첫 번째 MAC 주소만 필드에 남기기
+        fields(5) = firstMacAddress
+
+        ' 수정된 필드를 outputStream에 기록
+        outputStream.WriteText Join(fields, ",") & vbCrLf
+    End If
+Loop
+
+' 결과를 UTF-8 BOM 없이 저장
+outputStream.SaveToFile "output.csv", 2 ' 2는 덮어쓰기 모드
+
+' 리소스 정리
+outputStream.Close
+inputFile.Close
+Set outputStream = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+이 코드에서:
+- `Replace(currentLine, """", "")`는 큰따옴표를 제거합니다.
+- `Replace(line, vbCrLf, "")`로 줄바꿈을 모두 제거해 한 줄로 병합합니다.
+- 그런 다음, `fields(5)`에서 첫 번째 MAC 주소만 남겨둡니다.
