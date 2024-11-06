@@ -1,0 +1,76 @@
+아래는 외부에서 두 개의 CSV 파일을 읽어와 하나는 UTF-8 (BOM 있음), 다른 하나는 UTF-16 (BOM 없음)으로 읽은 뒤, UTF-8 (BOM 있음)으로 저장하는 VBS 코드 예제입니다.
+
+### 예제 코드
+
+```vbscript
+Dim fso, inputFile1, inputFile2, line, outputFile
+Dim fields1, fields2, macParts
+
+' FileSystemObject와 Stream 객체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set outputFile = CreateObject("ADODB.Stream")
+
+' UTF-8 (BOM 있음)으로 출력 파일 설정
+outputFile.Type = 2 ' 텍스트 모드
+outputFile.Charset = "UTF-8"
+outputFile.Open
+outputFile.WriteText ChrW(&HFEFF) ' BOM 추가
+
+' 첫 번째 입력 파일 (UTF-8, BOM 있음) 열기
+Set inputFile1 = CreateObject("ADODB.Stream")
+inputFile1.Type = 2
+inputFile1.Charset = "UTF-8"
+inputFile1.Open
+inputFile1.LoadFromFile "file1_utf8_bom.csv"
+
+' 두 번째 입력 파일 (UTF-16, BOM 없음) 열기
+Set inputFile2 = CreateObject("ADODB.Stream")
+inputFile2.Type = 2
+inputFile2.Charset = "Unicode" ' UTF-16 설정
+inputFile2.Open
+inputFile2.LoadFromFile "file2_utf16_nobom.csv"
+
+' 첫 번째 파일 내용 읽어들이기
+Do Until inputFile1.EOS
+    line = inputFile1.ReadText(adReadLine)
+    fields1 = Split(line, ",")
+    
+    ' 필요에 따라 데이터를 수정하는 작업 수행
+    ' 예시: MAC/IP 처리 등이 필요하면 여기에 추가
+
+    ' 출력 파일에 데이터 기록
+    outputFile.WriteText Join(fields1, ",") & vbCrLf
+Loop
+
+' 두 번째 파일 내용 읽어들이기
+Do Until inputFile2.EOS
+    line = inputFile2.ReadText(adReadLine)
+    fields2 = Split(line, ",")
+    
+    ' 필요에 따라 데이터를 수정하는 작업 수행
+
+    ' 출력 파일에 데이터 기록
+    outputFile.WriteText Join(fields2, ",") & vbCrLf
+Loop
+
+' 결과 파일 저장 (UTF-8 BOM 있음)
+outputFile.SaveToFile "output.csv", 2 ' 덮어쓰기 모드
+
+' 리소스 정리
+outputFile.Close
+inputFile1.Close
+inputFile2.Close
+Set outputFile = Nothing
+Set inputFile1 = Nothing
+Set inputFile2 = Nothing
+Set fso = Nothing
+```
+
+### 코드 설명
+
+1. **출력 파일 설정**: UTF-8로 설정한 후 BOM을 추가하기 위해 `ChrW(&HFEFF)`를 사용합니다.
+2. **첫 번째 파일 읽기 (UTF-8, BOM 있음)**: `ADODB.Stream`으로 파일을 열고 `Charset`을 `UTF-8`로 설정합니다.
+3. **두 번째 파일 읽기 (UTF-16, BOM 없음)**: `ADODB.Stream`을 사용해 `Unicode`로 설정해 UTF-16로 읽습니다.
+4. **파일 처리 및 기록**: 각 파일의 내용을 필요한 대로 수정한 후 `output.csv` 파일에 기록합니다.
+
+이 코드는 BOM이 있는 UTF-8 형식으로 `output.csv`를 생성하고, 두 가지 인코딩 형식의 파일을 각각 읽어들여 합칩니다.
