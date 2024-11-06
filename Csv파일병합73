@@ -1,0 +1,63 @@
+2열부터 읽기 위해 다음과 같이 약간 수정할 수 있습니다. 첫 줄을 무시하고 2열부터 데이터 처리를 시작합니다.
+
+```vbscript
+Dim fso, inputFile, line, fields, macParts, outputFile
+Dim lineCount
+
+' FileSystemObject와 Stream 객체 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set outputFile = CreateObject("ADODB.Stream")
+
+' UTF-8 설정 및 파일 열기
+outputFile.Type = 2 ' 텍스트 모드
+outputFile.Charset = "UTF-8" ' UTF-8 인코딩 설정 (BOM 없음)
+outputFile.Open
+
+' 입력 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' 읽기 모드
+lineCount = 0
+
+Do Until inputFile.AtEndOfStream
+    line = inputFile.ReadLine
+    lineCount = lineCount + 1
+    
+    ' 첫 번째 줄(컬럼명)은 건너뛰기
+    If lineCount = 1 Then
+        Continue Do
+    End If
+
+    fields = Split(line, ",")
+    
+    ' 필요한 경우 필드 수정
+    If UBound(fields) >= 5 Then
+        macParts = Split(fields(5), "|")
+        
+        ' 배열 크기 조정 및 이동
+        ReDim Preserve fields(UBound(fields) + 1)
+        For i = UBound(fields) - 1 To 6 Step -1
+            fields(i + 1) = fields(i)
+        Next
+        fields(5) = Trim(macParts(0)) ' 첫 번째 부분을 macaddress로 사용
+        If UBound(macParts) > 0 Then
+            fields(6) = Trim(macParts(1)) ' 두 번째 부분을 ipaddress로 사용
+        Else
+            fields(6) = "" ' ipaddress가 없을 경우 빈 값으로 설정
+        End If
+    End If
+    
+    ' 출력 파일에 데이터 쓰기
+    outputFile.WriteText Join(fields, ",") & vbCrLf
+Loop
+
+' 결과 파일 저장
+outputFile.SaveToFile "output.csv", 2 ' 덮어쓰기 모드
+
+' 리소스 정리
+outputFile.Close
+inputFile.Close
+Set outputFile = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+이 코드에서는 `lineCount`를 사용해 첫 번째 줄은 `Continue Do`로 넘어가고, 2열부터 데이터를 처리합니다.
