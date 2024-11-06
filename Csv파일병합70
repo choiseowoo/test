@@ -1,0 +1,66 @@
+UTF-8로 BOM 없이 파일을 출력하려면 `CreateObject("ADODB.Stream")` 대신 `FileSystemObject`를 이용한 방법이 있습니다. 기본적으로 `FileSystemObject`는 직접적으로 UTF-8 인코딩을 지정할 수 있는 기능이 없지만, 바이너리 데이터를 사용하여 UTF-8로 작성하는 방법이 있습니다. 아래 코드는 이를 구현한 예입니다.
+
+### FileSystemObject를 사용하여 BOM 없는 UTF-8 파일 작성하기
+
+다음 코드는 UTF-8 인코딩된 내용을 출력 파일에 작성하는 방법을 보여줍니다.
+
+```vbscript
+Dim fso, inputFile, outputFile, line, fields, utf8Bytes, utf8Data
+Dim macParts, macAddressField
+
+' File System Object 생성
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' 입력 CSV 파일 열기
+Set inputFile = fso.OpenTextFile("tanium.csv", 1) ' 읽기 모드
+
+' UTF-8 출력을 위한 바이트 배열 준비
+Set utf8Bytes = CreateObject("System.Text.UTF8Encoding")
+
+' 출력할 데이터를 준비
+utf8Data = ""
+
+Do Until inputFile.AtEndOfStream
+    line = inputFile.ReadLine
+    fields = Split(line, ",") ' 필드를 쉼표로 분리
+
+    ' 필요한 경우 필드 수정
+    If UBound(fields) >= 5 Then
+        macAddressField = fields(5)
+        macParts = Split(macAddressField, "|")
+        
+        ' fields 배열을 필요한 만큼 조정
+        ReDim Preserve fields(UBound(fields) + 1)
+        For i = UBound(fields) - 1 To 6 Step -1
+            fields(i + 1) = fields(i)
+        Next
+        fields(5) = Trim(macParts(0)) ' 첫 번째 부분을 macaddress로 사용
+        fields(6) = Trim(macParts(1)) ' 두 번째 부분을 ipaddress로 사용 (있다면)
+    End If
+    
+    ' UTF-8 데이터에 라인 추가
+    utf8Data = utf8Data & Join(fields, ",") & vbCrLf
+Loop
+
+' 입력 파일 닫기
+inputFile.Close
+
+' BOM 없이 UTF-8로 출력 파일에 저장
+Set outputFile = fso.CreateTextFile("output.csv", True)
+outputFile.Write utf8Bytes.GetBytes_4(utf8Data)
+outputFile.Close
+
+' 리소스 정리
+Set utf8Bytes = Nothing
+Set outputFile = Nothing
+Set inputFile = Nothing
+Set fso = Nothing
+```
+
+### 설명
+
+1. **UTF-8 인코딩**: `System.Text.UTF8Encoding` 객체를 사용하여 텍스트를 UTF-8로 인코딩합니다.
+2. **데이터 수집**: `utf8Data` 변수를 사용해 UTF-8로 인코딩된 모든 데이터를 수집합니다.
+3. **BOM 없이 작성**: 최종적으로 `FileSystemObject`를 사용하여 파일을 작성할 때 BOM 없이 UTF-8로 저장합니다.
+
+이 방법으로 `FileSystemObject`만을 사용하여 CSV 파일을 UTF-8(BOM 없음) 형식으로 저장할 수 있습니다.
