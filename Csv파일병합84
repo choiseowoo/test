@@ -1,0 +1,69 @@
+VBScript로 대량의 데이터를 효율적으로 처리하려면 메모리 관리에 주의하면서 중복 검사를 수행하는 방식으로 코드를 최적화할 수 있습니다. 특히 파일을 한 번에 메모리에 로드하는 대신, 한 줄씩 읽고 처리하여 메모리 사용량을 줄이는 접근이 필요합니다. 
+
+아래 코드는 두 개의 CSV 파일을 병합하면서 중복을 피하고, 두 번째 파일의 중복된 ID를 처리할 때 `mainKey`가 처음 등장하는 경우만 추가하는 방식으로 작성되어 있습니다. 
+
+### 최적화된 VBScript 코드
+
+```vbs
+Dim fso, file1, file2, outputFile
+Dim dict, line, fields, key, mainKey
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' 첫 번째 파일에서 ID 저장 및 병합 파일로 출력
+Set file1 = fso.OpenTextFile("file1.csv", 1)
+Set outputFile = fso.OpenTextFile("merged.csv", 2, True)
+
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine()
+    fields = Split(line, ",")
+    key = fields(0)
+    mainKey = Split(key, "_")(0) ' ID의 앞부분 추출
+
+    ' 첫 번째 파일의 데이터는 그대로 출력하고, Dictionary에 메인 키 저장
+    outputFile.WriteLine line
+    dict.Add mainKey, True ' mainKey만 저장하여 메모리 절약
+Loop
+
+file1.Close
+
+' 두 번째 파일에서 중복 확인 후 출력
+Set file2 = fso.OpenTextFile("file2.csv", 1)
+
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine()
+    fields = Split(line, ",")
+    key = fields(0)
+    mainKey = Split(key, "_")(0)
+
+    ' 첫 번째 파일에 없는 mainKey이면서, 두 번째 파일에서도 처음 등장하는 mainKey만 추가
+    If Not dict.Exists(mainKey) Then
+        outputFile.WriteLine line
+        dict.Add mainKey, True ' mainKey를 추가하여 다음 중복은 제외
+    End If
+Loop
+
+file2.Close
+outputFile.Close
+
+WScript.Echo "파일 병합 완료."
+```
+
+### 코드 설명
+
+1. **첫 번째 파일 처리**
+   - 첫 번째 파일의 각 줄을 읽어 그대로 출력 파일(`merged.csv`)에 기록하고, ID의 메인 키(`mainKey`, 예: `Test1` 부분)를 `Dictionary`에 저장합니다.
+   - 이때 `mainKey`만 저장하여 메모리를 절약합니다.
+
+2. **두 번째 파일 중복 검사 및 출력**
+   - 두 번째 파일을 한 줄씩 읽으면서 `mainKey`를 추출합니다.
+   - `Dictionary`에 해당 `mainKey`가 없을 경우에만 `merged.csv`에 기록합니다.
+   - 기록한 `mainKey`는 `Dictionary`에 추가하여 이후 중복된 항목은 무시합니다.
+
+### 추가 성능 개선 아이디어
+
+- **중간 저장 파일 사용**: 메모리 부담이 큰 경우, 첫 번째 파일에서 추출한 메인 키를 별도의 임시 파일에 저장하고 두 번째 파일을 처리할 때만 `Dictionary`를 사용하여 중복 검사를 수행하는 방법을 고려해 볼 수 있습니다.
+- **필요한 필드만 저장**: Dictionary에 저장하는 값을 단순한 Boolean 값(True)으로 설정하여 메모리 사용량을 더욱 줄일 수 있습니다.
+
+이 코드는 파일을 순차적으로 한 줄씩 읽고 처리하므로 대량의 데이터도 메모리 효율적으로 처리할 수 있으며, 중복 검사 속도도 개선됩니다.
