@@ -1,0 +1,73 @@
+VBScript의 기본적인 I/O와 Dictionary를 이용한 중복 처리 방법은 편리하지만, 성능 면에서는 제한이 있습니다. 아래 방법들을 적용해 VBS에서 성능을 개선할 수 있습니다:
+
+### 1. **파일 전체 읽기 후 메모리에서 처리**
+
+현재는 각 파일에서 한 줄씩 읽고 있지만, 파일 크기가 크지 않다면 파일을 한 번에 메모리로 읽어와서 처리하는 것이 더 빠를 수 있습니다. 이를 통해 파일을 한 줄씩 읽을 때 발생하는 I/O 오버헤드를 줄일 수 있습니다.
+
+```vbs
+Dim fso, file1, file2, outputFile
+Dim dict, secondFileKeys, lines, line, fields, key, mainKey, i
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+Set secondFileKeys = CreateObject("Scripting.Dictionary") ' 두 번째 파일의 메인 키 중복 확인용
+
+' 첫 번째 파일 메모리로 읽기
+Set file1 = fso.OpenTextFile("file1.csv", 1)
+lines = Split(file1.ReadAll(), vbCrLf) ' 전체 파일을 한 번에 읽고 줄로 나누기
+file1.Close
+
+' 첫 번째 파일 데이터 출력 및 Dictionary에 저장
+Set outputFile = fso.OpenTextFile("merged.csv", 2, True)
+
+For i = 0 To UBound(lines)
+    line = lines(i)
+    If line <> "" Then
+        fields = Split(line, ",")
+        key = fields(0)
+        outputFile.WriteLine line
+        dict.Add key, line
+    End If
+Next
+
+' 두 번째 파일 메모리로 읽기
+Set file2 = fso.OpenTextFile("file2.csv", 1)
+lines = Split(file2.ReadAll(), vbCrLf) ' 전체 파일을 한 번에 읽고 줄로 나누기
+file2.Close
+
+' 두 번째 파일 중복 검사 및 출력
+For i = 0 To UBound(lines)
+    line = lines(i)
+    If line <> "" Then
+        fields = Split(line, ",")
+        key = fields(0)
+        mainKey = Split(key, "_")(0)
+
+        If Not dict.Exists(mainKey) And Not secondFileKeys.Exists(mainKey) Then
+            outputFile.WriteLine line
+            secondFileKeys.Add mainKey, line
+        End If
+    End If
+Next
+
+outputFile.Close
+WScript.Echo "파일 병합 완료."
+```
+
+### 2. **Dictionary 사용 최적화**
+
+Dictionary에 추가하는 키 개수를 줄이면 메모리 사용과 탐색 성능이 개선될 수 있습니다. 예를 들어, `secondFileKeys`의 저장 값으로 `True`나 `1`과 같은 간단한 값을 추가하여 메모리 사용량을 줄이는 것이 좋습니다.
+
+```vbs
+secondFileKeys.Add mainKey, True ' 단순히 키가 존재하는지 확인하기 위해 True 사용
+```
+
+### 3. **파일 접근 최소화**
+
+파일을 열고 닫는 횟수를 최소화하고, 읽거나 쓰는 작업을 한 번에 처리하면 성능이 개선됩니다. 위 코드에서는 파일을 한 번에 메모리로 읽고, 마지막에 한 번에 쓰기 작업을 수행하도록 변경하였습니다.
+
+### 4. **I/O 성능이 중요한 경우 VBScript 외 대안 고려**
+
+만약 대용량 CSV 파일을 다루고 있고 성능 개선이 최우선이라면, VBScript 대신 Python, PowerShell, 또는 .NET 기반의 스크립트나 프로그램을 사용하는 것이 좋습니다. 이들 언어는 더 높은 성능을 제공하며, 대용량 파일 처리에 최적화된 라이브러리를 쉽게 사용할 수 있습니다.
+
+위의 개선 사항을 적용하면 파일을 읽고 쓰는 횟수를 줄이고, 중복 확인을 빠르게 하여 성능을 어느 정도 개선할 수 있습니다.
