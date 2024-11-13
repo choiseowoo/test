@@ -1,0 +1,67 @@
+주어진 조건을 충족하기 위해 다음과 같은 VBScript 코드를 작성할 수 있습니다. 이 코드는:
+
+1. **첫 번째 파일**의 데이터를 그대로 출력합니다.
+2. **두 번째 파일**에서는 첫 번째 파일과 중복되지 않는 ID를 가져오되, 두 번째 파일 내부에서도 중복되는 경우 첫 번째로 등장하는 값만 출력합니다.
+
+`Dictionary`를 사용하여 첫 번째 파일의 ID를 저장하고, 두 번째 파일에서는 새로운 ID가 처음 나왔을 때만 출력하게 하여 중복을 처리합니다.
+
+```vbs
+Dim fso, file1, file2, outputFile
+Dim dict, secondFileKeys, lines, line, fields, key
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+Set secondFileKeys = CreateObject("Scripting.Dictionary") ' 두 번째 파일의 키 중복 확인용
+
+' 첫 번째 파일 처리
+Set file1 = fso.OpenTextFile("file1.csv", 1) ' 읽기 모드로 첫 번째 파일 열기
+Set outputFile = fso.OpenTextFile("merged.csv", 2, True) ' 쓰기 모드로 출력 파일 열기
+
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine()
+    fields = Split(line, ",")
+    key = fields(0) ' 첫 번째 필드를 키로 사용
+
+    ' 첫 번째 파일의 데이터는 그대로 출력하고 Dictionary에 키 추가
+    outputFile.WriteLine line
+    dict.Add key, line ' 첫 번째 파일의 키 추가
+Loop
+
+file1.Close
+
+' 두 번째 파일 처리
+Set file2 = fso.OpenTextFile("file2.csv", 1) ' 읽기 모드로 두 번째 파일 열기
+
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine()
+    fields = Split(line, ",")
+    key = fields(0) ' 첫 번째 필드를 키로 사용
+
+    ' 첫 번째 파일에 없고, 두 번째 파일에서 아직 추가되지 않은 키만 출력
+    If Not dict.Exists(key) And Not secondFileKeys.Exists(key) Then
+        outputFile.WriteLine line
+        secondFileKeys.Add key, line ' 두 번째 파일의 첫 번째 중복 키는 추가
+    End If
+Loop
+
+file2.Close
+outputFile.Close
+
+WScript.Echo "파일 병합 완료."
+```
+
+### 코드 설명
+
+1. **첫 번째 파일 읽기 및 출력**  
+   - 첫 번째 파일을 한 줄씩 읽고, `merged.csv`에 그대로 출력합니다.
+   - 각 줄의 첫 번째 필드(ID)를 키로 사용하여 `Dictionary`(`dict`)에 저장합니다.
+
+2. **두 번째 파일 중복 처리**  
+   - 두 번째 파일을 한 줄씩 읽으면서, `Dictionary`에서 키를 확인합니다.
+   - 첫 번째 파일에 없는 키이면서, 두 번째 파일 내부에서 처음 등장하는 키일 때만 출력합니다.
+   - `secondFileKeys`를 사용해 두 번째 파일 내부 중복을 체크하고, 처음 등장하는 항목만 `merged.csv`에 추가합니다.
+
+3. **출력 파일 마무리**  
+   모든 데이터를 출력한 후 파일을 닫고 스크립트를 종료합니다.
+
+이 코드는 첫 번째 파일과 두 번째 파일의 중복을 확인하며, 두 번째 파일에서 동일한 ID가 여러 번 나타나더라도 첫 번째 항목만 출력하는 방식입니다.
