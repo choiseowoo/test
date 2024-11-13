@@ -1,0 +1,69 @@
+ID가 `"Test1_12456"`, `"Test1_esdk2934"`, `"Test1_eksjfj2948"`처럼 앞부분 `"Test1"`을 기준으로 중복을 확인하고, 처음 등장하는 ID만 출력하려면, ID의 앞부분(예: `"_"` 기준 왼쪽 부분)을 키로 사용해야 합니다.
+
+이를 위해 다음과 같은 절차로 코드를 수정할 수 있습니다:
+
+1. 두 번째 파일에서 각 줄을 읽어오면서, ID에서 `"_"` 이전 부분만 추출하여 중복을 확인합니다.
+2. 첫 번째로 등장하는 ID만 출력하고 이후 동일한 앞부분을 가진 ID는 건너뜁니다.
+
+다음은 이 논리를 구현한 예제 코드입니다.
+
+```vbs
+Dim fso, file1, file2, outputFile
+Dim dict, secondFileKeys, lines, line, fields, key, mainKey
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+Set secondFileKeys = CreateObject("Scripting.Dictionary") ' 두 번째 파일의 메인 키 중복 확인용
+
+' 첫 번째 파일 처리
+Set file1 = fso.OpenTextFile("file1.csv", 1) ' 읽기 모드로 첫 번째 파일 열기
+Set outputFile = fso.OpenTextFile("merged.csv", 2, True) ' 쓰기 모드로 출력 파일 열기
+
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine()
+    fields = Split(line, ",")
+    key = fields(0) ' 첫 번째 필드를 키로 사용
+
+    ' 첫 번째 파일의 데이터는 그대로 출력하고 Dictionary에 키 추가
+    outputFile.WriteLine line
+    dict.Add key, line ' 첫 번째 파일의 키 추가
+Loop
+
+file1.Close
+
+' 두 번째 파일 처리
+Set file2 = fso.OpenTextFile("file2.csv", 1) ' 읽기 모드로 두 번째 파일 열기
+
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine()
+    fields = Split(line, ",")
+    key = fields(0) ' 두 번째 파일의 ID 값 전체
+    mainKey = Split(key, "_")(0) ' "_" 기준 왼쪽 부분 추출
+
+    ' 첫 번째 파일에 없는 메인 키이고, 두 번째 파일에서 아직 추가되지 않은 메인 키일 때만 출력
+    If Not dict.Exists(mainKey) And Not secondFileKeys.Exists(mainKey) Then
+        outputFile.WriteLine line
+        secondFileKeys.Add mainKey, line ' 두 번째 파일의 첫 번째 중복 메인 키는 추가
+    End If
+Loop
+
+file2.Close
+outputFile.Close
+
+WScript.Echo "파일 병합 완료."
+```
+
+### 코드 설명
+
+1. **첫 번째 파일 처리**  
+   - 첫 번째 파일의 데이터를 그대로 `merged.csv`에 출력하고, 각 줄의 첫 번째 필드(ID)를 `Dictionary`(`dict`)에 추가합니다.
+
+2. **두 번째 파일 중복 처리**  
+   - 두 번째 파일을 한 줄씩 읽으면서 각 줄의 ID에서 `mainKey`(ID의 첫 번째 부분)를 추출합니다.
+   - 첫 번째 파일에 `mainKey`가 존재하지 않고, `secondFileKeys`에 `mainKey`가 없는 경우에만 출력합니다.  
+   - `secondFileKeys`는 두 번째 파일 내에서 중복 확인에 사용되어 동일한 `mainKey`가 두 번째 파일에 여러 번 나와도 첫 번째 항목만 출력합니다.
+
+3. **파일 마무리**  
+   모든 작업이 완료되면 `outputFile`을 닫고 스크립트를 종료합니다.
+
+이 방법을 사용하면 `"Test1_12456"`, `"Test1_esdk2934"`, `"Test1_eksjfj2948"` 같은 ID 중 처음 등장하는 `"Test1_*"` 항목만 출력됩니다.
