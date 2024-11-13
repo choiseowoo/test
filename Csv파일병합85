@@ -1,0 +1,62 @@
+VBScript에서 필요한 필드만 저장하려면 `Dictionary`에 가능한 한 최소한의 정보만 저장하는 것이 좋습니다. 예를 들어, 중복을 확인하기 위해 필요한 ID의 메인 키만 저장하고, 값은 단순하게 `True`와 같은 기본 값으로 설정하여 메모리 사용량을 줄일 수 있습니다.
+
+다음은 이러한 최적화를 적용한 VBScript 코드입니다:
+
+```vbs
+Dim fso, file1, file2, outputFile
+Dim dict, line, fields, key, mainKey
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set dict = CreateObject("Scripting.Dictionary")
+
+' 첫 번째 파일에서 ID의 메인 키만 Dictionary에 저장하고 병합 파일로 출력
+Set file1 = fso.OpenTextFile("file1.csv", 1)
+Set outputFile = fso.OpenTextFile("merged.csv", 2, True)
+
+Do Until file1.AtEndOfStream
+    line = file1.ReadLine()
+    fields = Split(line, ",")
+    key = fields(0)
+    mainKey = Split(key, "_")(0) ' "_" 기준 앞부분만 추출하여 메인 키로 사용
+
+    ' 첫 번째 파일의 데이터는 그대로 출력하고, Dictionary에는 메인 키만 저장
+    outputFile.WriteLine line
+    If Not dict.Exists(mainKey) Then
+        dict.Add mainKey, True ' 중복 체크용으로 메인 키만 추가하고 값은 True로 최소화
+    End If
+Loop
+
+file1.Close
+
+' 두 번째 파일에서 중복 확인 후 출력
+Set file2 = fso.OpenTextFile("file2.csv", 1)
+
+Do Until file2.AtEndOfStream
+    line = file2.ReadLine()
+    fields = Split(line, ",")
+    key = fields(0)
+    mainKey = Split(key, "_")(0)
+
+    ' 첫 번째 파일에 없는 mainKey이면서 두 번째 파일에서도 처음 등장하는 mainKey만 추가
+    If Not dict.Exists(mainKey) Then
+        outputFile.WriteLine line
+        dict.Add mainKey, True ' mainKey를 추가하여 다음 중복은 제외
+    End If
+Loop
+
+file2.Close
+outputFile.Close
+
+WScript.Echo "파일 병합 완료."
+```
+
+### 설명
+
+- **Dictionary에 최소한의 정보 저장**: 
+  - `Dictionary`의 키는 `mainKey`로 설정하고, 값은 `True`로 설정하여 최소한의 메모리를 사용합니다.
+  - 이렇게 하면 `mainKey` 중복 여부만 확인할 수 있어, 추가 데이터를 저장할 필요가 없습니다.
+
+- **중복 방지 로직**:
+  - 두 번째 파일을 읽을 때, `Dictionary`에 `mainKey`가 없는 경우에만 `merged.csv`에 추가하고, 그 후 `mainKey`를 `Dictionary`에 저장합니다.
+  
+이 방법을 통해 `Dictionary`에 저장되는 값의 크기를 줄여 메모리를 더욱 효율적으로 사용할 수 있습니다.
