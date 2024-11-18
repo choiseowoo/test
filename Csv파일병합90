@@ -1,0 +1,125 @@
+두 번째 파일에서 `ID5`처럼 중복된 항목이 여러 개 있을 경우, **가장 처음 등장하는 줄만 추가**하고 나머지는 무시하도록 코드를 수정하겠습니다. 이를 위해, 각 줄이 아닌 **특정 필드(예: ID 필드)**를 기준으로 중복을 체크해야 합니다. 
+
+아래는 수정된 코드입니다:
+
+---
+
+### 코드: 두 번째 파일에서 특정 ID 기준 중복 제거
+
+```vbs
+Dim stream, file1, file2, outputFile
+Dim dict, line, fields, id
+Dim fileContent, lines, i
+
+Set dict = CreateObject("Scripting.Dictionary")
+
+' ADODB.Stream 객체를 사용하여 파일 읽기
+Set stream = CreateObject("ADODB.Stream")
+stream.Charset = "utf-8"
+stream.Open
+
+' 첫 번째 파일을 한 번에 읽기 (조건 없이 다 적기)
+stream.LoadFromFile "file1.csv"
+fileContent = stream.ReadText(-1) ' 첫 번째 파일 전체 읽기
+stream.Close
+
+' 병합 파일에 첫 번째 파일 내용을 한 번에 쓰기
+Set outputFile = CreateObject("ADODB.Stream")
+outputFile.Charset = "utf-8"
+outputFile.Open
+outputFile.WriteText fileContent
+
+' 첫 번째 파일의 각 줄에서 ID를 추출하고 Dictionary에 추가
+lines = Split(fileContent, vbCrLf)
+For i = 0 To UBound(lines)
+    If lines(i) <> "" Then
+        fields = Split(lines(i), ",")
+        id = fields(0) ' ID 추출 (첫 번째 필드)
+        If Not dict.Exists(id) Then
+            dict.Add id, True ' ID를 키로 저장
+        End If
+    End If
+Next
+
+' 두 번째 파일에서 중복 확인 후 추가
+Set stream = CreateObject("ADODB.Stream")
+stream.Charset = "utf-8"
+stream.Open
+stream.LoadFromFile "file2.csv"
+
+fileContent = stream.ReadText(-1) ' 두 번째 파일 전체 읽기
+lines = Split(fileContent, vbCrLf)
+For i = 0 To UBound(lines)
+    If lines(i) <> "" Then
+        fields = Split(lines(i), ",")
+        id = fields(0) ' ID 추출 (첫 번째 필드)
+
+        ' ID가 Dictionary에 없는 경우에만 추가
+        If Not dict.Exists(id) Then
+            outputFile.WriteText lines(i) & vbCrLf
+            dict.Add id, True ' ID를 추가하여 중복 방지
+        End If
+    End If
+Next
+
+stream.Close
+outputFile.SaveToFile "merged.csv", 2 ' 파일 저장 (기존 파일 덮어쓰기)
+
+WScript.Echo "파일 병합 완료."
+```
+
+---
+
+### 코드 동작 방식
+
+1. **첫 번째 파일 처리**:
+   - 첫 번째 파일의 내용을 병합 파일에 모두 기록합니다.
+   - 각 줄의 **첫 번째 필드(ID)**를 `Dictionary`에 키로 추가하여, 중복 검사 기준으로 설정합니다.
+
+2. **두 번째 파일 처리**:
+   - 두 번째 파일을 한 줄씩 읽으며, 각 줄의 ID(첫 번째 필드)를 추출합니다.
+   - `Dictionary`에 해당 ID가 없으면, 병합 파일에 추가하고, `Dictionary`에 새로 등록합니다.
+   - 이미 존재하는 ID는 병합 파일에 추가하지 않습니다.
+
+---
+
+### 예시 동작
+
+#### 첫 번째 파일 (`file1.csv`)
+```
+ID1,DataA
+ID2,DataB
+ID3,DataC
+```
+
+#### 두 번째 파일 (`file2.csv`)
+```
+ID2,DataB
+ID4,DataD
+ID5,DataE
+ID5,DataF
+```
+
+#### 병합된 파일 (`merged.csv`)
+```
+ID1,DataA
+ID2,DataB
+ID3,DataC
+ID4,DataD
+ID5,DataE
+```
+
+- **`ID5`**는 두 번째 파일에서 두 줄로 중복되어 있으나, 가장 첫 번째 등장하는 `ID5,DataE`만 병합 파일에 추가됩니다.
+
+---
+
+### 장점
+- **성능**: 
+  - `Dictionary`를 사용해 중복 체크를 수행하므로 매우 빠릅니다.
+  - 한 번 처리된 ID는 `Dictionary`에 저장되므로, 중복 검사를 효율적으로 수행합니다.
+- **안정성**: 
+  - `ADODB.Stream`을 사용해 UTF-8 인코딩 문제 없이 파일을 읽고 쓸 수 있습니다.
+- **유연성**: 
+  - ID가 여러 개 중복되는 경우에도 **가장 먼저 등장한 데이터만 기록**합니다.
+
+이 방식은 중복 데이터가 많은 파일에서도 안정적으로 작동하며, 성능 문제를 최소화합니다.
