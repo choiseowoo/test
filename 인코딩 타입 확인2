@@ -1,0 +1,172 @@
+VBScript에서 BOM 없이 파일 인코딩을 확인하는 것은 어려운 작업입니다. 그러나 BOM이 없는 경우라도 가능한 우회 방법 몇 가지를 제안합니다. 각 방법은 정확도와 복잡성이 다릅니다.
+
+---
+
+### 1. **텍스트 데이터를 샘플로 읽어서 확인**  
+파일에서 일부 텍스트를 읽고, 그 텍스트의 내용에 특정 패턴(예: UTF-8의 비ASCII 문자)을 검색하여 인코딩을 추정할 수 있습니다.
+
+#### 예제: 텍스트 분석으로 UTF-8 여부 확인
+```vbscript
+Function IsUTF8(filePath)
+    Dim stream, text, i, char
+    Dim isUTF8Flag
+    isUTF8Flag = True ' 기본값은 UTF-8로 가정
+
+    ' ADODB.Stream 객체 생성
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 2 ' 텍스트 모드
+    stream.Charset = "utf-8"
+    stream.Open
+    On Error Resume Next
+    stream.LoadFromFile filePath
+
+    If Err.Number <> 0 Then
+        ' UTF-8로 읽기에 실패하면 UTF-8이 아님
+        isUTF8Flag = False
+        Err.Clear
+    Else
+        ' 데이터를 읽고 UTF-8 비ASCII 문자 확인
+        text = stream.ReadText(-1)
+        For i = 1 To Len(text)
+            char = AscW(Mid(text, i, 1))
+            If char > &H7F And char < &HFFFF Then
+                ' UTF-8 비ASCII 문자 발견
+                isUTF8Flag = True
+                Exit For
+            End If
+        Next
+    End If
+    stream.Close
+    Set stream = Nothing
+
+    IsUTF8 = isUTF8Flag
+End Function
+
+Dim filePath
+filePath = "C:\test.txt"
+
+If IsUTF8(filePath) Then
+    WScript.Echo "이 파일은 UTF-8 인코딩입니다."
+Else
+    WScript.Echo "UTF-8이 아닙니다."
+End If
+```
+
+---
+
+### 2. **파일 크기 비교를 사용한 판별**  
+UTF-16(LE/BE) 파일은 각 문자가 2바이트로 저장되므로, 파일 크기와 내용의 길이를 비교하여 UTF-16 여부를 추정할 수 있습니다.
+
+#### 예제: UTF-16 여부 확인
+```vbscript
+Function IsUTF16(filePath)
+    Dim stream, textLength, fileSize, isUTF16Flag
+    isUTF16Flag = False
+
+    ' ADODB.Stream 객체 생성
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 2 ' 텍스트 모드
+    stream.Charset = "unicode" ' UTF-16LE
+    stream.Open
+    stream.LoadFromFile filePath
+
+    ' 텍스트 길이와 파일 크기 비교
+    textLength = Len(stream.ReadText(-1))
+    fileSize = FileLen(filePath)
+
+    If fileSize >= textLength * 2 Then
+        isUTF16Flag = True
+    End If
+    stream.Close
+    Set stream = Nothing
+
+    IsUTF16 = isUTF16Flag
+End Function
+
+Dim filePath
+filePath = "C:\test.txt"
+
+If IsUTF16(filePath) Then
+    WScript.Echo "이 파일은 UTF-16 인코딩입니다."
+Else
+    WScript.Echo "UTF-16이 아닙니다."
+End If
+```
+
+---
+
+### 3. **외부 유틸리티 호출**  
+VBScript 자체만으로 인코딩 판별이 힘들다면 외부 유틸리티를 호출하는 방법을 고려해보세요. 예를 들어, PowerShell이나 Python 스크립트를 VBScript에서 호출할 수 있습니다.
+
+#### PowerShell 호출 예제
+VBScript에서 PowerShell 명령어를 호출하여 인코딩 확인:
+```vbscript
+Dim shell, command, encoding
+Set shell = CreateObject("WScript.Shell")
+
+command = "powershell -NoProfile -Command ""(Get-Content -Path 'C:\test.txt' -Encoding Byte).Length; 'Encoding: ' + (Get-Content -Path 'C:\test.txt' -Encoding UTF8).Length"""
+encoding = shell.Exec(command).StdOut.ReadAll
+
+WScript.Echo encoding
+```
+
+---
+
+### 4. **Hex 데이터를 분석하는 방법**
+`ADODB.Stream`으로 파일 데이터를 바이너리로 읽어와, 특정 바이트 패턴을 기반으로 인코딩을 판별합니다.
+
+#### 예제: Hex 데이터로 UTF-8 여부 확인
+```vbscript
+Function IsUTF8ByHex(filePath)
+    Dim stream, byteArray, i, byte1, byte2, isUTF8Flag
+    isUTF8Flag = True ' 기본값은 UTF-8로 가정
+
+    ' ADODB.Stream 객체 생성
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 1 ' Binary 모드
+    stream.Open
+    stream.LoadFromFile filePath
+
+    byteArray = stream.Read(-1)
+    stream.Close
+    Set stream = Nothing
+
+    ' UTF-8 바이트 패턴 검사
+    For i = 1 To LenB(byteArray)
+        byte1 = AscB(MidB(byteArray, i, 1))
+        If byte1 > 127 Then
+            If i + 1 <= LenB(byteArray) Then
+                byte2 = AscB(MidB(byteArray, i + 1, 1))
+                If byte2 < 128 Or byte2 > 191 Then
+                    isUTF8Flag = False
+                    Exit For
+                End If
+            Else
+                isUTF8Flag = False
+                Exit For
+            End If
+        End If
+    Next
+
+    IsUTF8ByHex = isUTF8Flag
+End Function
+
+Dim filePath
+filePath = "C:\test.txt"
+
+If IsUTF8ByHex(filePath) Then
+    WScript.Echo "UTF-8 파일입니다."
+Else
+    WScript.Echo "UTF-8 파일이 아닙니다."
+End If
+```
+
+---
+
+### 요약
+1. **간단히 BOM 확인**: 파일이 BOM을 포함하고 있다면 이를 판별하는 것이 가장 간단하고 빠릅니다.
+2. **텍스트 내용 기반 확인**: UTF-8 비ASCII 문자나 파일 크기 비교를 활용.
+3. **외부 도구 연동**: PowerShell, Python 같은 더 강력한 도구 호출.
+4. **바이너리 데이터 분석**: 바이너리 데이터를 직접 검사하여 패턴으로 인코딩을 판별.
+
+VBScript만으로 완벽한 인코딩 판별은 어렵지만 위 방법을 조합하면 대부분의 경우 처리할 수 있습니다.
