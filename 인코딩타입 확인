@@ -1,0 +1,83 @@
+VBScript에서는 `.Encode` 메서드를 직접 사용할 수 없지만, `ADODB.Stream` 객체를 활용하여 파일의 인코딩 타입을 확인할 수 있습니다. 특정 인코딩이 아니면 에러 값을 반환하거나 처리할 수 있도록 구현하는 것도 가능합니다. 
+
+### VBScript로 인코딩 확인하기
+`ADODB.Stream` 객체를 사용하면 파일을 읽고, BOM(Byte Order Mark)을 확인하여 UTF-8, UTF-16LE, UTF-16BE 등의 인코딩을 판별할 수 있습니다.
+
+#### 예제 코드: BOM으로 인코딩 확인
+```vbscript
+Function GetFileEncoding(filePath)
+    On Error Resume Next
+    Dim stream, firstBytes, encoding
+
+    ' ADODB.Stream 객체 생성
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 1 ' Binary 모드
+    stream.Open
+    stream.LoadFromFile filePath
+
+    ' 파일의 처음 3바이트 읽기
+    firstBytes = stream.Read(3)
+    stream.Close
+    Set stream = Nothing
+
+    ' BOM을 기준으로 인코딩 판별
+    If LenB(firstBytes) >= 3 Then
+        If AscB(MidB(firstBytes, 1, 1)) = &HEF And _
+           AscB(MidB(firstBytes, 2, 1)) = &HBB And _
+           AscB(MidB(firstBytes, 3, 1)) = &HBF Then
+            encoding = "UTF-8"
+        ElseIf AscB(MidB(firstBytes, 1, 1)) = &HFF And _
+               AscB(MidB(firstBytes, 2, 1)) = &HFE Then
+            encoding = "UTF-16LE"
+        ElseIf AscB(MidB(firstBytes, 1, 1)) = &HFE And _
+               AscB(MidB(firstBytes, 2, 1)) = &HFF Then
+            encoding = "UTF-16BE"
+        Else
+            encoding = "Unknown"
+        End If
+    Else
+        encoding = "Unknown"
+    End If
+
+    GetFileEncoding = encoding
+End Function
+
+' 파일 경로 설정
+Dim filePath, encoding
+filePath = "C:\test.txt"
+
+' 인코딩 판별 함수 호출
+encoding = GetFileEncoding(filePath)
+
+' 결과 출력 및 에러 처리
+If encoding = "UTF-8" Then
+    WScript.Echo "파일 인코딩: " & encoding
+Else
+    WScript.Echo "지원되지 않는 인코딩: " & encoding
+    WScript.Quit 1 ' 에러 코드 반환
+End If
+```
+
+---
+
+### 코드 설명
+1. **`ADODB.Stream` 객체**: 바이너리 모드로 파일을 읽어 BOM을 확인합니다.
+2. **BOM 판별**:
+   - UTF-8: `EF BB BF`
+   - UTF-16LE: `FF FE`
+   - UTF-16BE: `FE FF`
+3. **결과 반환**: 함수가 인코딩 타입을 반환하며, 지원되지 않는 인코딩이면 에러를 출력하고 종료(`WScript.Quit`).
+
+---
+
+### 커스텀 에러 처리
+위 코드를 기반으로, 특정 인코딩이 아닌 경우 에러값을 넘기도록 수정할 수 있습니다.  
+예를 들어, 특정 인코딩이 아니면 로그를 남기거나 프로그램을 종료하도록 처리 가능합니다.
+
+---
+
+### 한계
+- BOM이 없는 경우(특히 ASCII, UTF-8 without BOM)에는 정확한 판별이 어렵습니다.
+- 더 복잡한 인코딩 검사가 필요하면 외부 라이브러리나 PowerShell과 연동을 고려해야 합니다. 
+
+이 방식으로 충분히 에러 값을 넘기고 원하는 동작을 제어할 수 있습니다.
