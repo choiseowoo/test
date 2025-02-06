@@ -1,0 +1,109 @@
+### **📌 WildFly 2.3.0과 Maven 3.9.8 버전 차이**
+
+WildFly 2.3.0과 Maven 3.9.8은 최신 버전들이지만, 서로 관련이 깊지 않은 독립적인 툴이기 때문에 **각각의 역할**을 따로 관리해야 합니다.
+
+---
+
+## **🚀 1. WildFly 2.3.0 특징**
+WildFly는 **Jakarta EE** (구 Java EE) 지원을 포함한 **풀 애플리케이션 서버**입니다.  
+WildFly 2.3.0 버전은 Jakarta EE 10 기반으로 **기존 Java EE 표준을 따르며, 최신 사양들을 지원**합니다.
+
+### **WildFly 2.3.0 주요 특징**:
+- Jakarta EE 10 지원
+- **EJB, JPA, CDI, JSF, JAX-RS** 등 다양한 Java EE 사양을 지원
+- **관리 콘솔** 및 **CLI**를 통해 배포 관리
+- **Docker**와 같은 환경에서 배포 및 실행 가능
+
+---
+
+## **🚀 2. Maven 3.9.8 특징**
+Maven은 **Java 프로젝트의 빌드, 의존성 관리** 도구입니다.  
+Maven 3.9.8은 최신 버전으로, **프로젝트 관리 및 빌드 자동화**에 중점을 두고 있습니다. WildFly와 Maven은 **독립적으로 작동**하지만, Maven을 사용하여 **War 파일을 빌드하고 WildFly에 배포**할 수 있습니다.
+
+### **Maven 3.9.8 주요 특징**:
+- 최신 **Java 17 이상**을 지원
+- **Pluggable 빌드 시스템** (pom.xml을 통한 의존성 관리)
+- **수천 개의 플러그인**을 제공하여 빌드 프로세스를 확장 가능
+
+---
+
+## **🚀 3. WildFly 2.3.0과 Maven 3.9.8의 호환성**
+### **Maven에서 WildFly에 배포**
+Maven은 WildFly에 배포할 때 `maven-war-plugin`을 사용하여 `.war` 파일을 빌드하고, `maven-deploy-plugin`을 사용하여 이를 WildFly 서버에 배포할 수 있습니다.
+
+---
+
+## **📌 WildFly 2.3.0에서 Maven 3.9.8으로 WAR 파일 배포하는 방법**
+
+### **1. WildFly 2.3.0과 Maven 연동 설정**
+
+1. **Maven `pom.xml`에서 `maven-war-plugin` 설정 추가**  
+   WildFly 2.3.0에서 WAR 파일을 빌드하고 배포하려면, `pom.xml` 파일에 다음과 같은 설정이 필요합니다.
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.3.2</version>
+            <configuration>
+                <warName>your-app</warName> <!-- 원하는 WAR 파일 이름 설정 -->
+            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>cargo-maven2-plugin</artifactId>
+            <version>1.9.10</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>deploy</goal>
+                    </goals>
+                    <configuration>
+                        <container>
+                            <containerId>wildfly</containerId>
+                            <type>embedded</type>
+                        </container>
+                        <deployables>
+                            <deployable>
+                                <groupId>com.example</groupId>
+                                <artifactId>your-app</artifactId>
+                                <version>1.0-SNAPSHOT</version>
+                                <type>war</type>
+                            </deployable>
+                        </deployables>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+🔹 **`cargo-maven2-plugin`** 플러그인을 사용하여 Maven에서 WildFly에 배포 가능
+
+---
+
+### **2. Maven 명령어로 WAR 파일 빌드 및 WildFly에 배포**
+
+- **WAR 파일 빌드**: `mvn clean package` 실행
+  - `target/your-app.war` 파일이 생성됩니다.
+- **WildFly 서버에 배포**: WildFly에 수동으로 배포하려면, WAR 파일을 **`standalone/deployments/`** 폴더에 복사하세요.
+  
+```bash
+cp target/your-app.war $WILDFLY_HOME/standalone/deployments/
+```
+🔹 **배포 후, 서버는 자동으로 WAR 파일을 로드하고 실행합니다.**  
+
+---
+
+## **🚀 4. 결론**
+- **WildFly 2.3.0**과 **Maven 3.9.8**은 서로 독립적입니다.
+- Maven은 빌드 도구로 **WildFly에 배포할 WAR 파일을 빌드**할 수 있습니다.
+- **`maven-war-plugin`**을 사용하여 WAR 파일을 빌드하고, **`cargo-maven2-plugin`**을 사용하여 자동 배포 가능.
+- **수동 배포**를 원하면 `standalone/deployments/`에 WAR 파일을 복사하면 됩니다.
+
+---
+
+이 과정을 통해 **WildFly 2.3.0과 Maven 3.9.8 버전에서 정상적으로 WAR 파일을 배포**할 수 있습니다.  
+문제가 생기면 다시 알려주세요!
