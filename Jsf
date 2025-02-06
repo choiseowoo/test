@@ -1,0 +1,180 @@
+네, 주어진 설명을 기반으로 **3층 구조(3-tier)에서 2층 구조(2-tier)로 변경된 환경**을 가정하여 **JSF + DAO + MyBatis** 형태로 예제 코드를 만들어 보겠습니다.  
+
+---
+
+## **📌 변경된 2층 구조 개요**
+- 기존 **3층 구조** → **2층 구조(프레젠테이션 + 애플리케이션 통합)**
+- **Seasar2 폐지** → MyBatis를 직접 사용 가능성 큼
+- **JSF 기반 (JSP가 아니라 .xhtml)** 사용 가능성
+- **Service Layer가 최소화되거나 생략될 가능성**
+- **DAO를 직접 View에서 사용하거나, ManagedBean에서 DAO 호출**할 가능성
+
+---
+
+## **📝 예제 코드: JSF + DAO + MyBatis**
+기본적으로 **JSF의 ManagedBean이 DAO를 직접 호출**하는 구조로 구현하겠습니다.
+
+### **1️⃣ 테이블 생성 (예제: users)**
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100)
+);
+```
+
+---
+
+### **2️⃣ MyBatis 설정 (`mybatis-config.xml`)**
+```xml
+<configuration>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="org.postgresql.Driver"/>
+                <property name="url" value="jdbc:postgresql://localhost:5432/mydb"/>
+                <property name="username" value="myuser"/>
+                <property name="password" value="mypassword"/>
+            </dataSource>
+        </environment>
+    </environments>
+</configuration>
+```
+
+---
+
+### **3️⃣ DTO 클래스 (`User.java`)**
+```java
+public class User {
+    private Long id;
+    private String name;
+    private String email;
+
+    // Getter & Setter
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+}
+```
+
+---
+
+### **4️⃣ DAO 인터페이스 (`UserDao.java`)**
+```java
+import java.util.List;
+import org.apache.ibatis.annotations.Select;
+
+public interface UserDao {
+    @Select("SELECT * FROM users")
+    List<User> getAllUsers();
+}
+```
+
+---
+
+### **5️⃣ ManagedBean (`UserBean.java`)**
+> 기존 MVC처럼 Controller를 사용하지 않고, **JSF의 ManagedBean에서 직접 DAO를 호출**  
+```java
+import jakarta.faces.view.ViewScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+import java.util.List;
+import org.apache.ibatis.session.SqlSession;
+
+@Named
+@ViewScoped
+public class UserBean implements Serializable {
+    private List<User> users;
+
+    public List<User> getUsers() {
+        if (users == null) {
+            try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+                UserDao userDao = session.getMapper(UserDao.class);
+                users = userDao.getAllUsers();
+            }
+        }
+        return users;
+    }
+}
+```
+
+---
+
+### **6️⃣ MyBatis 유틸 클래스 (`MyBatisUtil.java`)**
+```java
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+import java.io.InputStream;
+
+public class MyBatisUtil {
+    private static SqlSessionFactory sqlSessionFactory;
+    
+    static {
+        try (InputStream inputStream = MyBatisUtil.class.getClassLoader()
+                .getResourceAsStream("mybatis-config.xml")) {
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+        } catch (Exception e) {
+            throw new RuntimeException("Error initializing MyBatis", e);
+        }
+    }
+    
+    public static SqlSessionFactory getSqlSessionFactory() {
+        return sqlSessionFactory;
+    }
+}
+```
+
+---
+
+### **7️⃣ JSF 페이지 (`users.xhtml`)**
+> 기존의 JSP 대신 JSF를 사용하며, **EL(Expression Language)로 ManagedBean의 데이터를 직접 출력**
+```xhtml
+<h:body>
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Name</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Email</f:facet>
+            #{user.email}
+        </h:column>
+    </h:dataTable>
+</h:body>
+```
+
+---
+
+## **🚀 결론: 기존 MVC와 비교**
+| **항목**        | **기존 3층 구조 (MVC)** | **변경된 2층 구조** |
+|----------------|------------------|------------------|
+| **프레젠테이션** | JSP + Servlet | JSF (ManagedBean) |
+| **비즈니스 로직** | Service Layer에서 처리 | DAO에서 직접 처리 |
+| **데이터 접근** | DAO → Service → Controller | DAO → ManagedBean |
+| **Controller 역할** | Servlet이 담당 | ManagedBean이 담당 |
+| **프레임워크** | Seasar2 | JSF + MyBatis |
+
+**💡 주요 변경점:**  
+- **Controller(Servlet) 제거**, 대신 **JSF ManagedBean이 직접 DAO를 호출**  
+- **Service Layer가 생략되거나 축소**  
+- **JSP → JSF 사용 (EL로 직접 데이터 바인딩)**  
+- **DAO에서 직접 DB 접근 및 로직 처리**
+
+---
+
+## **✅ 요약**
+이제 **JSF의 ManagedBean이 DAO를 직접 호출하여 DB의 데이터를 가져와서 화면에 출력**하는 방식이므로, 기존의 **MVC(3-tier)보다는 JSP(Model 2)와 유사한 형태**가 됩니다.  
+
+이 방식으로 프로토타입을 개발하면, 기존 시스템의 어느 부분을 유지할 수 있는지와 어떤 부분을 수정해야 하는지 검토할 수 있습니다.  
+
+이해가 안 되는 부분이 있으면 질문 주세요!
