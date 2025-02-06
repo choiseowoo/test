@@ -1,0 +1,99 @@
+### **📌 Eclipse에서 WAR 파일을 Maven 프로젝트로 변환하는 방법**  
+
+Maven 프로젝트가 아니라 **WAR 파일**만 받은 경우, 그대로는 **Maven 프로젝트로 인식되지 않음**.  
+하지만 다음 절차를 따르면 Eclipse에서 Maven 프로젝트로 변환할 수 있습니다.  
+
+---
+
+## **🚀 1. WAR 파일을 Eclipse에서 Maven 프로젝트로 변환하는 방법**  
+
+### **1️⃣ WAR 파일을 Eclipse에서 Import**
+1. **Eclipse 실행**  
+2. `File` → `Import` → `Web` → `War file` 선택  
+3. `Next` → `Select WAR File`에서 받은 `myproject.war` 선택  
+4. `Finish`  
+
+🔹 **이렇게 하면 Eclipse의 Dynamic Web Project로 임포트됨**  
+🔹 하지만 **Maven 프로젝트는 아님**, 그래서 Maven 변환 필요  
+
+---
+
+### **2️⃣ WAR 프로젝트를 Maven 프로젝트로 변환**  
+✅ **이클립스에서 수동으로 Maven 프로젝트로 변환**  
+
+1. **프로젝트 우클릭 → Configure → Convert to Maven Project** 선택  
+2. `Group Id`, `Artifact Id`, `Version`, `Packaging` 입력 (자동 생성됨)  
+3. `Finish`  
+
+🔹 **이제 프로젝트가 Maven 프로젝트로 변경됨.**  
+
+---
+
+### **3️⃣ `pom.xml` 수동 생성 (필요한 경우)**  
+만약 `pom.xml`이 자동 생성되지 않는다면 직접 추가해야 함.
+
+📌 **`pom.xml` 생성**
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>myproject</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>war</packaging>
+
+    <dependencies>
+        <!-- Jakarta EE API -->
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <version>10.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- JSF (필요한 경우) -->
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>jakarta.faces</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.3.2</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
+🔹 **필요한 의존성 추가 후 `Maven → Update Project (Alt + F5)` 실행**
+
+---
+
+### **🚀 4. 프로젝트 실행 (WildFly 배포)**
+✅ **Maven으로 WAR 파일 다시 생성 후 WildFly에 배포**
+```bash
+mvn clean package
+cp target/myproject.war $WILDFLY_HOME/standalone/deployments/
+```
+또는 Eclipse에서  
+1. **서버 추가 (`Servers` 탭 → WildFly 추가)**  
+2. **프로젝트를 WildFly에 배포 (Run on Server)**  
+
+---
+
+## **📌 결론**
+✅ **Eclipse에서 `Import → WAR File`로 가져오기**  
+✅ **`Convert to Maven Project` 실행**  
+✅ **`pom.xml` 확인 및 필요하면 추가**  
+✅ **`mvn clean package` 실행 후 WildFly에 배포**  
+
+이 과정을 거치면 WAR 파일을 **Maven 프로젝트로 변환하여 WildFly에서 실행 가능**.  
+테스트해 보고 안 되면 알려줘요!
