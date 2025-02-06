@@ -1,0 +1,73 @@
+### **✅ WildFly와 Tomcat의 차이 & 실행 방식**  
+
+네, **WildFly도 Tomcat처럼 서버를 실행**하는 역할을 하지만, 몇 가지 중요한 차이가 있어요.  
+
+---
+
+## **🚀 1. WildFly vs Tomcat 차이점**
+| 항목 | WildFly | Tomcat |
+|------|--------|--------|
+| **종류** | 풀 Java EE (Jakarta EE) 애플리케이션 서버 | 서블릿 컨테이너 (Servlet/JSP 지원) |
+| **기본 내장 기능** | EJB, CDI, JPA, JSF, JAX-RS, JMS 등 | 서블릿, JSP만 기본 지원 |
+| **설정 파일** | `standalone.xml` | `server.xml` |
+| **관리 콘솔** | 있음 (`http://localhost:9990`) | 없음 |
+| **배포 방식** | `deployments/`에 `.war` 또는 `.ear` 복사 | `webapps/`에 `.war` 복사 |
+| **운영 방식** | Standalone / Domain 모드 | Standalone |
+
+🔹 **Tomcat은 서블릿 컨테이너**, **WildFly는 풀 Java EE 서버**  
+🔹 WildFly는 **Tomcat을 내장하고 있음** → Tomcat처럼 동작 가능  
+
+---
+
+## **🚀 2. WildFly 실행 방식 (Tomcat과 비교)**
+WildFly는 **Standalone Mode**와 **Domain Mode**가 있는데,  
+일반적인 개발 환경에서는 **Standalone Mode**를 사용함.  
+
+### **📌 1️⃣ WildFly 서버 실행 (Standalone Mode)**
+Tomcat처럼 **독립적으로 실행**하려면:
+```bash
+cd $WILDFLY_HOME/bin
+./standalone.sh   # (Linux/Mac)
+standalone.bat    # (Windows)
+```
+🔹 실행 후 **`http://localhost:8080`** 으로 접근  
+🔹 **관리 콘솔 (`http://localhost:9990`)** 지원 (Tomcat에는 없음)
+
+---
+
+### **📌 2️⃣ WildFly에 WAR 파일 배포**
+Tomcat처럼 WildFly에도 `.war` 파일을 배포할 수 있음.
+
+#### ✅ **(1) 자동 배포 (Tomcat처럼 WAR 복사)**
+Tomcat에서는 `webapps/`에 `.war` 파일을 넣으면 자동 배포되지만,  
+WildFly에서는 **`standalone/deployments/` 폴더에 복사**해야 함.
+
+```bash
+cp target/myproject.war $WILDFLY_HOME/standalone/deployments/
+```
+🔹 `.war` 파일이 배포되면 **자동으로 실행됨**  
+🔹 배포된 프로젝트는 `http://localhost:8080/myproject/` 에서 접근 가능  
+
+---
+
+### **📌 3️⃣ Eclipse에서 WildFly 실행**
+Tomcat처럼 Eclipse에서 **WildFly 서버를 직접 실행**할 수도 있음.
+
+#### ✅ **(1) Eclipse에 WildFly 추가**
+1. `Window` → `Preferences` → `Server` → `Runtime Environments`  
+2. `Add` → `WildFly` 선택 후 설치된 WildFly 경로 지정  
+3. 프로젝트 우클릭 → `Run As → Run on Server` 실행  
+
+🔹 Eclipse에서 **Tomcat 실행하는 방식과 거의 동일**  
+
+---
+
+## **🚀 결론: WildFly는 Tomcat처럼 실행할 수 있음!**
+✅ **WildFly는 Tomcat을 내장한 Java EE 애플리케이션 서버**  
+✅ **Tomcat처럼 `standalone.sh` 실행 후 `.war` 파일 배포 가능**  
+✅ **Tomcat처럼 Eclipse에서 직접 실행 가능 (`Run on Server`)**  
+✅ **Tomcat과 다르게 JSF, JPA, CDI 같은 Java EE 기능이 기본 내장됨**  
+
+📌 **Tomcat처럼 가볍게 쓰고 싶다면** `standalone.xml`에서 불필요한 Java EE 기능을 비활성화하면 됨.  
+
+WildFly 실행하는데 문제 있으면 알려줘요!
