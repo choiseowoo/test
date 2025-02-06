@@ -1,0 +1,108 @@
+WildFly에서 `.xhtml` 페이지가 404 오류를 반환하는 원인은 여러 가지가 있을 수 있습니다. 아래 몇 가지 주요 원인과 해결 방법을 확인해보세요.  
+
+---
+
+### **1. URL 경로 및 매핑 문제**  
+#### **원인:**  
+- `.xhtml` 파일이 `webapp` 내 적절한 위치에 배치되지 않았거나, `web.xml` 또는 `faces-config.xml`에서 JSF 서블릿 매핑이 올바르게 설정되지 않았을 가능성이 있습니다.  
+
+#### **해결 방법:**  
+- `.xhtml` 파일이 올바른 위치에 있는지 확인 (`src/main/webapp/` 또는 `src/main/resources/META-INF/resources/`)  
+- `web.xml`이 JSF 서블릿을 올바르게 매핑하고 있는지 확인  
+
+  ```xml
+  <servlet>
+      <servlet-name>FacesServlet</servlet-name>
+      <servlet-class>javax.faces.webapp.FacesServlet</servlet-class>
+      <load-on-startup>1</load-on-startup>
+  </servlet>
+
+  <servlet-mapping>
+      <servlet-name>FacesServlet</servlet-name>
+      <url-pattern>*.xhtml</url-pattern>
+  </servlet-mapping>
+  ```
+
+---
+
+### **2. JSF가 활성화되지 않음**  
+#### **원인:**  
+- WildFly는 기본적으로 JSF (Jakarta Faces)를 포함하고 있지만, 프로젝트 설정에 따라 JSF가 활성화되지 않을 수도 있습니다.  
+
+#### **해결 방법:**  
+- `pom.xml`에 JSF 라이브러리가 포함되어 있는지 확인  
+
+  ```xml
+  <dependency>
+      <groupId>jakarta.faces</groupId>
+      <artifactId>jakarta.faces-api</artifactId>
+      <version>4.0.1</version> <!-- 버전은 프로젝트에 맞게 조정 -->
+      <scope>provided</scope>
+  </dependency>
+  ```
+
+- `standalone.xml`에서 JSF 서브시스템이 활성화되어 있는지 확인 (`<subsystem xmlns="urn:jboss:domain:jsf:2.0"/>`)
+
+---
+
+### **3. 프로젝트 빌드 및 배포 문제**  
+#### **원인:**  
+- `.war` 파일이 정상적으로 배포되지 않았거나, 빌드 중 오류가 발생했을 가능성이 있음  
+
+#### **해결 방법:**  
+1. **빌드 및 배포 상태 확인**  
+   ```sh
+   mvn clean package
+   ```
+
+2. **WildFly 로그 확인**  
+   - `standalone/log/server.log`에서 배포 오류를 확인  
+
+3. **배포 확인**  
+   ```sh
+   ls $WILDFLY_HOME/standalone/deployments/
+   ```
+
+   `.war` 파일이 존재하고, `.failed` 파일이 없는지 확인  
+
+---
+
+### **4. URL 접근 방식 문제**  
+#### **원인:**  
+- JSF가 `PrettyFaces` 같은 URL 리라이터를 사용하도록 설정되어 있을 가능성이 있음  
+
+#### **해결 방법:**  
+- `.xhtml` 파일에 직접 접근하는 것이 아니라, `http://localhost:8080/프로젝트명/index.xhtml` 형식으로 접근  
+- `faces-config.xml`에서 `<url-pattern>`을 `*.xhtml`로 매핑한 경우, `.xhtml` 없이 접근 (`http://localhost:8080/프로젝트명/index`)  
+
+---
+
+### **5. CDI(컨텍스트 및 종속성 주입) 문제**  
+#### **원인:**  
+- `beans.xml`이 없으면 CDI가 활성화되지 않아 JSF에서 `@ManagedBean` 또는 `@Named` 빈을 찾지 못할 수 있음  
+
+#### **해결 방법:**  
+- `src/main/webapp/WEB-INF/beans.xml` 파일이 존재하는지 확인하고, 없으면 생성  
+
+  ```xml
+  <beans xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         version="3.0" bean-discovery-mode="all">
+  </beans>
+  ```
+
+---
+
+### **6. 캐시 및 브라우저 문제**  
+#### **해결 방법:**  
+1. WildFly 캐시 초기화  
+   ```sh
+   rm -rf $WILDFLY_HOME/standalone/tmp/*
+   rm -rf $WILDFLY_HOME/standalone/work/*
+   ```
+
+2. 브라우저 캐시 삭제 후 다시 접속  
+
+---
+
+위 방법을 하나씩 확인해보면서 문제를 해결해보세요.  
+어떤 방법을 시도해도 해결되지 않는다면, WildFly 로그(`server.log`)에 나온 오류 메시지를 공유해 주세요!
