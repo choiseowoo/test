@@ -1,0 +1,136 @@
+### **🚨 WildFly에서 JSF XHTML 404 오류 해결 방법**  
+
+Maven 프로젝트에서 `webapp/page/` 폴더에 XHTML 파일이 있는데 **404 오류가 발생하는 주요 원인과 해결 방법**을 정리해 보겠습니다.
+
+---
+
+## **1️⃣ web.xml 설정 확인**  
+JSF가 정상적으로 동작하려면 `web.xml`에서 **`FacesServlet`을 등록해야 합니다.**  
+Maven 프로젝트에서는 `src/main/webapp/WEB-INF/web.xml`에 설정이 있어야 합니다.
+
+✅ **[해결 방법] web.xml 설정 추가 또는 확인**  
+```xml
+<web-app xmlns="http://java.sun.com/xml/ns/javaee" version="3.0">
+    <servlet>
+        <servlet-name>Faces Servlet</servlet-name>
+        <servlet-class>jakarta.faces.webapp.FacesServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>Faces Servlet</servlet-name>
+        <url-pattern>*.xhtml</url-pattern>
+    </servlet-mapping>
+
+    <welcome-file-list>
+        <welcome-file>index.xhtml</welcome-file>
+    </welcome-file-list>
+</web-app>
+```
+🔹 `url-pattern`이 `*.xhtml`이 아니라면 JSF 페이지가 인식되지 않을 수 있습니다.  
+
+---
+
+## **2️⃣ 프로젝트 구조 확인**  
+Maven 프로젝트의 올바른 디렉토리 구조는 다음과 같아야 합니다.
+
+```
+project-root/
+├── src/main/
+│   ├── java/com/example/bean/
+│   │   ├── UserBean.java
+│   ├── resources/
+│   │   ├── META-INF/
+│   ├── webapp/
+│   │   ├── page/
+│   │   │   ├── index.xhtml  👈 (여기에 XHTML 파일이 위치)
+│   │   ├── WEB-INF/
+│   │   │   ├── web.xml
+│   │   │   ├── faces-config.xml (생략 가능)
+```
+
+✅ **[해결 방법] XHTML 파일이 `webapp/page/`에 올바르게 위치해 있는지 확인**  
+
+---
+
+## **3️⃣ JSF 라이브러리(WildFly 모듈) 확인**  
+WildFly는 기본적으로 **Jakarta EE 표준(JSF 포함)을 내장**하고 있지만, `pom.xml`에서 JSF 라이브러리를 중복으로 추가하면 충돌이 발생할 수 있습니다.
+
+✅ **[해결 방법] pom.xml에서 JSF 라이브러리 중복 확인**  
+📌 **JSF (Jakarta Faces) 의존성 추가 (필요한 경우)**
+```xml
+<dependencies>
+    <dependency>
+        <groupId>jakarta.platform</groupId>
+        <artifactId>jakarta.jakartaee-api</artifactId>
+        <version>10.0.0</version>
+        <scope>provided</scope>
+    </dependency>
+</dependencies>
+```
+🔹 `scope`를 `provided`로 설정해야 **WildFly의 내장 JSF를 사용**할 수 있습니다.
+
+📌 **불필요한 JSF 라이브러리 제거**
+```xml
+<dependency>
+    <groupId>org.glassfish</groupId>
+    <artifactId>jakarta.faces</artifactId>  <!-- 필요 없다면 제거 -->
+    <version>3.0.0</version>
+</dependency>
+```
+🔹 WildFly는 기본적으로 JSF를 포함하고 있으므로 중복 추가하면 **의존성 충돌로 404 오류가 발생**할 수 있습니다.
+
+---
+
+## **4️⃣ URL 접근 방식 확인**  
+WildFly에서 XHTML 파일을 직접 요청하려면 **JSF URL 패턴을 준수해야 합니다.**  
+예를 들어, `webapp/page/index.xhtml`에 접근할 때 다음 방식으로 URL을 확인하세요.
+
+✅ **[해결 방법] 올바른 URL로 접근**
+```txt
+http://localhost:8080/프로젝트명/page/index.xhtml
+```
+또는  
+```txt
+http://localhost:8080/프로젝트명/faces/page/index.xhtml
+```
+🔹 `faces/` 경로가 필요한 경우가 있음 (설정에 따라 다름).  
+🔹 **URL을 `http://localhost:8080/index.xhtml`로 직접 접근하면 404가 발생할 수도 있음.**
+
+---
+
+## **5️⃣ 배포 확인 (`standalone/deployments` 확인)**  
+WildFly에 프로젝트가 정상적으로 배포되지 않으면 404 오류가 발생할 수 있습니다.
+
+✅ **[해결 방법] 배포 상태 확인**
+1. **WildFly 배포 디렉토리 확인**  
+   WildFly가 실행 중이라면, `standalone/deployments/` 폴더를 확인하세요.  
+   **WAR 파일 또는 exploded WAR 디렉토리가 있어야 합니다.**
+   ```bash
+   ls $WILDFLY_HOME/standalone/deployments/
+   ```
+   예를 들어, `myproject.war`가 있어야 합니다.
+
+2. **서버 로그 확인 (`server.log`)**
+   ```bash
+   tail -f $WILDFLY_HOME/standalone/log/server.log
+   ```
+   🔹 `Deployment "myproject.war" is not found` 같은 오류가 있다면 **배포가 실패한 것**이므로 다시 배포해야 합니다.
+
+3. **수동 배포 (Maven 사용)**
+   ```bash
+   mvn clean package
+   cp target/myproject.war $WILDFLY_HOME/standalone/deployments/
+   ```
+
+---
+
+## **📌 결론: 404 오류 해결 체크리스트**
+✅ **`web.xml`에 `FacesServlet`이 등록되어 있는가?**  
+✅ **XHTML 파일이 `webapp/page/` 안에 올바르게 위치해 있는가?**  
+✅ **JSF 라이브러리가 중복 추가되어 있지 않은가? (`pom.xml` 확인)**  
+✅ **URL을 `/프로젝트명/page/index.xhtml` 형식으로 접근하고 있는가?**  
+✅ **WildFly에 프로젝트가 정상적으로 배포되었는가? (`deployments/` 확인)**  
+
+위 내용을 점검하면 WildFly에서 **JSF 기반 XHTML 파일을 실행할 수 있을 것**입니다.  
+테스트해 보고 추가 질문 있으면 알려 주세요!
