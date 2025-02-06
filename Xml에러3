@@ -1,0 +1,72 @@
+그냥 복사해서 가져온 경우 **환경 차이** 때문에 404 오류가 발생할 수도 있어요. 다음 문제들을 확인해야 합니다.  
+
+---
+
+### **✅ 1. 프로젝트 구조가 올바르게 복사되었는가?**  
+- `pom.xml`과 `src/main/webapp/` 등이 올바르게 복사되었는지 확인  
+- `.settings/`, `.project`, `.classpath` 같은 **Eclipse 설정 파일도 포함**되었는지 확인 (Eclipse 사용 시)  
+
+📌 **해결 방법**  
+```bash
+ls -l 프로젝트_디렉토리/
+```
+🔹 Maven 프로젝트라면 `pom.xml`이 있어야 하고, `src/main/webapp/`에 XHTML 파일이 있어야 합니다.  
+
+---
+
+### **✅ 2. Eclipse 또는 IntelliJ에서 Maven 프로젝트로 정상 인식되었는가?**  
+복사한 프로젝트가 IDE에서 **Maven 프로젝트로 인식되지 않으면** 실행 시 오류가 발생할 수 있습니다.  
+
+📌 **해결 방법**  
+1. **Eclipse**  
+   - `Project Explorer`에서 **프로젝트 우클릭 → Maven → Update Project (`Alt + F5`)**  
+2. **IntelliJ IDEA**  
+   - `File → Invalidate Caches / Restart` 후 다시 열기  
+   - `Maven → Reload Project` 실행  
+
+---
+
+### **✅ 3. `target/` 디렉토리를 삭제하고 다시 빌드했는가?**  
+복사한 프로젝트는 기존 `target/` 디렉토리를 포함할 수도 있습니다.  
+🔹 **이전 빌드 파일이 남아있으면 충돌이 발생할 수 있음.**  
+
+📌 **해결 방법**  
+```bash
+mvn clean package
+```
+그리고 새 `.war` 파일을 WildFly에 배포하세요.  
+
+---
+
+### **✅ 4. WildFly에 수동 배포가 필요한가?**  
+복사한 프로젝트가 WildFly에서 자동으로 인식되지 않을 수 있습니다.  
+
+📌 **해결 방법**  
+```bash
+cp target/프로젝트명.war $WILDFLY_HOME/standalone/deployments/
+```
+이후 WildFly를 다시 시작하세요.  
+
+---
+
+### **✅ 5. WildFly 설정 차이 (standalone.xml)**  
+복사한 프로젝트가 실행되지 않는 경우, WildFly의 `standalone.xml` 설정이 다를 수도 있습니다.  
+
+📌 **해결 방법**  
+WildFly 관리 콘솔 (`http://localhost:9990`)에서 **Deployment 상태를 확인**하거나  
+아래 명령어로 배포 상태를 확인하세요.  
+```bash
+ls $WILDFLY_HOME/standalone/deployments/
+```
+🔹 복사한 프로젝트의 `.war` 파일이 없으면 수동으로 배포해야 합니다.  
+
+---
+
+### **🚀 결론: 문제 발생 가능성 있음!**  
+✅ **Maven 프로젝트로 정상 인식되었는지 확인**  
+✅ **`mvn clean package` 실행 후 다시 배포**  
+✅ **WildFly 배포 상태 확인 (`deployments/` 확인)**  
+✅ **IDE에서 Maven 업데이트 실행 (`Alt + F5` 또는 `Reload Project`)**  
+
+이 과정을 거치면 복사한 프로젝트도 정상 실행될 가능성이 높아요!  
+테스트해 보고 문제 있으면 알려주세요.
