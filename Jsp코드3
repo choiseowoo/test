@@ -1,0 +1,227 @@
+### **JSF + MyBatis 기반의 권한 부여 기능**  
+요구사항을 정리하면 다음과 같아요:  
+✅ **사용자의 ID를 검색**  
+✅ **이미 권한이 부여된 경우 → 에러 메시지 출력**  
+✅ **권한이 없는 경우 → 권한 부여 후 성공 메시지 표시**  
+
+---
+
+## **1. 데이터베이스 테이블 수정 (PostgreSQL)**
+권한(Role)을 저장하는 테이블을 별도로 둡니다.  
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL
+);
+
+CREATE TABLE user_roles (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(50) NOT NULL UNIQUE -- 'ADMIN', 'USER' 등
+);
+```
+
+샘플 데이터 추가:  
+```sql
+INSERT INTO users (id, username) VALUES
+(1, 'admin'),
+(2, 'user1'),
+(3, 'user2');
+
+INSERT INTO user_roles (user_id, role) VALUES
+(1, 'ADMIN'); -- admin 계정은 이미 권한이 있음
+```
+
+---
+
+## **2. MyBatis Mapper (UserMapper.xml)**
+### **(1) 사용자 조회**
+```xml
+<select id="findByUsername" parameterType="String" resultType="com.example.model.User">
+    SELECT * FROM users WHERE username = #{username}
+</select>
+```
+
+### **(2) 해당 사용자의 권한 확인**
+```xml
+<select id="findRoleByUserId" parameterType="Long" resultType="String">
+    SELECT role FROM user_roles WHERE user_id = #{userId}
+</select>
+```
+
+### **(3) 권한 부여**
+```xml
+<insert id="assignRole" parameterType="map">
+    INSERT INTO user_roles (user_id, role) VALUES (#{userId}, #{role})
+</insert>
+```
+
+---
+
+## **3. MyBatis 인터페이스 (UserMapper.java)**
+```java
+package com.example.mapper;
+
+import com.example.model.User;
+import java.util.Map;
+
+public interface UserMapper {
+    User findByUsername(String username);
+    String findRoleByUserId(Long userId);
+    void assignRole(Map<String, Object> params);
+}
+```
+
+---
+
+## **4. 데이터 모델 (User.java)**
+```java
+package com.example.model;
+
+public class User {
+    private Long id;
+    private String username;
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+}
+```
+
+---
+
+## **5. 권한 관리 서비스 (RoleService.java)**
+```java
+package com.example.service;
+
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import java.util.HashMap;
+import java.util.Map;
+
+@ApplicationScoped
+public class RoleService {
+    @Inject
+    private UserMapper userMapper;
+
+    public String assignRole(String username, String role) {
+        // 사용자 검색
+        User user = userMapper.findByUsername(username);
+        if (user == null) {
+            return "사용자를 찾을 수 없습니다.";
+        }
+
+        // 해당 사용자의 기존 권한 확인
+        String existingRole = userMapper.findRoleByUserId(user.getId());
+        if (existingRole != null) {
+            return "이미 권한이 부여된 사용자입니다.";
+        }
+
+        // 권한 부여 실행
+        Map<String, Object> params = new HashMap<>();
+        params.put("userId", user.getId());
+        params.put("role", role);
+        userMapper.assignRole(params);
+
+        return "권한 부여 완료!";
+    }
+}
+```
+
+---
+
+## **6. JSF 권한 부여 화면 (assign_role.xhtml)**
+```xhtml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html">
+    <h:head>
+        <title>권한 부여</title>
+    </h:head>
+    <h:body>
+        <h:form>
+            <h:outputLabel for="username" value="사용자명: " />
+            <h:inputText id="username" value="#{roleBean.username}" />
+
+            <h:outputLabel for="role" value="부여할 권한: " />
+            <h:selectOneMenu id="role" value="#{roleBean.role}">
+                <f:selectItem itemValue="ADMIN" itemLabel="관리자" />
+                <f:selectItem itemValue="USER" itemLabel="일반 사용자" />
+            </h:selectOneMenu>
+
+            <h:commandButton value="권한 부여" action="#{roleBean.assignRole}" />
+        </h:form>
+
+        <h:messages globalOnly="true" />
+    </h:body>
+</html>
+```
+
+---
+
+## **7. JSF 관리 Bean (RoleBean.java)**
+```java
+package com.example.beans;
+
+import com.example.service.RoleService;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.faces.application.FacesMessage;
+import jakarta.faces.context.FacesContext;
+
+@Named
+@RequestScoped
+public class RoleBean {
+    private String username;
+    private String role;
+
+    @Inject
+    private RoleService roleService;
+
+    public void assignRole() {
+        String resultMessage = roleService.assignRole(username, role);
+        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(resultMessage));
+    }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+}
+```
+
+---
+
+## **동작 방식**
+1. **사용자 입력**  
+   - `username` 입력 → `role` 선택 후 "권한 부여" 클릭  
+
+2. **백엔드 처리 (RoleService)**  
+   - `findByUsername(username)` → 사용자가 존재하는지 확인  
+   - `findRoleByUserId(userId)` → 이미 권한이 있는지 확인  
+   - **(1) 이미 권한이 있다면 "이미 권한이 부여된 사용자입니다." 출력**  
+   - **(2) 권한이 없다면 `assignRole(userId, role)` 실행 후 "권한 부여 완료!" 출력**  
+
+3. **JSF 페이지에서 메시지 출력**  
+   - 성공 또는 에러 메시지가 화면에 표시됨  
+
+---
+
+## **테스트 시나리오**
+| 테스트 | 입력값 | 결과 |
+|------|-------|------|
+| **존재하지 않는 사용자 검색** | `unknownUser` → `ADMIN` | "사용자를 찾을 수 없습니다." |
+| **이미 권한이 있는 사용자** | `admin` → `ADMIN` | "이미 권한이 부여된 사용자입니다." |
+| **새로운 권한 부여** | `user1` → `USER` | "권한 부여 완료!" |
+
+---
+
+이렇게 하면 **기존 권한 여부를 체크한 후, 없는 경우에만 권한을 부여하는 기능**이 완성됩니다.  
+추가적인 기능이 필요하면 알려줘!
