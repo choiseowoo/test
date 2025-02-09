@@ -1,0 +1,175 @@
+はい、基本的なプロトタイプのコードを作成できます。  
+以下の条件を満たすシンプルな例を用意します：  
+
+- **クライアントサイド (JSF)**: 現行MDMSの流用を想定し、JSFページを用意  
+- **サーバーサイド (Java EE, WildFly, MyBatis)**: 2層構造でDBアクセスを実装  
+- **データベース (AWS Aurora, PostgreSQL)**: シンプルなテーブルを用意  
+
+---
+
+### **1. データベーステーブルの作成 (PostgreSQL)**
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100) UNIQUE
+);
+```
+
+---
+
+### **2. MyBatis の Mapper (UserMapper.xml)**
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mapper.UserMapper">
+    <select id="getAllUsers" resultType="com.example.model.User">
+        SELECT * FROM users;
+    </select>
+</mapper>
+```
+
+---
+
+### **3. MyBatis のインターフェース (UserMapper.java)**
+```java
+package com.example.mapper;
+
+import com.example.model.User;
+import java.util.List;
+
+public interface UserMapper {
+    List<User> getAllUsers();
+}
+```
+
+---
+
+### **4. データモデル (User.java)**
+```java
+package com.example.model;
+
+public class User {
+    private Long id;
+    private String name;
+    private String email;
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+}
+```
+
+---
+
+### **5. サービス層 (UserService.java)**
+```java
+package com.example.service;
+
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import jakarta.ejb.Stateless;
+import jakarta.inject.Inject;
+import java.util.List;
+
+@Stateless
+public class UserService {
+    @Inject
+    private UserMapper userMapper;
+
+    public List<User> getAllUsers() {
+        return userMapper.getAllUsers();
+    }
+}
+```
+
+---
+
+### **6. JSF バッキングビーン (UserBean.java)**
+```java
+package com.example.beans;
+
+import com.example.model.User;
+import com.example.service.UserService;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import java.util.List;
+
+@Named
+@RequestScoped
+public class UserBean {
+    @Inject
+    private UserService userService;
+
+    public List<User> getUsers() {
+        return userService.getAllUsers();
+    }
+}
+```
+
+---
+
+### **7. JSFページ (user.xhtml)**
+```xhtml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html">
+    <h:head>
+        <title>User List</title>
+    </h:head>
+    <h:body>
+        <h1>ユーザー一覧</h1>
+        <h:dataTable value="#{userBean.users}" var="user">
+            <h:column>
+                <f:facet name="header">ID</f:facet>
+                #{user.id}
+            </h:column>
+            <h:column>
+                <f:facet name="header">名前</f:facet>
+                #{user.name}
+            </h:column>
+            <h:column>
+                <f:facet name="header">メール</f:facet>
+                #{user.email}
+            </h:column>
+        </h:dataTable>
+    </h:body>
+</html>
+```
+
+---
+
+### **8. `web.xml` の設定**
+```xml
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         version="3.1">
+    <welcome-file-list>
+        <welcome-file>user.xhtml</welcome-file>
+    </welcome-file-list>
+</web-app>
+```
+
+---
+
+### **ポイント**
+1. **2層構造**  
+   - プレゼンテーション層(JSF)とアプリケーション層(UserService)を統合
+   - Seasar2なしで MyBatis を直接活用  
+
+2. **WildFly + MyBatis + PostgreSQL の組み合わせ**  
+   - WildFly にデプロイし、Aurora (PostgreSQL) へアクセス  
+
+3. **現行MDMSのフロントエンド(JSF)を流用**  
+   - 画面の大きな変更なし  
+
+このコードをベースに、環境構築や拡張を進められるよ。  
+もし特定の機能追加や環境設定について質問があれば教えて！
