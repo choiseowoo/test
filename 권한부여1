@@ -1,0 +1,232 @@
+네, **사용자 권한 부여(Role-Based Access Control, RBAC)** 기능을 JSF 기반으로 구현할 수 있어요.  
+아래 예제는 **로그인된 사용자의 역할(Role)에 따라 다른 화면을 보여주는 방식**을 적용했어요.  
+
+---
+
+## **1. 데이터베이스 테이블 (PostgreSQL)**
+사용자 정보와 역할(Role)을 저장하는 테이블을 만들어요.  
+
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL -- 'ADMIN' 또는 'USER'
+);
+```
+
+샘플 데이터 추가:  
+```sql
+INSERT INTO users (username, password, role) VALUES
+('admin', 'admin123', 'ADMIN'),
+('user1', 'user123', 'USER');
+```
+*비밀번호는 예제라서 평문이지만, 실제 구현에서는 해싱해야 해요.*
+
+---
+
+## **2. MyBatis Mapper (UserMapper.xml)**
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+    <select id="findByUsername" parameterType="String" resultType="com.example.model.User">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+</mapper>
+```
+
+---
+
+## **3. MyBatis 인터페이스 (UserMapper.java)**
+```java
+package com.example.mapper;
+
+import com.example.model.User;
+
+public interface UserMapper {
+    User findByUsername(String username);
+}
+```
+
+---
+
+## **4. 데이터 모델 (User.java)**
+```java
+package com.example.model;
+
+public class User {
+    private Long id;
+    private String username;
+    private String password;
+    private String role; // 'ADMIN' or 'USER'
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+}
+```
+
+---
+
+## **5. 인증 서비스 (AuthService.java)**
+로그인 처리를 담당하는 서비스입니다.  
+```java
+package com.example.service;
+
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import java.io.Serializable;
+
+@Named
+@SessionScoped
+public class AuthService implements Serializable {
+    @Inject
+    private UserMapper userMapper;
+
+    private User loggedInUser;
+
+    public String login(String username, String password) {
+        User user = userMapper.findByUsername(username);
+        if (user != null && user.getPassword().equals(password)) {
+            loggedInUser = user;
+            return "home.xhtml?faces-redirect=true"; // 로그인 성공 시 홈으로 이동
+        }
+        return "login.xhtml?faces-redirect=true"; // 로그인 실패 시 다시 로그인 페이지
+    }
+
+    public void logout() {
+        loggedInUser = null;
+    }
+
+    public boolean isLoggedIn() {
+        return loggedInUser != null;
+    }
+
+    public boolean isAdmin() {
+        return loggedInUser != null && "ADMIN".equals(loggedInUser.getRole());
+    }
+
+    public User getLoggedInUser() {
+        return loggedInUser;
+    }
+}
+```
+
+---
+
+## **6. 로그인 화면 (login.xhtml)**
+```xhtml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html">
+    <h:head>
+        <title>로그인</title>
+    </h:head>
+    <h:body>
+        <h:form>
+            <h:outputLabel for="username" value="사용자명: " />
+            <h:inputText id="username" value="#{loginBean.username}" />
+
+            <h:outputLabel for="password" value="비밀번호: " />
+            <h:inputSecret id="password" value="#{loginBean.password}" />
+
+            <h:commandButton value="로그인" action="#{loginBean.login}" />
+        </h:form>
+    </h:body>
+</html>
+```
+
+---
+
+## **7. 로그인 관리 Bean (LoginBean.java)**
+```java
+package com.example.beans;
+
+import com.example.service.AuthService;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+
+@Named
+@RequestScoped
+public class LoginBean {
+    private String username;
+    private String password;
+
+    @Inject
+    private AuthService authService;
+
+    public String login() {
+        return authService.login(username, password);
+    }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+}
+```
+
+---
+
+## **8. 홈 화면 (home.xhtml)**
+관리자와 일반 사용자에게 다른 화면을 보여줍니다.  
+```xhtml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html">
+    <h:head>
+        <title>홈</title>
+    </h:head>
+    <h:body>
+        <h1>환영합니다, #{authService.loggedInUser.username}!</h1>
+
+        <h:panelGroup rendered="#{authService.isAdmin()}">
+            <h2>관리자 페이지</h2>
+            <p>이곳은 관리자만 볼 수 있습니다.</p>
+        </h:panelGroup>
+
+        <h:panelGroup rendered="#{not authService.isAdmin()}">
+            <h2>일반 사용자 페이지</h2>
+            <p>이곳은 일반 사용자에게 제공됩니다.</p>
+        </h:panelGroup>
+
+        <h:form>
+            <h:commandButton value="로그아웃" action="#{authService.logout}" />
+        </h:form>
+    </h:body>
+</html>
+```
+
+---
+
+### **권한 부여 기능 요약**
+1. **사용자 테이블에 `role`(권한) 컬럼 추가** → ADMIN 또는 USER  
+2. **로그인 서비스(AuthService)에서 역할(Role) 확인**  
+3. **JSF의 `rendered` 속성으로 역할에 따라 화면 표시 여부 결정**  
+
+---
+
+### **테스트 시나리오**
+1. `admin / admin123` 계정으로 로그인 → **관리자 페이지가 보임**  
+2. `user1 / user123` 계정으로 로그인 → **일반 사용자 페이지가 보임**  
+3. 로그인하지 않으면 홈 화면 접근 불가 → 리디렉션 설정 가능  
+
+---
+
+이런 방식으로 **JSF + MyBatis 기반의 사용자 권한 부여 기능**을 구현할 수 있어요.  
+추가적으로 **비밀번호 해싱(Bcrypt)**, **로그인 유지(Session)**, **권한별 리디렉션** 같은 기능을 추가하면 더 강력한 보안이 가능해요.  
+
+추가로 구현하고 싶은 기능이 있으면 말해줘!
