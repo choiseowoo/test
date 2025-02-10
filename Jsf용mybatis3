@@ -1,0 +1,75 @@
+MyBatis 3.5.x 이상 버전에서 `Resources.getResourceAsStream("mybatis-config.xml")`을 사용했을 때, **"version 16 or later is required"** 같은 오류가 발생하는 경우가 있어요.  
+이 문제의 원인은 **MyBatis가 내부적으로 Java 16 이상의 기능을 요구하는 경우**이거나 **클래스패스에서 XML 파일을 찾지 못하는 경우**일 가능성이 커요.  
+
+---
+
+### **✅ 해결 방법 1: MyBatis 버전 확인 및 다운그레이드**
+MyBatis 3.5.x 이상에서는 일부 Java 버전에 대한 제약이 있을 수 있어요.  
+🔹 **사용 중인 MyBatis 버전을 확인**하고, 최신 버전(예: 3.5.11)으로 업데이트하거나, **3.4.x로 다운그레이드**해보세요.  
+
+```xml
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.4.6</version>  <!-- 3.5.x 이상에서 문제가 있으면 이 버전으로 테스트 -->
+</dependency>
+```
+이후, `mvn clean package`로 캐시를 정리하고 다시 실행해 보세요.
+
+---
+
+### **✅ 해결 방법 2: Java 버전 변경 (MyBatis 최신 버전이 Java 16 이상 요구하는 경우)**
+MyBatis의 최신 버전이 Java 16 이상을 요구할 수도 있어요.  
+🔹 현재 사용 중인 Java 버전을 확인하세요.
+
+```sh
+java -version
+```
+
+🔹 만약 Java 11 또는 Java 8을 사용하고 있다면,  
+✅ **Java 16 이상으로 업그레이드**하는 것도 한 가지 해결 방법이에요.
+
+---
+
+### **✅ 해결 방법 3: `mybatis-config.xml` 경로 문제 확인**
+MyBatis 설정 파일이 **클래스패스에 존재하는지** 확인해야 해요.  
+
+📌 `src/main/resources`에 `mybatis-config.xml`이 있어야 합니다.  
+📌 만약 다른 위치에 있다면 **절대 경로를 사용**해 보세요.
+
+```java
+String resource = "src/main/resources/mybatis-config.xml";  // 절대 경로 사용
+InputStream inputStream = new FileInputStream(resource);
+SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+```
+🔹 또는, `target/classes`에 `mybatis-config.xml`이 정상적으로 포함되었는지 확인하세요.
+
+```sh
+ls target/classes/mybatis-config.xml
+```
+파일이 없으면 빌드할 때 포함되지 않은 것이므로, `mvn clean package`를 실행하여 다시 확인하세요.
+
+---
+
+### **✅ 해결 방법 4: `getClass().getClassLoader().getResourceAsStream()` 사용**
+Jakarta EE에서는 `Resources.getResourceAsStream()` 대신 **클래스 로더를 사용**하면 해결될 수도 있어요.
+
+```java
+InputStream inputStream = getClass().getClassLoader().getResourceAsStream("mybatis-config.xml");
+if (inputStream == null) {
+    throw new RuntimeException("mybatis-config.xml 파일을 찾을 수 없습니다.");
+}
+SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+```
+🔹 이 방법을 사용하면 **클래스패스 내의 파일을 정확하게 로드할 수 있어요.**
+
+---
+
+### **📌 결론: 가장 좋은 해결 방법**
+1. **MyBatis 버전 확인 후 3.5.x 이상이면 Java 16 이상을 사용**  
+2. `src/main/resources/mybatis-config.xml`이 있는지 확인  
+3. `getClass().getClassLoader().getResourceAsStream()` 방식으로 변경  
+4. `mvn clean package`로 빌드하고 다시 실행  
+
+이렇게 하면 문제를 해결할 수 있을 거예요!  
+**어떤 방법이 효과가 있는지 테스트해 보고 알려줘!**
