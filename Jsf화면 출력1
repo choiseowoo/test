@@ -1,0 +1,233 @@
+### **✅ JSF + MyBatis로 화면에 데이터 표시하는 예제 코드**  
+**환경:**  
+- **Jakarta EE (Java EE) + JSF (JavaServer Faces) + MyBatis + WildFly**  
+- **DB:** AWS Aurora (PostgreSQL) 또는 일반적인 PostgreSQL  
+- **Java 1.8에서도 동작 가능하도록 작성**  
+
+#### **📌 기능**  
+1. MyBatis를 이용해 **DB에서 사용자 목록을 조회**  
+2. 조회된 데이터를 **JSF 화면(xhtml)에서 출력**  
+
+---
+
+## **1️⃣ `mybatis-config.xml` (MyBatis 설정 파일)**
+📌 `src/main/resources/mybatis-config.xml`
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="org.postgresql.Driver"/>
+                <property name="url" value="jdbc:postgresql://localhost:5432/mydb"/>
+                <property name="username" value="myuser"/>
+                <property name="password" value="mypassword"/>
+            </dataSource>
+        </environment>
+    </environments>
+    
+    <mappers>
+        <mapper resource="mapper/UserMapper.xml"/>
+    </mappers>
+</configuration>
+```
+> **💡 PostgreSQL을 사용하는 경우 `postgresql.Driver`를 지정해야 함**  
+> **💡 `UserMapper.xml`에서 SQL을 정의할 예정**
+
+---
+
+## **2️⃣ `UserMapper.xml` (SQL 매핑)**
+📌 `src/main/resources/mapper/UserMapper.xml`
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mapper.UserMapper">
+    <select id="getAllUsers" resultType="com.example.model.User">
+        SELECT id, username, email FROM users;
+    </select>
+</mapper>
+```
+> **💡 `users` 테이블에서 `id`, `username`, `email` 조회하는 SQL**  
+> **💡 `com.example.mapper.UserMapper` 인터페이스와 연결됨**  
+
+---
+
+## **3️⃣ `User.java` (모델 클래스)**
+📌 `src/main/java/com/example/model/User.java`
+```java
+package com.example.model;
+
+import java.io.Serializable;
+
+public class User implements Serializable {
+    private Long id;
+    private String username;
+    private String email;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+}
+```
+> **💡 JSF는 JavaBean 규칙(getter/setter) 사용해야 데이터 바인딩 가능!**  
+
+---
+
+## **4️⃣ `UserMapper.java` (MyBatis 매퍼 인터페이스)**
+📌 `src/main/java/com/example/mapper/UserMapper.java`
+```java
+package com.example.mapper;
+
+import com.example.model.User;
+import java.util.List;
+
+public interface UserMapper {
+    List<User> getAllUsers();
+}
+```
+> **💡 MyBatis에서 XML 파일과 연결되는 인터페이스**  
+> **💡 `UserMapper.xml`의 `getAllUsers` SQL 실행**  
+
+---
+
+## **5️⃣ `MyBatisUtil.java` (MyBatis 설정 로딩)**
+📌 `src/main/java/com/example/util/MyBatisUtil.java`
+```java
+package com.example.util;
+
+import java.io.InputStream;
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+
+public class MyBatisUtil {
+    private static SqlSessionFactory sqlSessionFactory;
+
+    static {
+        try {
+            InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+        } catch (Exception e) {
+            throw new RuntimeException("MyBatis 설정 로딩 실패", e);
+        }
+    }
+
+    public static SqlSession getSession() {
+        return sqlSessionFactory.openSession();
+    }
+}
+```
+> **💡 `getSession()`을 사용해 MyBatis `SqlSession`을 얻을 수 있음**  
+
+---
+
+## **6️⃣ `UserBean.java` (JSF의 백엔드 Bean)**
+📌 `src/main/java/com/example/bean/UserBean.java`
+```java
+package com.example.bean;
+
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import com.example.util.MyBatisUtil;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Named;
+import org.apache.ibatis.session.SqlSession;
+import java.io.Serializable;
+import java.util.List;
+
+@Named
+@RequestScoped
+public class UserBean implements Serializable {
+    private List<User> users;
+
+    public List<User> getUsers() {
+        if (users == null) {
+            try (SqlSession session = MyBatisUtil.getSession()) {
+                UserMapper mapper = session.getMapper(UserMapper.class);
+                users = mapper.getAllUsers();
+            }
+        }
+        return users;
+    }
+}
+```
+> **💡 `@Named` 사용: JSF에서 EL(Expression Language)로 접근 가능**  
+> **💡 `@RequestScoped` 사용: 요청 시마다 새롭게 데이터 조회**  
+
+---
+
+## **7️⃣ `users.xhtml` (JSF 화면)**
+📌 `src/main/webapp/users.xhtml`
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html">
+    <h:head>
+        <title>사용자 목록</title>
+    </h:head>
+    <h:body>
+        <h1>사용자 목록</h1>
+        <h:dataTable value="#{userBean.users}" var="user" border="1">
+            <h:column>
+                <f:facet name="header">ID</f:facet>
+                #{user.id}
+            </h:column>
+            <h:column>
+                <f:facet name="header">이름</f:facet>
+                #{user.username}
+            </h:column>
+            <h:column>
+                <f:facet name="header">이메일</f:facet>
+                #{user.email}
+            </h:column>
+        </h:dataTable>
+    </h:body>
+</html>
+```
+> **💡 `userBean.users`를 조회해 테이블에 데이터 표시**  
+> **💡 `h:dataTable`을 사용해 반복 렌더링**  
+
+---
+
+## **✅ 실행 방법**
+1. **PostgreSQL DB 설정**  
+   - `mybatis-config.xml`에서 `url`, `username`, `password`를 실제 DB 값으로 변경  
+   - `users` 테이블이 존재하는지 확인  
+   
+2. **Maven 빌드 후 WildFly 배포**  
+```sh
+mvn clean package
+```
+- `target/myapp.war`가 생성되면 WildFly에 배포  
+
+3. **JSF 화면 접근**  
+   - 웹 브라우저에서 실행  
+   ```
+   http://localhost:8080/myapp/users.xhtml
+   ```
+   - 정상적으로 실행되면 DB의 `users` 데이터가 테이블로 표시됨  
+
+---
+
+## **📌 결론**
+✅ **JSF + MyBatis로 데이터 조회 및 화면 표시**  
+✅ **MyBatis의 SqlSessionFactory를 활용한 DB 연결**  
+✅ **JSF에서 `h:dataTable`을 사용해 데이터를 화면에 출력**  
+
+이제 **JSF 화면에서 DB의 데이터를 직접 확인할 수 있어요!** 🚀  
+**문제 있으면 알려줘~!**
