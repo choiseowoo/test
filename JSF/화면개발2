@@ -1,0 +1,102 @@
+네, 맞아요! 검색 기능도 같은 구조로 동작해요.  
+즉, **JSF → Managed Bean → DAO → DB** 흐름이 유지돼요.  
+
+---
+
+## **✅ 검색 기능의 흐름**
+1. **사용자가 JSF 화면에서 검색어 입력**  
+2. **검색 버튼 클릭 → Managed Bean의 메서드 호출**  
+3. **Managed Bean에서 DAO 호출 → DB에서 검색 실행**  
+4. **DAO에서 검색 결과를 받아서 Managed Bean에 저장**  
+5. **JSF에서 검색 결과를 표시**  
+
+---
+
+## **✅ 검색 기능 예제**
+### **1️⃣ 검색 페이지 (`search.xhtml`)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="keyword" value="아이디 검색:" />
+        <h:inputText id="keyword" value="#{userBean.keyword}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+        <h:commandButton value="초기화" action="#{userBean.clearSearch}" />
+    </h:panelGrid>
+
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <f:facet name="header">아이디</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+**🔥 JSF에서는 `userBean`의 데이터를 사용하고, 검색 버튼 클릭 시 `searchUsers()` 실행!**  
+
+---
+
+### **2️⃣ Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String keyword;
+    private List<User> users = new ArrayList<>();
+    private final UserDAO userDAO = new UserDAO();
+
+    public String getKeyword() { return keyword; }
+    public void setKeyword(String keyword) { this.keyword = keyword; }
+    public List<User> getUsers() { return users; }
+
+    public void searchUsers() {
+        users = userDAO.searchByKeyword(keyword); // DAO에서 검색 결과 가져옴
+    }
+
+    public void clearSearch() {
+        keyword = "";
+        users = new ArrayList<>(); // 검색 결과 초기화
+    }
+}
+```
+**🔥 `searchUsers()`에서 DAO를 호출하여 DB에서 검색한 데이터를 가져옴**  
+**🔥 `clearSearch()`를 실행하면 검색창을 초기화**  
+
+---
+
+### **3️⃣ DAO (`UserDAO.java`)**
+```java
+public class UserDAO {
+    public List<User> searchByKeyword(String keyword) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            return session.selectList("UserMapper.searchByKeyword", keyword);
+        }
+    }
+}
+```
+**🔥 MyBatis를 사용해 DB에서 검색어에 맞는 데이터를 조회**  
+
+---
+
+### **4️⃣ MyBatis Mapper (`UserMapper.xml`)**
+```xml
+<select id="searchByKeyword" parameterType="string" resultType="User">
+    SELECT id, name FROM users WHERE id LIKE #{keyword} || '%'
+</select>
+```
+**🔥 입력한 `keyword`가 포함된 아이디를 검색**  
+(예: `keyword = "user"` → `user1, user2, user3` 검색됨)  
+
+---
+
+## **✅ 검색 기능 정리**
+- **JSF에서 검색어 입력 → `UserBean.searchUsers()` 실행**  
+- **`UserBean`에서 DAO를 호출 → MyBatis로 DB 검색**  
+- **검색 결과를 `UserBean`에 저장 → JSF에서 검색 결과 표시**  
+- **초기화 버튼 클릭 시 `clearSearch()` 실행 → 검색어 및 결과 초기화**  
+
+이제 검색 기능이 **JSF → Managed Bean → DAO → DB** 흐름으로 동작하는 게 이해됐어? 🚀
