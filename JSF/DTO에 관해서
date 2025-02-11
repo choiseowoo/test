@@ -1,0 +1,134 @@
+DTO는 따로 만들어야 해요. 지금 코드에서는 **DTO가 따로 정의되지 않았고**, `UserBean`이 DTO 역할을 일부 하고 있지만 **JSF의 Managed Bean과 DTO는 개념적으로 다릅니다.**  
+
+---
+
+## **✅ DTO는 어떤 역할을 하나요?**
+DTO(Data Transfer Object)는 **데이터를 전달하는 용도로만 사용**하는 객체예요.  
+→ 일반적으로 **비즈니스 로직이 없이 단순히 데이터를 저장하고 주고받는 역할**을 해요.  
+
+---
+
+## **✅ DTO 추가해서 코드 개선하기**
+아래처럼 `User` 클래스를 DTO로 분리할 수 있어요.  
+
+📌 **DTO (`User.java`)**  
+📍 `src/main/java/com/example/model/User.java`
+```java
+package com.example.model;
+
+import java.io.Serializable;
+
+public class User implements Serializable {
+    private String id;
+    private String username;
+
+    public User() {}
+
+    public User(String id, String username) {
+        this.id = id;
+        this.username = username;
+    }
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+}
+```
+> **🔥 `User` 객체는 오직 데이터 저장 & 전달 용도로만 사용! (DTO 역할)**  
+
+---
+
+📌 **DAO에서 DTO 사용 (`UserDAO.java`)**  
+📍 `src/main/java/com/example/dao/UserDAO.java`
+```java
+package com.example.dao;
+
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import com.example.util.MyBatisUtil;
+import org.apache.ibatis.session.SqlSession;
+import java.util.List;
+
+public class UserDAO {
+    public List<User> getAllUsers() {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            return mapper.getAllUsers(); // DTO 리스트 반환
+        }
+    }
+}
+```
+> **🔥 `UserDAO`는 DTO(`User`) 객체를 반환하도록 구현!**  
+
+---
+
+📌 **JSF Bean (`UserBean.java`)**
+📍 `src/main/java/com/example/bean/UserBean.java`
+```java
+package com.example.bean;
+
+import com.example.dao.UserDAO;
+import com.example.model.User;
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String selectedUserId;
+    private String searchKeyword;
+    private List<User> users;
+    private List<User> filteredUsers;
+    private final UserDAO userDAO = new UserDAO();
+
+    public UserBean() {
+        this.users = userDAO.getAllUsers(); // DTO 리스트 가져오기
+    }
+
+    public void searchUsers() {
+        if (searchKeyword == null || searchKeyword.isEmpty()) {
+            filteredUsers = users;
+        } else {
+            filteredUsers = users.stream()
+                .filter(user -> user.getUsername().toLowerCase().contains(searchKeyword.toLowerCase()))
+                .collect(Collectors.toList());
+        }
+    }
+
+    public String getSelectedUserId() { return selectedUserId; }
+    public void setSelectedUserId(String selectedUserId) { this.selectedUserId = selectedUserId; }
+
+    public String getSearchKeyword() { return searchKeyword; }
+    public void setSearchKeyword(String searchKeyword) { this.searchKeyword = searchKeyword; }
+
+    public List<User> getFilteredUsers() { return filteredUsers; }
+}
+```
+> **🔥 `UserBean`에서는 DTO(`User`) 객체를 사용해서 데이터만 주고받도록 개선!**  
+
+---
+
+## **✅ DTO를 추가하면 어떤 점이 좋아요?**
+1. **데이터와 비즈니스 로직이 분리됨**  
+   - `UserBean`(Managed Bean) → 화면과 관련된 로직 처리  
+   - `User`(DTO) → 단순한 데이터 전달 역할  
+
+2. **데이터 변경이 유연해짐**  
+   - 만약 `User`에 새로운 필드(`email`, `phone` 등)가 추가되더라도 **비즈니스 로직을 수정할 필요 없음**  
+
+3. **DAO와 서비스 계층에서 DTO를 활용 가능**  
+   - 데이터베이스와 연결되는 `DAO`에서도 DTO를 사용해 **일관성 유지**  
+
+---
+
+### **📌 결론**
+✅ **기존 코드에서 DTO(`User`)를 따로 만들었어요.**  
+✅ **이제 `UserBean`에서는 DTO를 활용해서 데이터만 전달하고 관리하면 돼요.**  
+✅ **이렇게 하면 유지보수도 쉽고 코드도 깔끔해져요!** 🚀  
+
+**혹시 더 궁금한 점 있으면 알려줘!** 😊
