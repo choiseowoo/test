@@ -1,0 +1,121 @@
+공통 기능을 어떻게 구별해서 처리할지 고민하는 거지?  
+보통 **공통 기능**(예: 로그 기록, 예외 처리, DB 연결, 권한 체크 등)은 **따로 관리**하는 게 좋아.  
+
+---
+
+## **✅ 공통 기능을 구별하는 방법**
+**1. 반복적으로 사용되는 기능을 확인**  
+   - 여러 페이지에서 공통으로 호출하는 기능이 있는지 확인  
+   - 예: **로그 기록, 예외 처리, 권한 검사, DB 트랜잭션 관리**  
+
+**2. 공통 클래스로 분리 (유틸리티 또는 부모 클래스 활용)**  
+   - 공통 기능을 따로 `Utility 클래스` 또는 `부모 클래스`로 관리  
+   - 예: **`BaseDAO`, `CommonService`, `LogUtil` 같은 클래스 사용**  
+
+**3. JSF의 `@ApplicationScoped` 또는 `@SessionScoped` 활용**  
+   - 공통 데이터를 유지하는 경우 **`@ApplicationScoped`** 사용  
+   - 사용자별로 유지할 필요가 있으면 **`@SessionScoped`** 사용  
+
+---
+
+## **✅ 공통 기능 적용 방식 (예제)**
+### **1️⃣ DAO에서 공통 기능 적용 (BaseDAO 만들기)**
+> **모든 DAO에서 공통적으로 사용할 DB 연결을 `BaseDAO`에서 관리**
+```java
+public class BaseDAO {
+    protected SqlSession getSession() {
+        return MyBatisUtil.getSession(); // 공통 DB 세션 생성
+    }
+}
+```
+➡ **이제 모든 DAO는 `BaseDAO`를 상속해서 사용 가능**
+```java
+public class UserDAO extends BaseDAO {
+    public List<User> getAllUsers() {
+        try (SqlSession session = getSession()) { // BaseDAO에서 공통 메서드 사용
+            return session.selectList("UserMapper.getAllUsers");
+        }
+    }
+}
+```
+---
+
+### **2️⃣ 공통 로그 기능 적용 (LogUtil 만들기)**
+> **모든 기능에서 공통적으로 로그를 기록**
+```java
+public class LogUtil {
+    public static void log(String message) {
+        System.out.println("[LOG] " + message);
+    }
+}
+```
+➡ **각 Bean이나 DAO에서 로그 기록 가능**
+```java
+public class UserBean {
+    public void searchUsers() {
+        LogUtil.log("User search started."); // 공통 로그 사용
+    }
+}
+```
+---
+
+### **3️⃣ JSF에서 공통 메시지 처리 (MessageUtil)**
+> **JSF에서 공통 메시지를 출력하는 유틸리티**
+```java
+import javax.faces.application.FacesMessage;
+import javax.faces.context.FacesContext;
+
+public class MessageUtil {
+    public static void addMessage(String summary) {
+        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(summary));
+    }
+}
+```
+➡ **JSF 페이지에서 에러 발생 시 공통 메시지 사용**
+```java
+public class UserBean {
+    public void searchUsers() {
+        if (keyword == null || keyword.isEmpty()) {
+            MessageUtil.addMessage("검색어를 입력하세요!"); // 공통 메시지 처리
+        }
+    }
+}
+```
+➡ **JSF 화면에서 메시지 표시**
+```xml
+<h:messages globalOnly="true" />
+```
+---
+
+### **4️⃣ 권한 체크 공통 기능 적용**
+> **권한이 필요한 경우 공통 메서드로 검사**
+```java
+public class AuthUtil {
+    public static boolean hasPermission(String userId, String requiredRole) {
+        // 권한 체크 로직 (DB 조회 또는 설정된 값 확인)
+        return "admin".equals(userId); // 예제: admin만 권한 있음
+    }
+}
+```
+➡ **JSF에서 권한 체크 적용**
+```java
+public class UserBean {
+    public void deleteUser(String userId) {
+        if (!AuthUtil.hasPermission(userId, "ADMIN")) {
+            MessageUtil.addMessage("삭제 권한이 없습니다!");
+            return;
+        }
+        // 삭제 로직 실행
+    }
+}
+```
+---
+
+## **✅ 결론 (공통 기능을 적용하는 방법)**
+1. **DAO 공통 로직 → `BaseDAO`로 분리**  
+2. **로그 기록 → `LogUtil`로 관리**  
+3. **JSF 메시지 처리 → `MessageUtil` 적용**  
+4. **권한 검사 → `AuthUtil` 적용**  
+
+이렇게 하면 **중복 코드 없이 공통 기능을 재사용**할 수 있어! 🚀  
+이해 안 되는 부분 있으면 말해줘! 😊
