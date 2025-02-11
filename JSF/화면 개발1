@@ -1,0 +1,213 @@
+### **✅ JSF + MyBatis로 ID 검색 및 선택하는 페이지 예제**  
+**📌 기능:**  
+1. **첫 번째 페이지 (`userList.xhtml`)**  
+   - 사용자의 ID가 **Label 태그**로 표시됨  
+   - **검색 버튼**을 누르면 **아이디 검색창이 있는 팝업**이 뜸  
+   - **클리어 버튼**을 누르면 선택한 아이디가 초기화됨  
+2. **두 번째 페이지 (`userSearch.xhtml`)**  
+   - DB에서 아이디를 검색할 수 있음  
+   - 검색된 ID를 클릭하면 **부모 창(`userList.xhtml`)의 Label 태그에 반영**  
+
+---
+
+## **1️⃣ `userList.xhtml` (아이디 표시 및 검색 버튼)**
+📌 `src/main/webapp/userList.xhtml`
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://java.sun.com/jsf/core">
+
+<h:head>
+    <title>사용자 선택</title>
+    <script type="text/javascript">
+        function openSearchPopup() {
+            window.open("userSearch.xhtml", "popupWindow", "width=600,height=400,scrollbars=yes");
+        }
+        function setUserId(userId) {
+            document.getElementById("userForm:userIdLabel").innerText = userId;
+            document.getElementById("userForm:hiddenUserId").value = userId;
+        }
+        function clearUserId() {
+            document.getElementById("userForm:userIdLabel").innerText = "선택 없음";
+            document.getElementById("userForm:hiddenUserId").value = "";
+        }
+    </script>
+</h:head>
+
+<h:body>
+    <h:form id="userForm">
+        <h3>사용자 ID 선택</h3>
+
+        <!-- 선택한 아이디 표시 -->
+        <h:outputLabel id="userIdLabel" value="선택 없음" style="font-weight: bold;" />
+
+        <!-- 선택된 아이디를 저장하는 hidden input -->
+        <h:inputHidden id="hiddenUserId" value="#{userBean.selectedUserId}" />
+
+        <br/><br/>
+
+        <!-- 검색 버튼 -->
+        <h:commandButton value="아이디 검색" onclick="openSearchPopup(); return false;" />
+
+        <!-- 클리어 버튼 -->
+        <h:commandButton value="클리어" onclick="clearUserId(); return false;" />
+    </h:form>
+</h:body>
+</html>
+```
+> **💡 `openSearchPopup()`**: `userSearch.xhtml` 팝업 창을 여는 함수  
+> **💡 `setUserId(userId)`**: 팝업에서 선택한 ID를 부모창에 반영  
+> **💡 `clearUserId()`**: 선택된 아이디를 초기화  
+
+---
+
+## **2️⃣ `userSearch.xhtml` (아이디 검색 창)**
+📌 `src/main/webapp/userSearch.xhtml`
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://java.sun.com/jsf/core">
+
+<h:head>
+    <title>아이디 검색</title>
+    <script type="text/javascript">
+        function selectUserId(userId) {
+            window.opener.setUserId(userId);
+            window.close();
+        }
+    </script>
+</h:head>
+
+<h:body>
+    <h:form>
+        <h3>아이디 검색</h3>
+
+        <!-- 검색어 입력 -->
+        <h:inputText value="#{userBean.searchKeyword}" />
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+
+        <br/><br/>
+
+        <!-- 검색 결과 목록 -->
+        <h:dataTable value="#{userBean.filteredUsers}" var="user" border="1">
+            <h:column>
+                <f:facet name="header">ID</f:facet>
+                <h:outputText value="#{user.id}" />
+            </h:column>
+            <h:column>
+                <f:facet name="header">이름</f:facet>
+                <h:outputText value="#{user.username}" />
+            </h:column>
+            <h:column>
+                <h:commandButton value="선택" onclick="selectUserId('#{user.id}'); return false;" />
+            </h:column>
+        </h:dataTable>
+    </h:form>
+</h:body>
+</html>
+```
+> **💡 `searchUsers()`**: 입력한 검색어에 맞는 ID를 필터링  
+> **💡 `selectUserId(userId)`**: 선택한 ID를 부모 창에 전달 후 팝업 닫기  
+
+---
+
+## **3️⃣ `UserBean.java` (JSF의 Managed Bean)**
+📌 `src/main/java/com/example/bean/UserBean.java`
+```java
+package com.example.bean;
+
+import com.example.dao.UserDAO;
+import com.example.model.User;
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String selectedUserId;
+    private String searchKeyword;
+    private List<User> users;
+    private List<User> filteredUsers;
+    private final UserDAO userDAO = new UserDAO();
+
+    public UserBean() {
+        this.users = userDAO.getAllUsers(); // DB에서 전체 사용자 목록 가져오기
+    }
+
+    // 사용자 검색 메서드
+    public void searchUsers() {
+        if (searchKeyword == null || searchKeyword.isEmpty()) {
+            filteredUsers = users;
+        } else {
+            filteredUsers = users.stream()
+                .filter(user -> user.getUsername().toLowerCase().contains(searchKeyword.toLowerCase()))
+                .collect(Collectors.toList());
+        }
+    }
+
+    public String getSelectedUserId() { return selectedUserId; }
+    public void setSelectedUserId(String selectedUserId) { this.selectedUserId = selectedUserId; }
+
+    public String getSearchKeyword() { return searchKeyword; }
+    public void setSearchKeyword(String searchKeyword) { this.searchKeyword = searchKeyword; }
+
+    public List<User> getFilteredUsers() { return filteredUsers; }
+}
+```
+> **💡 `selectedUserId`**: 선택한 아이디를 저장  
+> **💡 `searchKeyword`**: 검색어 입력값 저장  
+> **💡 `searchUsers()`**: 검색어를 기준으로 `filteredUsers`를 필터링  
+
+---
+
+## **4️⃣ `UserDAO.java` (DAO 계층)**
+📌 `src/main/java/com/example/dao/UserDAO.java`
+```java
+package com.example.dao;
+
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import com.example.util.MyBatisUtil;
+import org.apache.ibatis.session.SqlSession;
+import java.util.List;
+
+public class UserDAO {
+    public List<User> getAllUsers() {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            return mapper.getAllUsers();
+        }
+    }
+}
+```
+> **💡 전체 사용자 목록을 DB에서 가져오는 역할**  
+
+---
+
+## **📌 실행 방법**
+1. **Maven 빌드 후 WildFly에 배포**
+```sh
+mvn clean package
+```
+2. **웹 브라우저에서 실행**
+```
+http://localhost:8080/myapp/userList.xhtml
+```
+3. **검색 버튼 클릭 → 팝업창에서 ID 검색 → ID 선택 후 반영됨**  
+
+---
+
+## **📌 결론**
+✅ **JSF + MyBatis를 사용한 ID 검색 및 선택 기능 구현**  
+✅ **Popup을 이용한 검색 및 선택 후 부모 창에 반영**  
+✅ **DAO 계층을 추가하여 데이터 관리 최적화**  
+
+이제 **JSF 기반의 ID 검색 및 선택 기능이 완성되었어요!** 🚀  
+**문제 있으면 알려줘~!**
