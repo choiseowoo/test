@@ -1,0 +1,202 @@
+검색 페이지에서 **풀다운 리스트(groupname), 입력 필드(name, English name)**를 사용하여 검색하는 JSF + MyBatis 예제 코드를 작성해볼게요.  
+
+---
+
+## **✅ 기능 설명**
+1. **검색 조건**  
+   - **풀다운 리스트 (`h:selectOneMenu`)** → `groupname` 선택  
+   - **입력 필드 (`h:inputText`)** → `name`, `English name` 검색  
+2. **버튼**  
+   - **검색 버튼** → 검색 실행  
+   - **초기화 버튼** → 검색 조건 초기화  
+3. **검색 결과 출력 (`h:dataTable`)**  
+   - **groupname, groupcode, name, English name, id** 표시  
+
+---
+
+# **✅ 1. JSF 검색 화면 (`search.xhtml`)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupname" value="Group Name" />
+        <h:selectOneMenu id="groupname" value="#{userBean.searchGroupname}">
+            <f:selectItem itemLabel="-- 선택 --" itemValue="" />
+            <f:selectItems value="#{userBean.groupnameList}" var="group" itemValue="#{group}" itemLabel="#{group}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="name" value="Name" />
+        <h:inputText id="name" value="#{userBean.searchName}" />
+
+        <h:outputLabel for="englishName" value="English Name" />
+        <h:inputText id="englishName" value="#{userBean.searchEnglishName}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+        <h:commandButton value="초기화" action="#{userBean.clearSearch}" />
+    </h:panelGrid>
+
+    <h:dataTable value="#{userBean.users}" var="user" border="1">
+        <h:column>
+            <f:facet name="header">Group Name</f:facet>
+            #{user.groupname}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Group Code</f:facet>
+            #{user.groupcode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Name</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">English Name</f:facet>
+            #{user.englishName}
+        </h:column>
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+### **🔹 JSF 화면 설명**
+- `h:selectOneMenu`: **groupname 선택**
+- `h:inputText`: **name, English name 입력**
+- `h:dataTable`: **검색 결과 표시**
+- 검색 버튼 클릭 시 **`userBean.searchUsers()` 실행**  
+
+---
+
+# **✅ 2. Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String searchGroupname;
+    private String searchName;
+    private String searchEnglishName;
+    private List<User> users = new ArrayList<>();
+    private List<String> groupnameList = new ArrayList<>();
+    private final UserDAO userDAO = new UserDAO();
+
+    @PostConstruct
+    public void init() {
+        groupnameList = userDAO.getAllGroupNames(); // 풀다운 리스트용 데이터 조회
+    }
+
+    public String getSearchGroupname() { return searchGroupname; }
+    public void setSearchGroupname(String searchGroupname) { this.searchGroupname = searchGroupname; }
+    public String getSearchName() { return searchName; }
+    public void setSearchName(String searchName) { this.searchName = searchName; }
+    public String getSearchEnglishName() { return searchEnglishName; }
+    public void setSearchEnglishName(String searchEnglishName) { this.searchEnglishName = searchEnglishName; }
+    public List<User> getUsers() { return users; }
+    public List<String> getGroupnameList() { return groupnameList; }
+
+    public void searchUsers() {
+        users = userDAO.searchUsers(searchGroupname, searchName, searchEnglishName);
+    }
+
+    public void clearSearch() {
+        searchGroupname = "";
+        searchName = "";
+        searchEnglishName = "";
+        users.clear();
+    }
+}
+```
+### **🔹 설명**
+- **`groupnameList`**: 풀다운 리스트 데이터 저장  
+- **`searchUsers()`**: DAO를 호출하여 검색 실행  
+- **`clearSearch()`**: 검색 조건 초기화  
+
+---
+
+# **✅ 3. DAO (`UserDAO.java`)**
+```java
+public class UserDAO {
+    public List<String> getAllGroupNames() {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            return session.selectList("UserMapper.getAllGroupNames");
+        }
+    }
+
+    public List<User> searchUsers(String groupname, String name, String englishName) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("groupname", groupname.isEmpty() ? null : groupname);
+            params.put("name", name.isEmpty() ? null : "%" + name + "%");
+            params.put("englishName", englishName.isEmpty() ? null : "%" + englishName + "%");
+            return session.selectList("UserMapper.searchUsers", params);
+        }
+    }
+}
+```
+### **🔹 설명**
+- **`getAllGroupNames()`**: `groupname` 목록 조회 (풀다운 리스트용)
+- **`searchUsers()`**: MyBatis에서 검색 실행
+
+---
+
+# **✅ 4. MyBatis Mapper (`UserMapper.xml`)**
+```xml
+<select id="getAllGroupNames" resultType="string">
+    SELECT DISTINCT groupname FROM users ORDER BY groupname
+</select>
+
+<select id="searchUsers" parameterType="map" resultType="User">
+    SELECT groupname, groupcode, name, english_name AS englishName, id FROM users
+    WHERE (#{groupname} IS NULL OR groupname = #{groupname})
+    AND (#{name} IS NULL OR name LIKE #{name})
+    AND (#{englishName} IS NULL OR english_name LIKE #{englishName})
+</select>
+```
+### **🔹 설명**
+- `getAllGroupNames`: **groupname 목록 조회 (풀다운 리스트용)**
+- `searchUsers`: **검색 조건에 따라 데이터 조회**  
+  - `groupname`, `name`, `english_name`을 **입력값에 따라 검색**  
+  - `NULL`이면 해당 조건을 **무시**하도록 처리  
+
+---
+
+# **✅ 5. DTO (`User.java`)**
+```java
+public class User {
+    private String groupname;
+    private String groupcode;
+    private String name;
+    private String englishName;
+    private String id;
+
+    public String getGroupname() { return groupname; }
+    public void setGroupname(String groupname) { this.groupname = groupname; }
+    public String getGroupcode() { return groupcode; }
+    public void setGroupcode(String groupcode) { this.groupcode = groupcode; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEnglishName() { return englishName; }
+    public void setEnglishName(String englishName) { this.englishName = englishName; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+}
+```
+- **DB에서 조회된 데이터를 저장하는 DTO 클래스**
+
+---
+
+# **✅ 정리**
+✅ **JSF (`search.xhtml`)**  
+- **`h:selectOneMenu`** → groupname 선택  
+- **`h:inputText`** → name, English name 검색  
+- **`h:dataTable`** → 검색 결과 표시  
+
+✅ **Managed Bean (`UserBean.java`)**  
+- **검색 조건 저장 & 검색 실행 (`searchUsers()`)**  
+
+✅ **DAO (`UserDAO.java`)**  
+- **MyBatis를 사용하여 DB에서 데이터 검색**  
+
+✅ **MyBatis (`UserMapper.xml`)**  
+- **SQL을 실행하여 검색 결과 조회**  
+
+이제 JSF + MyBatis 환경에서 **검색 기능이 정상 동작할 거야!**  
+추가 질문 있으면 편하게 물어봐 🚀😊
