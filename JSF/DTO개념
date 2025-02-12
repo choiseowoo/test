@@ -1,0 +1,65 @@
+네, DTO가 **User.java**와 **Group.java** 두 개 있습니다.  
+
+이유는:  
+1. **User.java** → `users` 테이블의 데이터를 저장하기 위한 DTO  
+2. **Group.java** → `group` 테이블에서 `groupcode`와 `groupname`을 저장하기 위한 DTO  
+
+---
+
+## **✅ DTO 정리**
+### **1. User.java (users 테이블)**
+```java
+public class User {
+    private String id;
+    private String name;
+    private String englishName;
+    private String groupcode;
+    private String groupname; // group 테이블에서 조인해서 가져올 값
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getEnglishName() { return englishName; }
+    public void setEnglishName(String englishName) { this.englishName = englishName; }
+
+    public String getGroupcode() { return groupcode; }
+    public void setGroupcode(String groupcode) { this.groupcode = groupcode; }
+
+    public String getGroupname() { return groupname; }
+    public void setGroupname(String groupname) { this.groupname = groupname; }
+}
+```
+**📌 역할:**  
+- `users` 테이블의 데이터를 저장하는 DTO  
+- `groupcode`를 통해 `group` 테이블과 조인해서 `groupname`도 저장  
+
+---
+
+### **2. Group.java (group 테이블)**
+```java
+public class Group {
+    private String groupcode;
+    private String groupname;
+
+    public String getGroupcode() { return groupcode; }
+    public void setGroupcode(String groupcode) { this.groupcode = groupcode; }
+
+    public String getGroupname() { return groupname; }
+    public void setGroupname(String groupname) { this.groupname = groupname; }
+}
+```
+**📌 역할:**  
+- `group` 테이블에서 `groupcode`와 `groupname`을 저장하는 DTO  
+- **풀다운 리스트(`h:selectOneMenu`)에서 사용할 데이터를 저장**
+
+---
+
+## **✅ DTO가 두 개 필요한 이유**
+1. **User.java** → 검색 결과로 사용자 정보를 가져오기 위해 필요  
+2. **Group.java** → `groupcode`와 `groupname`을 풀다운 리스트에서 보여주기 위해 필요  
+
+**💡 `users` 테이블과 `group` 테이블은 다른 테이블이므로, 각각 DTO를 만들어 관리하는 게 좋음!**  
+추가 질문 있으면 말해줘! 😊
