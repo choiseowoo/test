@@ -1,0 +1,95 @@
+✅ **`MyBatisUtil.java`에서 절대 경로(Absolute Path)를 사용하지 않고, 상대 경로(Relative Path)로 `mybatis-config.xml`을 로드하는 방법**  
+
+---
+
+### **🚀 방법 1: `getResourceAsStream()` 사용 (권장)**
+Java의 `ClassLoader`를 사용하면 절대 경로를 사용하지 않고도 리소스를 로드할 수 있어.  
+
+📌 **예제 (`MyBatisUtil.java`)**
+```java
+package com.example.util;
+
+import java.io.InputStream;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+
+public class MyBatisUtil {
+    private static SqlSessionFactory sqlSessionFactory;
+
+    static {
+        try {
+            // 상대 경로로 리소스를 불러옴 (절대 경로 X)
+            InputStream inputStream = MyBatisUtil.class.getClassLoader().getResourceAsStream("mybatis-config.xml");
+            if (inputStream == null) {
+                throw new RuntimeException("MyBatis 설정 파일을 찾을 수 없습니다.");
+            }
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("MyBatis 설정 로드 실패", e);
+        }
+    }
+
+    public static SqlSession getSession() {
+        return sqlSessionFactory.openSession();
+    }
+}
+```
+
+**📌 특징**
+- `getResourceAsStream("mybatis-config.xml")`를 사용하여 상대 경로로 설정 파일을 읽음.
+- `mybatis-config.xml`은 **`src/main/resources/` 폴더** 또는 **`WEB-INF/classes/` 폴더**에 위치해야 함.
+- **절대 경로를 사용하지 않음** → 환경에 관계없이 동작 가능.
+
+---
+
+### **🚀 방법 2: `Resources.getResourceAsReader()` 대신 `getResourceAsStream()` 사용**
+MyBatis 기본 제공 기능을 사용할 수도 있지만, 내부적으로 `ClassLoader`를 이용하기 때문에 위 방법과 유사함.  
+
+📌 **예제 (`MyBatisUtil.java`)**
+```java
+package com.example.util;
+
+import java.io.Reader;
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+
+public class MyBatisUtil {
+    private static SqlSessionFactory sqlSessionFactory;
+
+    static {
+        try {
+            // 절대 경로 없이 상대 경로로 설정 파일 로드
+            Reader reader = Resources.getResourceAsReader("mybatis-config.xml");
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(reader);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("MyBatis 설정 로드 실패", e);
+        }
+    }
+
+    public static SqlSession getSession() {
+        return sqlSessionFactory.openSession();
+    }
+}
+```
+
+**📌 특징**
+- MyBatis의 `Resources.getResourceAsReader()`를 사용하여 설정 파일을 로드.
+- **절대 경로 없이** `src/main/resources/` 또는 `WEB-INF/classes/`에 위치한 `mybatis-config.xml`을 자동으로 찾음.
+
+---
+
+### **✅ 결론: `getResourceAsStream()` 또는 `Resources.getResourceAsReader()` 사용**
+✔ **절대 경로 없이 MyBatis 설정 파일을 로드할 수 있음**  
+✔ **배포 환경과 관계없이 동작 가능**  
+✔ **환경에 따라 설정 파일 경로가 달라질 걱정이 없음**  
+
+**📌 추천하는 방법**
+- 일반적인 경우: `getResourceAsStream()`
+- MyBatis에서 제공하는 기능 사용: `Resources.getResourceAsReader()`
+
+혹시 더 궁금한 점 있으면 말해줘!
