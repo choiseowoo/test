@@ -1,0 +1,174 @@
+**✅ JSF + MyBatis로 검색 결과에 페이징 기능을 추가하는 방법**  
+
+검색 버튼 클릭 전에는 테이블을 숨기고, 검색 결과가 있을 경우 테이블과 페이징 UI를 표시하는 방식이야.  
+페이징 버튼은 **맨앞 페이지 이동, 이전 페이지 이동, 다음 페이지 이동, 맨뒤 페이지 이동** 4가지가 포함됨.  
+
+---
+
+### **🚀 1. MyBatis `UserMapper.xml` - 페이징 처리 SQL**
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+    <select id="searchUsers" resultType="User">
+        SELECT * FROM users
+        WHERE (#{name} IS NULL OR name LIKE CONCAT('%', #{name}, '%'))
+        ORDER BY id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countUsers" resultType="int">
+        SELECT COUNT(*) FROM users
+        WHERE (#{name} IS NULL OR name LIKE CONCAT('%', #{name}, '%'))
+    </select>
+</mapper>
+```
+- `LIMIT #{limit} OFFSET #{offset}`을 사용해서 페이징 처리  
+- `countUsers`는 총 레코드 수를 가져오는 쿼리 (페이징 계산용)  
+
+---
+
+### **🚀 2. `UserMapper.java` (인터페이스)**
+```java
+public interface UserMapper {
+    List<User> searchUsers(@Param("name") String name, @Param("limit") int limit, @Param("offset") int offset);
+    int countUsers(@Param("name") String name);
+}
+```
+
+---
+
+### **🚀 3. `UserDAO.java` - DAO에서 MyBatis 호출**
+```java
+public class UserDAO {
+    private SqlSessionFactory sqlSessionFactory = MyBatisUtil.getSqlSessionFactory();
+
+    public List<User> searchUsers(String name, int limit, int offset) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            return mapper.searchUsers(name, limit, offset);
+        }
+    }
+
+    public int countUsers(String name) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            return mapper.countUsers(name);
+        }
+    }
+}
+```
+
+---
+
+### **🚀 4. `UserBean.java` - JSF Managed Bean에서 페이징 처리**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private UserDAO userDAO = new UserDAO();
+    private List<User> users;
+    private String searchName;
+    private boolean showTable = false; // 검색 전에는 테이블 비표시
+
+    // 페이징 관련 변수
+    private int currentPage = 1;
+    private int totalRecords;
+    private int pageSize = 10; // 한 페이지당 표시할 개수
+
+    public void search() {
+        totalRecords = userDAO.countUsers(searchName);
+        users = userDAO.searchUsers(searchName, pageSize, getOffset());
+        showTable = true;
+    }
+
+    public void goToFirstPage() {
+        currentPage = 1;
+        search();
+    }
+
+    public void goToPreviousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            search();
+        }
+    }
+
+    public void goToNextPage() {
+        if (currentPage < getTotalPages()) {
+            currentPage++;
+            search();
+        }
+    }
+
+    public void goToLastPage() {
+        currentPage = getTotalPages();
+        search();
+    }
+
+    private int getOffset() {
+        return (currentPage - 1) * pageSize;
+    }
+
+    public int getTotalPages() {
+        return (int) Math.ceil((double) totalRecords / pageSize);
+    }
+
+    // Getter & Setter
+    public List<User> getUsers() { return users; }
+    public String getSearchName() { return searchName; }
+    public void setSearchName(String searchName) { this.searchName = searchName; }
+    public boolean isShowTable() { return showTable; }
+    public int getCurrentPage() { return currentPage; }
+    public int getTotalRecords() { return totalRecords; }
+}
+```
+
+---
+
+### **🚀 5. `userSearch.xhtml` - UI (검색 및 페이징)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="searchName" value="이름 검색: " />
+        <h:inputText id="searchName" value="#{userBean.searchName}" />
+    </h:panelGrid>
+    
+    <h:commandButton value="검색" action="#{userBean.search}" />
+
+    <h:panelGroup rendered="#{userBean.showTable}">
+        <h:dataTable value="#{userBean.users}" var="user" border="1">
+            <h:column>
+                <f:facet name="header">ID</f:facet>
+                #{user.id}
+            </h:column>
+            <h:column>
+                <f:facet name="header">이름</f:facet>
+                #{user.name}
+            </h:column>
+            <h:column>
+                <f:facet name="header">이메일</f:facet>
+                #{user.email}
+            </h:column>
+        </h:dataTable>
+
+        <!-- 페이징 버튼 -->
+        <h:panelGrid columns="4" style="margin-top:10px;">
+            <h:commandButton value="<< 첫 페이지" action="#{userBean.goToFirstPage}" disabled="#{userBean.currentPage == 1}" />
+            <h:commandButton value="< 이전" action="#{userBean.goToPreviousPage}" disabled="#{userBean.currentPage == 1}" />
+            <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+            <h:commandButton value="다음 >" action="#{userBean.goToNextPage}" disabled="#{userBean.currentPage == userBean.totalPages}" />
+            <h:commandButton value="끝 >>" action="#{userBean.goToLastPage}" disabled="#{userBean.currentPage == userBean.totalPages}" />
+        </h:panelGrid>
+    </h:panelGroup>
+</h:form>
+```
+
+---
+
+### **✅ 정리**
+✔ **검색 버튼 클릭 전에는 테이블이 보이지 않음 (`showTable` 활용)**  
+✔ **페이징 버튼 4개 (맨앞, 이전, 다음, 맨뒤) 추가**  
+✔ **MyBatis에서 `LIMIT`과 `OFFSET`을 사용해 페이징 처리**  
+✔ **JSF의 `h:dataTable`과 `h:panelGrid`로 결과와 페이징 UI 구성**  
+
+**💡 이 방식대로 하면, 검색 결과가 있을 때만 페이징 UI가 표시되고, 동적으로 데이터가 업데이트됨!**  
+필요한 부분 있으면 더 알려줘!
