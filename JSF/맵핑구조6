@@ -1,0 +1,184 @@
+✅ **UserBean, GroupBean에서 `mybatis-config.xml`을 직접 연결하는 것이 아니라**  
+**DAO에서 MyBatis의 Mapper를 호출하는 방식이 일반적이야.**  
+
+즉, **JSF의 Managed Bean (UserBean, GroupBean)에서는 직접 `mybatis-config.xml`을 로드하지 않고**,  
+DAO에서 MyBatis를 사용하여 DB에 접근하는 구조가 일반적이야.  
+
+---
+
+## **🚀 구조 정리 (Best Practice)**  
+### **1️⃣ MyBatis 설정 (`mybatis-config.xml`)**
+MyBatis의 설정을 정의하고, Mapper 파일을 연결해 줌.  
+
+📌 **예제 (`mybatis-config.xml`)**
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC" />
+            <dataSource type="POOLED">
+                <property name="driver" value="org.postgresql.Driver"/>
+                <property name="url" value="jdbc:postgresql://localhost:5432/mydb"/>
+                <property name="username" value="user"/>
+                <property name="password" value="password"/>
+            </dataSource>
+        </environment>
+    </environments>
+    <mappers>
+        <mapper resource="mapper/UserMapper.xml"/>
+        <mapper resource="mapper/GroupMapper.xml"/>
+    </mappers>
+</configuration>
+```
+
+---
+
+### **2️⃣ UserMapper.xml (SQL 쿼리 정의)**
+`UserMapper.xml`에서 쿼리를 정의하고, DAO에서 호출할 수 있도록 설정함.  
+
+📌 **예제 (`UserMapper.xml`)**
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserMapper">
+    <select id="getUserById" parameterType="String" resultType="com.example.dto.User">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+</mapper>
+```
+
+---
+
+### **3️⃣ MyBatisUtil.java (MyBatis 연결 설정)**
+MyBatis의 `SqlSessionFactory`를 생성하는 유틸리티 클래스.  
+(UserBean, GroupBean에서 직접 `mybatis-config.xml`을 로드하지 않도록 DAO에서 사용됨)  
+
+📌 **예제 (`MyBatisUtil.java`)**
+```java
+package com.example.util;
+
+import java.io.Reader;
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+
+public class MyBatisUtil {
+    private static SqlSessionFactory sqlSessionFactory;
+
+    static {
+        try {
+            Reader reader = Resources.getResourceAsReader("mybatis-config.xml");
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(reader);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("MyBatis 설정 로드 실패");
+        }
+    }
+
+    public static SqlSession getSession() {
+        return sqlSessionFactory.openSession();
+    }
+}
+```
+
+---
+
+### **4️⃣ DAO (UserDAO.java)**
+DAO에서 `UserMapper.xml`의 쿼리를 호출하여 DB에서 데이터를 조회함.  
+
+📌 **예제 (`UserDAO.java`)**
+```java
+package com.example.dao;
+
+import org.apache.ibatis.session.SqlSession;
+import com.example.dto.User;
+import com.example.mapper.UserMapper;
+import com.example.util.MyBatisUtil;
+
+public class UserDAO {
+    public User getUserById(String id) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            return mapper.getUserById(id);
+        }
+    }
+}
+```
+
+---
+
+### **5️⃣ JSF Managed Bean (UserBean.java)**
+UserBean에서는 DAO를 호출하여 DB에서 데이터를 가져오고, JSF 페이지에서 표시함.  
+
+📌 **예제 (`UserBean.java`)**
+```java
+package com.example.bean;
+
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import com.example.dao.UserDAO;
+import com.example.dto.User;
+
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String userId;
+    private User user;
+    private UserDAO userDAO = new UserDAO();
+
+    public void searchUser() {
+        user = userDAO.getUserById(userId);
+    }
+
+    // Getter, Setter
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+    public User getUser() { return user; }
+}
+```
+
+---
+
+### **6️⃣ JSF 페이지 (`user.xhtml`)**
+검색 버튼을 클릭하면 `UserBean.searchUser()`를 실행하여 DB에서 조회된 데이터를 표시함.  
+
+📌 **예제 (`user.xhtml`)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="userId" value="User ID: " />
+        <h:inputText id="userId" value="#{userBean.userId}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUser}" />
+    </h:panelGrid>
+</h:form>
+
+<h:panelGrid columns="2" rendered="#{not empty userBean.user}">
+    <h:outputText value="ID: " />
+    <h:outputText value="#{userBean.user.id}" />
+
+    <h:outputText value="이름: " />
+    <h:outputText value="#{userBean.user.name}" />
+
+    <h:outputText value="이메일: " />
+    <h:outputText value="#{userBean.user.email}" />
+</h:panelGrid>
+```
+
+---
+
+## **📌 결론: `mybatis-config.xml`은 DAO에서 사용하고, JSF Managed Bean에서는 DAO를 호출하는 구조**
+1️⃣ **JSF Managed Bean (`UserBean`)** → `DAO` 호출  
+2️⃣ **DAO (`UserDAO`)** → MyBatis `SqlSession`을 이용해 `UserMapper.xml`의 SQL 실행  
+3️⃣ **MyBatis (`UserMapper.xml`)** → SQL 실행 후 DTO (`User`) 반환  
+4️⃣ **JSF (`user.xhtml`)** → `UserBean.user` 데이터를 UI에서 출력  
+
+👉 **Managed Bean (`UserBean`)에서 `mybatis-config.xml`을 직접 로드하지 않고, DAO를 통해 접근하는 방식이 일반적이야!**  
+👉 **이 방식이 유지보수하기 쉽고, 코드의 분리가 잘 되어 있어서 효율적인 아키텍처야.**  
+
+혹시 더 궁금한 점 있으면 말해줘!
