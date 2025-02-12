@@ -1,0 +1,112 @@
+### ✅ **검색 화면에서 라디오 버튼을 사용해 하나의 ID만 선택 후, `userlist.xhtml`로 값 전달하기**  
+
+이전 화면 **`userlist.xhtml`** 에 선택한 **ID를 `label`에 표시**하는 기능을 구현하는 방법을 설명할게.
+
+---
+
+## **✅ 1. 검색 화면 (search.xhtml)**
+- **라디오 버튼으로 ID 선택 가능**
+- **선택한 ID를 `userlist.xhtml`로 전달**
+- **선택 버튼 클릭 시 `userBean.selectUser()` 실행**
+
+```xml
+<h:form>
+    <!-- 검색 결과 목록 -->
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <f:facet name="header">선택</f:facet>
+            <h:selectOneRadio value="#{userBean.selectedUserId}">
+                <f:selectItem itemValue="#{user.id}" itemLabel="선택" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+
+    <!-- 선택 버튼 (이전 페이지로 이동) -->
+    <h:commandButton value="선택" action="#{userBean.selectUser}" />
+</h:form>
+```
+
+---
+
+## **✅ 2. Managed Bean (`UserBean.java`)**
+- **라디오 버튼에서 선택한 ID를 저장 (`selectedUserId`)**
+- **선택한 ID를 `userlist.xhtml`로 전달**
+- **JSF의 `flash` 스코프를 사용해 페이지 간 데이터 전달**
+
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    @Autowired
+    private UserService userService;
+
+    private List<User> users;
+    private String selectedUserId;  // 선택된 ID 저장
+
+    @PostConstruct
+    public void init() {
+        users = userService.getAllUsers();  // 검색 결과 불러오기
+    }
+
+    public String selectUser() {
+        if (selectedUserId == null || selectedUserId.isEmpty()) {
+            FacesContext.getCurrentInstance().addMessage(null, 
+                new FacesMessage(FacesMessage.SEVERITY_WARN, "ID를 선택하세요.", null));
+            return null;  // 선택하지 않았으면 페이지 이동 X
+        }
+
+        // Flash 스코프에 선택한 ID 저장
+        FacesContext.getCurrentInstance().getExternalContext().getFlash().put("selectedUserId", selectedUserId);
+
+        return "userlist.xhtml?faces-redirect=true";  // userlist 페이지로 이동
+    }
+
+    // Getter & Setter
+    public List<User> getUsers() { return users; }
+    public String getSelectedUserId() { return selectedUserId; }
+    public void setSelectedUserId(String selectedUserId) { this.selectedUserId = selectedUserId; }
+}
+```
+
+---
+
+## **✅ 3. `userlist.xhtml`에서 선택한 ID 표시**
+- **이전 화면에서 전달받은 `selectedUserId` 값을 `label`에 표시**
+
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel value="선택한 ID:" />
+        <h:outputLabel value="#{flash.selectedUserId}" style="font-weight:bold; color:blue;" />
+    </h:panelGrid>
+</h:form>
+```
+
+---
+
+## **✅ 결과**
+1. **검색 화면 (`search.xhtml`)**
+   - 검색 결과 목록이 표시됨  
+   - 라디오 버튼으로 하나의 ID만 선택 가능  
+   - "선택" 버튼 클릭 시 **선택한 ID가 `userlist.xhtml`로 전달됨**  
+
+2. **이전 화면 (`userlist.xhtml`)**
+   - `label`에 **선택한 ID가 표시됨**  
+
+---
+
+## **✅ 결론**
+✔ **라디오 버튼을 사용해 하나의 ID만 선택 가능**  
+✔ **JSF의 `flash` 스코프를 사용해 선택한 ID를 `userlist.xhtml`로 전달**  
+✔ **이전 페이지에서 `label`을 사용해 선택한 ID 표시**  
+
+이제 검색 후 선택한 ID가 제대로 표시될 거야!  
+추가로 궁금한 점 있으면 말해줘 😊
