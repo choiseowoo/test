@@ -1,0 +1,137 @@
+네, **UserMapper.xml**에서 `users` 테이블과 `group` 테이블을 **JOIN** 해서 하나의 결과로 가져올 수 있습니다.  
+
+---
+
+## **✅ UserMapper.xml 예제 (JOIN 사용)**
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+    
+    <!-- 사용자 검색 (group 테이블과 JOIN) -->
+    <select id="searchUsers" resultType="com.example.dto.User">
+        SELECT 
+            u.id, 
+            u.name, 
+            u.english_name, 
+            u.groupcode, 
+            g.groupname 
+        FROM users u
+        LEFT JOIN group g ON u.groupcode = g.groupcode
+        WHERE 
+            (#{name} IS NULL OR u.name LIKE CONCAT('%', #{name}, '%'))
+            AND (#{englishName} IS NULL OR u.english_name LIKE CONCAT('%', #{englishName}, '%'))
+            AND (#{groupcode} IS NULL OR u.groupcode = #{groupcode})
+    </select>
+
+</mapper>
+```
+
+---
+
+## **✅ 설명**
+1. **`users` 테이블과 `group` 테이블을 `LEFT JOIN`**
+   - `u.groupcode = g.groupcode` 로 연결해서 `groupname` 값을 가져옴.
+2. **검색 조건을 동적으로 처리**
+   - `name`, `englishName`, `groupcode`가 입력된 경우에만 조건 적용
+   - `NULL`이면 해당 조건을 무시하고 검색 실행
+
+---
+
+## **✅ DAO 코드 (UserMapper.java)**
+```java
+public interface UserMapper {
+    List<User> searchUsers(@Param("name") String name, 
+                           @Param("englishName") String englishName, 
+                           @Param("groupcode") String groupcode);
+}
+```
+
+---
+
+## **✅ Service 코드 (UserService.java)**
+```java
+@Service
+public class UserService {
+    @Autowired
+    private UserMapper userMapper;
+
+    public List<User> searchUsers(String name, String englishName, String groupcode) {
+        return userMapper.searchUsers(name, englishName, groupcode);
+    }
+}
+```
+
+---
+
+## **✅ Managed Bean (UserBean.java)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    @Autowired
+    private UserService userService;
+
+    private String name;
+    private String englishName;
+    private String groupcode;
+    private List<User> users;
+
+    public void search() {
+        users = userService.searchUsers(name, englishName, groupcode);
+    }
+
+    // Getter & Setter
+}
+```
+
+---
+
+## **✅ 검색 화면 (JSF)**
+```xml
+<h:form>
+    <!-- 그룹명 선택 -->
+    <h:selectOneMenu value="#{userBean.groupcode}">
+        <f:selectItem itemLabel="-- 선택 --" itemValue="" />
+        <f:selectItems value="#{groupBean.groups}" var="g" itemLabel="#{g.groupname}" itemValue="#{g.groupcode}" />
+    </h:selectOneMenu>
+
+    <!-- 이름 입력 -->
+    <h:inputText value="#{userBean.name}" />
+
+    <!-- 영어 이름 입력 -->
+    <h:inputText value="#{userBean.englishName}" />
+
+    <!-- 검색 버튼 -->
+    <h:commandButton value="검색" action="#{userBean.search}" />
+
+    <!-- 결과 출력 -->
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <f:facet name="header">그룹명</f:facet>
+            #{user.groupname}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">영어 이름</f:facet>
+            #{user.englishName}
+        </h:column>
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+## **✅ 결론**
+✔ **UserMapper.xml에서 JOIN을 사용해 `groupname`까지 한 번에 가져옴**  
+✔ **검색 조건이 NULL이면 무시되도록 설계**  
+✔ **JSF에서 `h:selectOneMenu`로 `groupname`을 선택 가능**  
+✔ **검색 버튼을 누르면 결과가 아래 테이블에 출력**  
+
+이제 필요한 기능이 다 들어갔을 거야!  
+추가로 궁금한 점 있으면 말해줘 😊
