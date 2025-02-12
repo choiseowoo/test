@@ -1,0 +1,202 @@
+### **🔹 요구사항 변경 사항**
+- 기존에는 **groupname을 직접 users 테이블에서 조회**했지만,  
+  **groupname이 다른 테이블에 있고, groupcode(PK)로 참조**하는 경우를 처리해야 함.  
+- 즉, **group 테이블에서 groupcode와 groupname을 가져와 풀다운 리스트를 생성**해야 함.
+
+---
+
+## **✅ 해결 방법**
+1. **풀다운 리스트(`h:selectOneMenu`)**
+   - `group` 테이블에서 **groupcode(PK)와 groupname**을 조회하여 사용
+   - 사용자가 **groupname**을 선택하면 **groupcode**가 전송됨
+
+2. **검색 시 groupcode 사용**
+   - 사용자가 선택한 **groupname**을 `groupcode`로 변환하여 검색
+   - `users` 테이블에서 `groupcode`를 기준으로 검색
+
+---
+
+# **✅ 1. JSF 검색 화면 (`search.xhtml`)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupcode" value="Group Name" />
+        <h:selectOneMenu id="groupcode" value="#{userBean.searchGroupcode}">
+            <f:selectItem itemLabel="-- 선택 --" itemValue="" />
+            <f:selectItems value="#{userBean.groupList}" var="group"
+                itemValue="#{group.groupcode}" itemLabel="#{group.groupname}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="name" value="Name" />
+        <h:inputText id="name" value="#{userBean.searchName}" />
+
+        <h:outputLabel for="englishName" value="English Name" />
+        <h:inputText id="englishName" value="#{userBean.searchEnglishName}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+        <h:commandButton value="초기화" action="#{userBean.clearSearch}" />
+    </h:panelGrid>
+
+    <h:dataTable value="#{userBean.users}" var="user" border="1">
+        <h:column>
+            <f:facet name="header">Group Name</f:facet>
+            #{user.groupname}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Group Code</f:facet>
+            #{user.groupcode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Name</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">English Name</f:facet>
+            #{user.englishName}
+        </h:column>
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+### **🔹 변경된 부분**
+- **`h:selectOneMenu`**에서  
+  `groupcode`를 선택하지만, **사용자는 groupname을 보도록 설정**  
+- **`itemValue="#{group.groupcode}"`**  
+  - **DB에서는 groupcode(PK)를 사용**  
+- **`itemLabel="#{group.groupname}"`**  
+  - **UI에서는 groupname을 표시**
+
+---
+
+# **✅ 2. Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String searchGroupcode;
+    private String searchName;
+    private String searchEnglishName;
+    private List<User> users = new ArrayList<>();
+    private List<Group> groupList = new ArrayList<>();
+    private final UserDAO userDAO = new UserDAO();
+
+    @PostConstruct
+    public void init() {
+        groupList = userDAO.getAllGroups(); // group 테이블에서 데이터 조회
+    }
+
+    public String getSearchGroupcode() { return searchGroupcode; }
+    public void setSearchGroupcode(String searchGroupcode) { this.searchGroupcode = searchGroupcode; }
+    public String getSearchName() { return searchName; }
+    public void setSearchName(String searchName) { this.searchName = searchName; }
+    public String getSearchEnglishName() { return searchEnglishName; }
+    public void setSearchEnglishName(String searchEnglishName) { this.searchEnglishName = searchEnglishName; }
+    public List<User> getUsers() { return users; }
+    public List<Group> getGroupList() { return groupList; }
+
+    public void searchUsers() {
+        users = userDAO.searchUsers(searchGroupcode, searchName, searchEnglishName);
+    }
+
+    public void clearSearch() {
+        searchGroupcode = "";
+        searchName = "";
+        searchEnglishName = "";
+        users.clear();
+    }
+}
+```
+### **🔹 변경된 부분**
+- **`groupList`**: `group` 테이블에서 **groupcode + groupname 목록을 저장**  
+- **검색 시 `groupcode`를 이용**하여 `users` 테이블 조회
+
+---
+
+# **✅ 3. DAO (`UserDAO.java`)**
+```java
+public class UserDAO {
+    public List<Group> getAllGroups() {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            return session.selectList("UserMapper.getAllGroups");
+        }
+    }
+
+    public List<User> searchUsers(String groupcode, String name, String englishName) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("groupcode", groupcode.isEmpty() ? null : groupcode);
+            params.put("name", name.isEmpty() ? null : "%" + name + "%");
+            params.put("englishName", englishName.isEmpty() ? null : "%" + englishName + "%");
+            return session.selectList("UserMapper.searchUsers", params);
+        }
+    }
+}
+```
+### **🔹 변경된 부분**
+- **getAllGroups()**: `group` 테이블에서 **groupcode + groupname 조회**  
+- **searchUsers()**: 검색 시 **groupcode를 조건으로 사용**
+
+---
+
+# **✅ 4. MyBatis Mapper (`UserMapper.xml`)**
+```xml
+<select id="getAllGroups" resultType="Group">
+    SELECT groupcode, groupname FROM group ORDER BY groupname
+</select>
+
+<select id="searchUsers" parameterType="map" resultType="User">
+    SELECT u.groupcode, g.groupname, u.name, u.english_name AS englishName, u.id
+    FROM users u
+    JOIN group g ON u.groupcode = g.groupcode
+    WHERE (#{groupcode} IS NULL OR u.groupcode = #{groupcode})
+    AND (#{name} IS NULL OR u.name LIKE #{name})
+    AND (#{englishName} IS NULL OR u.english_name LIKE #{englishName})
+</select>
+```
+### **🔹 변경된 부분**
+- **group 테이블에서 `groupcode`, `groupname`을 가져옴** (`getAllGroups`)  
+- `users` 테이블에서 `groupcode`를 사용하여 **groupname을 조인** (`searchUsers`)
+
+---
+
+# **✅ 5. DTO (`Group.java`)**
+```java
+public class Group {
+    private String groupcode;
+    private String groupname;
+
+    public String getGroupcode() { return groupcode; }
+    public void setGroupcode(String groupcode) { this.groupcode = groupcode; }
+    public String getGroupname() { return groupname; }
+    public void setGroupname(String groupname) { this.groupname = groupname; }
+}
+```
+### **🔹 `group` 테이블의 데이터 저장을 위한 DTO 클래스**
+
+---
+
+# **✅ 정리**
+✅ **JSF (`search.xhtml`)**
+- `h:selectOneMenu`에서 **groupname을 보여주고, groupcode를 선택**
+
+✅ **Managed Bean (`UserBean.java`)**
+- **검색 시 groupcode를 이용**하여 `users` 테이블 조회  
+- **group 테이블에서 groupcode + groupname 조회 후 리스트 저장**
+
+✅ **DAO (`UserDAO.java`)**
+- `group` 테이블에서 **groupcode + groupname 조회**
+- 검색 시 `users` 테이블을 **groupcode 기준으로 검색**
+
+✅ **MyBatis (`UserMapper.xml`)**
+- `group` 테이블에서 **groupcode, groupname 조회**
+- `users` 테이블에서 `groupcode`를 기준으로 검색
+
+✅ **DTO**
+- `User.java`: 기존 DTO 유지  
+- `Group.java`: `group` 테이블 데이터를 저장하는 DTO 추가  
+
+이제 **groupname이 `group` 테이블에 있고, `groupcode`를 사용하여 검색하는 방식으로 수정 완료!** 🚀  
+추가 질문 있으면 언제든지 물어봐 😊
