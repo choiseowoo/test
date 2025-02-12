@@ -1,0 +1,106 @@
+둘 다 가능하지만, **상황에 따라 적절한 방법을 선택해야 합니다.**  
+
+---
+
+## ✅ **1. `JOIN`을 사용하는 경우 (SQL에서 합쳐서 가져옴)**
+- **장점:** 쿼리 한 번으로 데이터를 가져올 수 있어 성능이 좋음  
+- **단점:** `users` 테이블에 데이터가 많을 경우, `group` 테이블 데이터까지 함께 가져오면 성능 저하 가능  
+
+✔ **사용 예시:**  
+- `users` 데이터와 `group` 데이터를 **한 번의 검색 결과로 표시할 때**  
+- **UserMapper.xml에서 JOIN 사용 → `List<User>`로 받기**  
+
+```xml
+<select id="getUserList" resultType="com.example.dto.User">
+    SELECT 
+        u.id, 
+        u.name, 
+        u.english_name, 
+        u.groupcode, 
+        g.groupname 
+    FROM users u
+    LEFT JOIN group g ON u.groupcode = g.groupcode
+</select>
+```
+
+---
+
+## ✅ **2. DAO에서 따로따로 읽어서 화면에 표시**
+- **장점:** `users` 테이블과 `group` 테이블을 개별적으로 가져오므로 관리가 용이함  
+- **단점:** **두 개의 SQL을 실행해야 하므로 성능에 영향** (대량 데이터일 경우 비효율적)  
+
+✔ **사용 예시:**  
+- `users` 테이블과 `group` 테이블을 **각각 따로 표시할 때**  
+- **UserMapper.xml, GroupMapper.xml을 각각 작성하고 DAO에서 두 번 호출**  
+
+### **① UserMapper.xml (사용자 정보)**
+```xml
+<select id="getUserList" resultType="com.example.dto.User">
+    SELECT id, name, english_name, groupcode FROM users
+</select>
+```
+
+### **② GroupMapper.xml (그룹 정보)**
+```xml
+<select id="getGroupList" resultType="com.example.dto.Group">
+    SELECT groupcode, groupname FROM group
+</select>
+```
+
+### **③ DAO에서 개별 호출 (UserDAO.java)**
+```java
+public class UserDAO {
+    @Autowired
+    private UserMapper userMapper;
+    
+    @Autowired
+    private GroupMapper groupMapper;
+
+    public List<User> getAllUsers() {
+        return userMapper.getUserList();
+    }
+
+    public List<Group> getAllGroups() {
+        return groupMapper.getGroupList();
+    }
+}
+```
+
+### **④ JSF Bean에서 개별 데이터 저장**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    @Autowired
+    private UserDAO userDAO;
+
+    private List<User> users;
+    private List<Group> groups;
+
+    @PostConstruct
+    public void init() {
+        users = userDAO.getAllUsers();
+        groups = userDAO.getAllGroups();
+    }
+
+    // Getter & Setter
+}
+```
+
+---
+
+## ✅ **결론**
+1. **JOIN 사용** → `users`와 `group` 데이터를 한 번에 가져옴 (성능 ↑, 관리 ↓)  
+   - `user` 리스트에 `groupname`을 포함하여 한 번에 가져올 경우  
+   - **검색 기능에서 `groupname`을 함께 표시해야 할 때 적합**  
+
+2. **DAO에서 따로 가져오기** → `users`와 `group`을 개별적으로 가져옴 (유연성 ↑, 성능 ↓)  
+   - `users`와 `groups` 정보를 각각 화면에서 다른 위치에 표시할 경우  
+   - `group` 테이블이 독립적으로 사용될 경우  
+
+**📌 권장 방법:**  
+- **데이터가 많지 않으면 `JOIN`이 유리**  
+- **독립적으로 표시해야 하면 DAO에서 따로 가져오는 것이 유리**  
+
+**👉 어떤 방식이 더 적합한지, 필요한 화면 구조에 따라 선택하면 돼!**  
+추가 질문 있으면 말해줘 😊
