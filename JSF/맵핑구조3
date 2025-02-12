@@ -1,0 +1,151 @@
+### ✅ **`UserMapper.xml`과 `DAO` 매핑 개념**  
+
+JSF + MyBatis 환경에서 **`UserMapper.xml`** 파일을 **DAO에서 매핑하여 사용하는 개념**을 정리해볼게.
+
+---
+
+## **✅ 1. `UserMapper.xml` 개념**  
+- **SQL 쿼리를 작성하는 파일**  
+- MyBatis가 이 파일을 읽고 DAO에서 호출할 수 있도록 함  
+- `<mapper namespace="패키지명.UserMapper">` 를 사용하여 **인터페이스(`UserMapper.java`)와 연결**  
+
+📌 **예제 (`UserMapper.xml`)**
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+    <!-- 사용자 목록 조회 -->
+    <select id="getUserList" resultType="com.example.dto.User">
+        SELECT id, name, email FROM users
+    </select>
+
+    <!-- 특정 ID의 사용자 조회 -->
+    <select id="getUserById" parameterType="String" resultType="com.example.dto.User">
+        SELECT id, name, email FROM users WHERE id = #{id}
+    </select>
+</mapper>
+```
+
+---
+
+## **✅ 2. `UserMapper.xml`과 `UserMapper.java` 매핑**
+- `UserMapper.java`는 **인터페이스**로 작성  
+- `UserMapper.xml`의 **쿼리 ID와 같은 메서드명**을 사용해야 함  
+- MyBatis가 **인터페이스와 XML 파일을 자동으로 매핑**해줌  
+
+📌 **예제 (`UserMapper.java`)**
+```java
+package com.example.mapper;
+
+import com.example.dto.User;
+import java.util.List;
+
+public interface UserMapper {
+    List<User> getUserList();
+    User getUserById(String id);
+}
+```
+
+📌 **매핑 개념**
+- `getUserList()` 호출 → `UserMapper.xml`에서 `<select id="getUserList">` 실행됨  
+- `getUserById("123")` 호출 → `<select id="getUserById">` 실행됨  
+
+---
+
+## **✅ 3. DAO에서 `UserMapper`를 호출**
+DAO는 **Mapper 인터페이스를 직접 호출**하여 MyBatis가 **자동으로 매핑된 SQL을 실행**하도록 함.
+
+📌 **예제 (`UserDAO.java`)**
+```java
+package com.example.dao;
+
+import com.example.dto.User;
+import com.example.mapper.UserMapper;
+import org.apache.ibatis.session.SqlSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+
+@Repository
+public class UserDAO {
+    @Autowired
+    private SqlSession sqlSession;
+
+    public List<User> getAllUsers() {
+        return sqlSession.getMapper(UserMapper.class).getUserList();
+    }
+
+    public User getUserById(String id) {
+        return sqlSession.getMapper(UserMapper.class).getUserById(id);
+    }
+}
+```
+
+📌 **작동 방식**
+1. `sqlSession.getMapper(UserMapper.class).getUserList()` 실행  
+2. MyBatis가 `UserMapper.xml`에서 `<select id="getUserList">` 쿼리 실행  
+3. DB에서 데이터를 가져와 `List<User>`로 변환  
+
+---
+
+## **✅ 4. JSF `ManagedBean`에서 DAO 호출**
+JSF에서 DAO를 사용하여 데이터를 가져오는 방법
+
+📌 **예제 (`UserBean.java`)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    @Autowired
+    private UserDAO userDAO;
+
+    private List<User> users;
+    private String selectedUserId;
+
+    @PostConstruct
+    public void init() {
+        users = userDAO.getAllUsers();
+    }
+
+    public void searchUser() {
+        User user = userDAO.getUserById(selectedUserId);
+        if (user != null) {
+            users = List.of(user);
+        }
+    }
+
+    // Getter & Setter
+}
+```
+
+📌 **JSF에서 화면 출력 (`userlist.xhtml`)**
+```xml
+<h:dataTable value="#{userBean.users}" var="user">
+    <h:column><f:facet name="header">ID</f:facet>#{user.id}</h:column>
+    <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+</h:dataTable>
+```
+
+---
+
+## **✅ 개념 정리**
+1. **`UserMapper.xml`**  
+   - SQL 쿼리 작성  
+
+2. **`UserMapper.java` (인터페이스)**  
+   - `UserMapper.xml`과 DAO 연결  
+
+3. **`UserDAO.java`**  
+   - `sqlSession.getMapper(UserMapper.class)`을 통해 XML의 SQL 실행  
+
+4. **JSF `ManagedBean` (`UserBean.java`)**  
+   - DAO를 사용하여 DB에서 데이터 가져옴  
+   - JSF 화면에서 출력  
+
+---
+
+## **✅ 결론**
+✔ **`UserMapper.xml`은 SQL을 저장하는 역할**  
+✔ **DAO에서 `sqlSession.getMapper(UserMapper.class)`를 사용해 SQL 실행**  
+✔ **JSF → ManagedBean → DAO → Mapper → MyBatis** 순서로 동작  
+
+이제 MyBatis와 DAO의 관계가 명확해졌을 거야!  
+추가로 궁금한 점 있으면 말해줘 😊
