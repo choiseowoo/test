@@ -1,0 +1,149 @@
+### ✅ **DTO(Data Transfer Object) 사용 범위**  
+DTO는 데이터 전달을 위한 객체이므로 **필요한 곳에서만 사용**하면 돼.  
+아래처럼 **주로 사용하는 위치**를 정리해볼게.  
+
+---
+
+## **1️⃣ `Mapper.xml` → `Mapper.java` (인터페이스)에서 사용**
+- **MyBatis가 결과를 매핑할 때 DTO를 사용**  
+- SQL 조회 결과를 DTO 형태로 변환해 반환  
+- DTO를 SQL의 `parameterType` 및 `resultType`으로 지정  
+
+📌 **예제 (`UserMapper.xml`)**
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <!-- 모든 사용자 조회 -->
+    <select id="getUserList" resultType="com.example.dto.User">
+        SELECT id, name, email FROM users;
+    </select>
+
+    <!-- 특정 ID로 사용자 조회 -->
+    <select id="getUserById" parameterType="String" resultType="com.example.dto.User">
+        SELECT id, name, email FROM users WHERE id = #{id};
+    </select>
+
+</mapper>
+```
+
+📌 **예제 (`UserMapper.java`)**
+```java
+package com.example.mapper;
+
+import com.example.dto.User;
+import java.util.List;
+
+public interface UserMapper {
+    List<User> getUserList();  // XML의 <select id="getUserList"> 실행
+    User getUserById(String id); // XML의 <select id="getUserById"> 실행
+}
+```
+
+---
+
+## **2️⃣ `DAO`에서 `sqlSession.getMapper()`를 사용해 DTO 반환**
+- **Mapper 인터페이스를 호출하여 데이터를 DTO 형태로 받음**  
+- **DAO에서 DTO를 직접 생성하지 않고, Mapper에서 반환된 데이터를 그대로 사용**  
+
+📌 **예제 (`UserDAO.java`)**
+```java
+package com.example.dao;
+
+import com.example.dto.User;
+import com.example.mapper.UserMapper;
+import org.apache.ibatis.session.SqlSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+
+@Repository
+public class UserDAO {
+    @Autowired
+    private SqlSession sqlSession;
+
+    // 모든 사용자 조회
+    public List<User> getAllUsers() {
+        return sqlSession.getMapper(UserMapper.class).getUserList();
+    }
+
+    // 특정 ID로 사용자 조회
+    public User getUserById(String id) {
+        return sqlSession.getMapper(UserMapper.class).getUserById(id);
+    }
+}
+```
+
+---
+
+## **3️⃣ `Managed Bean`에서 DAO를 호출하여 DTO 사용**
+- **DAO에서 반환된 DTO를 사용하여 화면에서 활용**  
+- 검색 기능에서 DTO를 활용해 데이터 출력  
+
+📌 **예제 (`UserBean.java`)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    @Autowired
+    private UserDAO userDAO;
+
+    private List<User> users;
+    private String searchId;
+
+    @PostConstruct
+    public void init() {
+        users = userDAO.getAllUsers();  // 초기 데이터 로드
+    }
+
+    public void searchUser() {
+        User user = userDAO.getUserById(searchId);
+        if (user != null) {
+            users = List.of(user); // 검색 결과를 리스트에 저장
+        }
+    }
+
+    // Getter & Setter
+}
+```
+
+---
+
+## **4️⃣ JSF 화면에서 DTO 데이터를 사용**
+- **Managed Bean에서 DTO 데이터를 가져와 출력**  
+- `h:dataTable`을 이용해 DTO 필드를 화면에 표시  
+
+📌 **예제 (`userlist.xhtml`)**
+```xml
+<h:form>
+    <!-- ID 검색 -->
+    <h:panelGrid columns="2">
+        <h:outputLabel value="ID 검색:" />
+        <h:inputText value="#{userBean.searchId}" />
+        <h:commandButton value="검색" action="#{userBean.searchUser}" />
+    </h:panelGrid>
+
+    <!-- 사용자 목록 -->
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column><f:facet name="header">ID</f:facet>#{user.id}</h:column>
+        <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+        <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+## **✅ DTO는 어디에서 필요할까?**
+| 계층  | DTO 사용 여부 | 설명 |
+|-------|-------------|-------|
+| `Mapper.xml`  | ✅ 사용 | SQL 조회 결과를 DTO로 변환 (`resultType="com.example.dto.User"`) |
+| `Mapper.java` | ✅ 사용 | DTO를 반환하는 인터페이스 메서드 정의 |
+| `DAO` | ✅ 사용 | Mapper에서 반환된 DTO를 받아 그대로 사용 |
+| `Managed Bean` | ✅ 사용 | DAO에서 DTO를 받아 화면에 표시 |
+| `JSF (xhtml)` | ❌ 사용 X | DTO를 직접 사용하지 않고 `Managed Bean`을 통해 값 표시 |
+
+**✅ DTO는 `Mapper`, `DAO`, `Managed Bean`에서 사용하고, `JSF 화면`에서는 `Managed Bean`을 통해 접근하면 돼!**  
+즉, DTO는 **데이터를 주고받는 곳에서만 필요하고, 필요하지 않은 곳에서는 안 써도 된다.**  
+
+이제 개념이 잘 정리됐을 거야!  
+추가로 궁금한 게 있으면 말해줘 😊
