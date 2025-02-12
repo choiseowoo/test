@@ -1,0 +1,183 @@
+검색 화면에서 **풀다운 리스트(아이디)**, **이름 입력란**, **이메일 입력란**을 사용해서 검색하는 예제 코드를 작성해볼게.  
+
+## ✅ **기능 설명**
+1. **풀다운 리스트 (`h:selectOneMenu`)**: 아이디 선택  
+2. **입력 필드 (`h:inputText`)**: 이름, 이메일 검색  
+3. **검색 버튼 클릭 시 결과 출력 (`h:dataTable`)**  
+
+---
+
+# **✅ 1. JSF 검색 화면 (`search.xhtml`)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="userId" value="아이디" />
+        <h:selectOneMenu id="userId" value="#{userBean.searchId}">
+            <f:selectItem itemLabel="-- 선택 --" itemValue="" />
+            <f:selectItems value="#{userBean.userIdList}" var="id" itemValue="#{id}" itemLabel="#{id}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="name" value="이름" />
+        <h:inputText id="name" value="#{userBean.searchName}" />
+
+        <h:outputLabel for="email" value="이메일" />
+        <h:inputText id="email" value="#{userBean.searchEmail}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+        <h:commandButton value="초기화" action="#{userBean.clearSearch}" />
+    </h:panelGrid>
+
+    <h:dataTable value="#{userBean.users}" var="user" border="1">
+        <h:column>
+            <f:facet name="header">아이디</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이메일</f:facet>
+            #{user.email}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+### 🔹 **JSF 화면 설명**
+- `h:selectOneMenu`: ID를 선택하는 풀다운 리스트  
+- `h:inputText`: 이름, 이메일 입력 필드  
+- `h:dataTable`: 검색 결과 출력  
+- 검색 버튼 클릭 시 **`userBean.searchUsers()` 실행**  
+
+---
+
+# **✅ 2. Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String searchId;
+    private String searchName;
+    private String searchEmail;
+    private List<User> users = new ArrayList<>();
+    private List<String> userIdList = new ArrayList<>();
+    private final UserDAO userDAO = new UserDAO();
+
+    @PostConstruct
+    public void init() {
+        userIdList = userDAO.getAllUserIds(); // 풀다운 리스트용 ID 목록
+    }
+
+    public String getSearchId() { return searchId; }
+    public void setSearchId(String searchId) { this.searchId = searchId; }
+    public String getSearchName() { return searchName; }
+    public void setSearchName(String searchName) { this.searchName = searchName; }
+    public String getSearchEmail() { return searchEmail; }
+    public void setSearchEmail(String searchEmail) { this.searchEmail = searchEmail; }
+    public List<User> getUsers() { return users; }
+    public List<String> getUserIdList() { return userIdList; }
+
+    public void searchUsers() {
+        users = userDAO.searchUsers(searchId, searchName, searchEmail);
+    }
+
+    public void clearSearch() {
+        searchId = "";
+        searchName = "";
+        searchEmail = "";
+        users.clear();
+    }
+}
+```
+### 🔹 **설명**
+- **`userIdList`**: 풀다운 리스트에 표시할 ID 목록 저장  
+- **`searchUsers()`**: DAO를 호출해서 검색 실행  
+- **`clearSearch()`**: 검색 필드 초기화  
+
+---
+
+# **✅ 3. DAO (`UserDAO.java`)**
+```java
+public class UserDAO {
+    public List<String> getAllUserIds() {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            return session.selectList("UserMapper.getAllUserIds");
+        }
+    }
+
+    public List<User> searchUsers(String id, String name, String email) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("id", id.isEmpty() ? null : id);
+            params.put("name", name.isEmpty() ? null : "%" + name + "%");
+            params.put("email", email.isEmpty() ? null : "%" + email + "%");
+            return session.selectList("UserMapper.searchUsers", params);
+        }
+    }
+}
+```
+### 🔹 **설명**
+- **`getAllUserIds()`**: 모든 사용자 ID를 가져옴 (풀다운 리스트용)  
+- **`searchUsers()`**: ID, 이름, 이메일을 사용하여 검색  
+
+---
+
+# **✅ 4. MyBatis Mapper (`UserMapper.xml`)**
+```xml
+<select id="getAllUserIds" resultType="string">
+    SELECT id FROM users ORDER BY id
+</select>
+
+<select id="searchUsers" parameterType="map" resultType="User">
+    SELECT id, name, email FROM users
+    WHERE (#{id} IS NULL OR id = #{id})
+    AND (#{name} IS NULL OR name LIKE #{name})
+    AND (#{email} IS NULL OR email LIKE #{email})
+</select>
+```
+### 🔹 **설명**
+- `getAllUserIds`: **사용자 ID 목록 조회 (풀다운 리스트용)**  
+- `searchUsers`: **ID, 이름, 이메일 검색 쿼리**  
+  - 값이 비어있으면 **NULL 처리**하여 검색 조건에서 제외  
+
+---
+
+# **✅ 5. DTO (`User.java`)**
+```java
+public class User {
+    private String id;
+    private String name;
+    private String email;
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+}
+```
+- **DB 결과를 담을 DTO 클래스**  
+
+---
+
+# **✅ 정리**
+✅ **JSF (`search.xhtml`)**  
+- `h:selectOneMenu`: ID 선택  
+- `h:inputText`: 이름, 이메일 검색  
+- `h:dataTable`: 검색 결과 표시  
+
+✅ **Managed Bean (`UserBean.java`)**  
+- `userIdList`: 풀다운 리스트 데이터 저장  
+- `searchUsers()`: DAO 호출 → 검색 실행  
+
+✅ **DAO (`UserDAO.java`)**  
+- `getAllUserIds()`: ID 리스트 조회  
+- `searchUsers()`: 검색 조건에 맞는 데이터 조회  
+
+✅ **MyBatis (`UserMapper.xml`)**  
+- `getAllUserIds`: ID 목록 조회  
+- `searchUsers`: **ID, 이름, 이메일 검색 (조건이 NULL이면 제외)**  
+
+이제 검색 화면이 정상적으로 동작할 거야!  
+궁금한 점 있으면 질문해줘 🚀😊
