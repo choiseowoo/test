@@ -1,0 +1,192 @@
+### ✅ **JSF + MyBatis 페이징 기능 추가 예제**  
+**기능 설명:**  
+1. **페이징 버튼 4개 추가**  
+   - `맨앞이동` (`First`)
+   - `한칸앞으로이동` (`Previous`)
+   - `한칸뒤로이동` (`Next`)
+   - `맨뒤로이동` (`Last`)
+2. **페이지당 10개씩 데이터 표시**
+3. **검색 시 페이지 리셋 (1페이지부터 시작)**
+
+---
+
+## **1️⃣ JSF 검색 페이지 (`search.xhtml`)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupname" value="Group Name" />
+        <h:selectOneMenu id="groupname" value="#{userBean.searchGroupname}">
+            <f:selectItem itemLabel="-- 선택 --" itemValue="" />
+            <f:selectItems value="#{userBean.groupnameList}" var="group" itemValue="#{group}" itemLabel="#{group}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="name" value="Name" />
+        <h:inputText id="name" value="#{userBean.searchName}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+        <h:commandButton value="초기화" action="#{userBean.clearSearch}" />
+    </h:panelGrid>
+
+    <!-- 검색 결과 테이블 (검색 전에는 표시되지 않음) -->
+    <h:dataTable value="#{userBean.users}" var="user" border="1" rendered="#{not empty userBean.users}">
+        <h:column>
+            <f:facet name="header">Group Name</f:facet>
+            #{user.groupname}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Group Code</f:facet>
+            #{user.groupcode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Name</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+
+    <!-- 페이징 버튼 -->
+    <h:panelGrid columns="4" rendered="#{not empty userBean.users}">
+        <h:commandButton value="<< 맨앞" action="#{userBean.firstPage}" disabled="#{userBean.currentPage == 1}" />
+        <h:commandButton value="< 이전" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" />
+        <h:commandButton value="다음 >" action="#{userBean.nextPage}" disabled="#{userBean.currentPage == userBean.totalPages}" />
+        <h:commandButton value="맨뒤 >>" action="#{userBean.lastPage}" disabled="#{userBean.currentPage == userBean.totalPages}" />
+    </h:panelGrid>
+
+    <!-- 현재 페이지 정보 -->
+    <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" rendered="#{not empty userBean.users}" />
+</h:form>
+```
+---
+
+## **2️⃣ Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String searchGroupname;
+    private String searchName;
+    private List<User> users = new ArrayList<>();
+    private List<String> groupnameList = new ArrayList<>();
+    private final UserDAO userDAO = new UserDAO();
+
+    // 페이징 관련 변수
+    private int currentPage = 1;  // 현재 페이지
+    private int totalPages = 1;   // 전체 페이지 수
+    private static final int PAGE_SIZE = 10; // 한 페이지에 표시할 데이터 개수
+
+    @PostConstruct
+    public void init() {
+        groupnameList = userDAO.getAllGroupNames(); // 풀다운 리스트 데이터 조회
+    }
+
+    public String getSearchGroupname() { return searchGroupname; }
+    public void setSearchGroupname(String searchGroupname) { this.searchGroupname = searchGroupname; }
+    public String getSearchName() { return searchName; }
+    public void setSearchName(String searchName) { this.searchName = searchName; }
+    public List<User> getUsers() { return users; }
+    public List<String> getGroupnameList() { return groupnameList; }
+    public int getCurrentPage() { return currentPage; }
+    public int getTotalPages() { return totalPages; }
+
+    // 검색 실행
+    public void searchUsers() {
+        currentPage = 1; // 검색 시 1페이지부터 시작
+        updateUsers();
+    }
+
+    // 페이지 이동 시 데이터 업데이트
+    private void updateUsers() {
+        int totalRecords = userDAO.getUserCount(searchGroupname, searchName);
+        totalPages = (int) Math.ceil((double) totalRecords / PAGE_SIZE);
+        users = userDAO.searchUsers(searchGroupname, searchName, currentPage, PAGE_SIZE);
+    }
+
+    // 초기화 버튼
+    public void clearSearch() {
+        searchGroupname = "";
+        searchName = "";
+        users.clear();
+        currentPage = 1;
+        totalPages = 1;
+    }
+
+    // 페이징 버튼 동작
+    public void firstPage() { currentPage = 1; updateUsers(); }
+    public void previousPage() { if (currentPage > 1) currentPage--; updateUsers(); }
+    public void nextPage() { if (currentPage < totalPages) currentPage++; updateUsers(); }
+    public void lastPage() { currentPage = totalPages; updateUsers(); }
+}
+```
+
+---
+
+## **3️⃣ DAO (`UserDAO.java`)**
+```java
+public class UserDAO {
+    public List<String> getAllGroupNames() {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            return session.selectList("UserMapper.getAllGroupNames");
+        }
+    }
+
+    // 검색 시 페이징 적용
+    public List<User> searchUsers(String groupname, String name, int currentPage, int pageSize) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("groupname", groupname.isEmpty() ? null : groupname);
+            params.put("name", name.isEmpty() ? null : "%" + name + "%");
+            params.put("offset", (currentPage - 1) * pageSize);
+            params.put("limit", pageSize);
+            return session.selectList("UserMapper.searchUsers", params);
+        }
+    }
+
+    // 전체 데이터 개수 조회 (페이징 계산용)
+    public int getUserCount(String groupname, String name) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("groupname", groupname.isEmpty() ? null : groupname);
+            params.put("name", name.isEmpty() ? null : "%" + name + "%");
+            return session.selectOne("UserMapper.getUserCount", params);
+        }
+    }
+}
+```
+
+---
+
+## **4️⃣ MyBatis Mapper (`UserMapper.xml`)**
+```xml
+<!-- 전체 데이터 개수 조회 -->
+<select id="getUserCount" parameterType="map" resultType="int">
+    SELECT COUNT(*) FROM users
+    WHERE (#{groupname} IS NULL OR groupname = #{groupname})
+    AND (#{name} IS NULL OR name LIKE #{name})
+</select>
+
+<!-- 조건 검색 (페이징 적용) -->
+<select id="searchUsers" parameterType="map" resultType="User">
+    SELECT groupname, groupcode, name FROM users
+    WHERE (#{groupname} IS NULL OR groupname = #{groupname})
+    AND (#{name} IS NULL OR name LIKE #{name})
+    LIMIT #{limit} OFFSET #{offset}
+</select>
+```
+
+---
+
+## **✅ 정리**
+### **🔹 페이징 처리 방식**
+- **한 페이지당 10개씩 조회** (`PAGE_SIZE = 10`)
+- **SQL에서 `LIMIT`과 `OFFSET`을 사용하여 페이징 처리**
+- **페이지 이동 시 `updateUsers()` 실행 → 현재 페이지에 맞는 데이터 로드**
+
+### **🔹 페이징 버튼 동작**
+- `맨앞이동` → 1페이지로 이동
+- `한칸앞으로이동` → 이전 페이지로 이동 (`currentPage - 1`)
+- `한칸뒤로이동` → 다음 페이지로 이동 (`currentPage + 1`)
+- `맨뒤로이동` → 마지막 페이지로 이동 (`totalPages`)
+
+---
+
+이제 검색 결과가 많아도 **페이징을 통해 데이터 표시가 가능**해요! 🚀  
+추가 수정이 필요하면 말해줘! 😊
