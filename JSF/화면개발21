@@ -1,0 +1,108 @@
+이 경우, **서브화면(검색 창)이 팝업으로 열리고, 닫을 때 부모 페이지의 블러(투명 블럭 처리)를 해제하는 방식**을 사용하면 된다.  
+
+---
+
+## ✅ **해결 방법**
+1. **검색 화면(`search.xhtml`)을 팝업으로 띄운다.**  
+2. **검색 후 선택 버튼을 누르면 부모 페이지(`authorization.xhtml`)의 값이 변경된다.**  
+3. **서브화면(팝업)에서 종료 버튼을 누르면 부모 페이지의 블러 처리를 해제한다.**  
+
+---
+
+# ✅ **1️⃣ 부모 페이지 (`authorization.xhtml`)**
+```xml
+<h:head>
+    <script type="text/javascript">
+        function openSearchPopup() {
+            var popup = window.open('search.xhtml', 'searchPopup', 'width=600,height=400');
+            popup.focus();
+            document.getElementById("overlay").style.display = "block";
+        }
+
+        function closeSearchPopup() {
+            document.getElementById("overlay").style.display = "none";
+        }
+    </script>
+    <style>
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+    </style>
+</h:head>
+
+<h:body>
+    <div id="overlay"></div>
+
+    <h:form id="authForm">
+        <h:panelGrid columns="2">
+            <h:outputLabel for="groupcode" value="선택된 Group Code" />
+            <h:outputLabel id="groupcode" value="#{userBean.selectedGroupCode}" />
+
+            <h:commandButton value="검색" onclick="openSearchPopup(); return false;" />
+            <h:commandButton value="등록" action="#{userBean.grantPermission}" />
+        </h:panelGrid>
+    </h:form>
+</h:body>
+```
+
+✅ **추가된 기능**  
+- **`openSearchPopup()`**: 검색 창(`search.xhtml`)을 **팝업으로 띄운다**.  
+- **`overlay`**: **부모 페이지를 블러 처리**(클릭 불가능).  
+- **검색 창에서 선택 후 종료 버튼을 누르면 `closeSearchPopup()`이 실행되어 블러 해제됨**  
+
+---
+
+# ✅ **2️⃣ 검색 창 (`search.xhtml`)**
+```xml
+<h:head>
+    <script type="text/javascript">
+        function selectGroup(groupcode) {
+            window.opener.document.getElementById("authForm:groupcode").innerHTML = groupcode;
+            window.opener.closeSearchPopup();
+            window.close();
+        }
+    </script>
+</h:head>
+
+<h:form id="searchForm">
+    <h:dataTable value="#{userBean.users}" var="user" border="1">
+        <h:column>
+            <f:facet name="header">선택</f:facet>
+            <h:commandButton value="선택" onclick="selectGroup('#{user.groupcode}'); return false;" />
+        </h:column>
+        <h:column><f:facet name="header">Group Name</f:facet> #{user.groupname} </h:column>
+        <h:column><f:facet name="header">Group Code</f:facet> #{user.groupcode} </h:column>
+    </h:dataTable>
+
+    <h:commandButton value="종료" onclick="window.opener.closeSearchPopup(); window.close();" />
+</h:form>
+```
+
+✅ **추가된 기능**  
+- **선택 버튼 (`h:commandButton`)**  
+  - `selectGroup(groupcode)` → 부모 페이지(`authorization.xhtml`)의 **Label에 `groupcode` 입력 후 창 닫기**  
+  - `window.opener.closeSearchPopup();` → **부모 페이지 블러 해제**  
+- **종료 버튼 (`h:commandButton`)**  
+  - `closeSearchPopup()` 실행 → **부모 페이지 블러 해제 후 창 닫기**  
+
+---
+
+# ✅ **최종 동작**
+1. **부모 페이지 (`authorization.xhtml`)에서 `검색 버튼` 클릭**  
+   → 검색 창(`search.xhtml`)이 팝업으로 뜨고, 부모 페이지는 블러 처리됨  
+2. **검색 창에서 그룹 선택 후 `선택 버튼` 클릭**  
+   → `groupcode`가 부모 페이지의 `label`에 입력됨 & 팝업 닫힘  
+3. **검색 창에서 `종료 버튼` 클릭**  
+   → 팝업 닫히고, 부모 페이지의 블러 해제됨  
+4. **부모 페이지에서 `등록 버튼` 클릭**  
+   → 선택한 `groupcode`의 유저에게 권한 부여됨  
+
+---
+
+이제 검색 창이 팝업으로 열리고, 선택 후 값이 반영되며, 팝업을 닫으면 부모 페이지의 블러가 해제될 거야! 🚀
