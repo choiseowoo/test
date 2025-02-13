@@ -1,0 +1,60 @@
+네, **DTO 폴더가 없다면 새로 만드는 것이 좋아요.**  
+
+### **✅ DTO 폴더를 만들어야 하는 이유**
+1. **역할 분리가 명확해짐**  
+   - `entity/` 폴더에는 DB와 직접 매핑되는 객체(예: `User`, `Group` 등)  
+   - `dto/` 폴더에는 화면(UI)과 데이터를 주고받을 때 사용되는 객체(예: `UserDTO`)  
+
+2. **유지보수성이 향상됨**  
+   - Entity와 DTO를 분리하면, DB 스키마가 변경될 때도 **비즈니스 로직에 최소한의 영향**만 줌  
+
+3. **데이터 보호 (보안 강화)**  
+   - 예를 들어, `User` 엔티티에는 `password` 같은 **민감한 정보**가 있을 수 있음  
+   - `UserDTO`에는 `name`, `email` 같은 **필요한 정보만 포함**하여 보안 강화  
+
+---
+
+### **✅ DTO 폴더를 추가하는 방법**
+**1. 프로젝트 구조 예시**  
+```plaintext
+src/main/java/com/example/project/
+ ├── bean/                → JSF ManagedBean (ex. `UserBean.java`)
+ ├── dao/                 → 데이터 접근 계층 (ex. `UserDAO.java`)
+ ├── dto/                 → 📌 DTO 폴더 (ex. `UserDTO.java`)
+ ├── entity/              → Entity 객체 (ex. `User.java`, `Group.java`)
+ ├── mapper/              → MyBatis Mapper (ex. `UserMapper.java`)
+ ├── service/             → 서비스 로직 (ex. `UserService.java`)
+ ├── util/                → 유틸리티 클래스 (ex. `MyBatisUtil.java`)
+```
+
+**2. DTO 클래스 예제 (`dto/UserDTO.java`)**
+```java
+package com.example.project.dto;
+
+public class UserDTO {
+    private String name;
+    private String email;
+
+    public UserDTO() {}
+
+    public UserDTO(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+}
+```
+
+---
+
+### **✅ 결론**
+- **DTO 폴더가 없다면 직접 생성하는 것이 좋음**  
+- `entity/`와 `dto/`를 분리하면 **유지보수성과 보안성이 향상됨**  
+- **MyBatis + JSF 프로젝트에서는 DTO를 적극 활용하는 것이 일반적**  
+
+**💡 따라서, DTO 폴더를 만들고 그 안에 DTO 클래스를 정의하는 것이 좋아요!**
