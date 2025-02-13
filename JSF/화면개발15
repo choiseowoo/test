@@ -1,0 +1,70 @@
+모든 데이터를 불러오는 가장 간단한 방법은 **검색 조건이 없을 때 전체 데이터를 조회하는 SQL을 실행하는 것**이에요.  
+
+---
+
+## **✅ 1️⃣ MyBatis Mapper 수정 (`UserMapper.xml`)**
+```xml
+<!-- 전체 데이터 개수 조회 -->
+<select id="getUserCount" resultType="int">
+    SELECT COUNT(*) FROM users
+</select>
+
+<!-- 모든 데이터 조회 -->
+<select id="getAllUsers" resultType="User">
+    SELECT groupname, groupcode, name FROM users
+    LIMIT #{limit} OFFSET #{offset}
+</select>
+
+<!-- 조건 검색 -->
+<select id="searchUsers" parameterType="map" resultType="User">
+    SELECT groupname, groupcode, name FROM users
+    WHERE groupname = #{groupname} OR name LIKE #{name}
+    LIMIT #{limit} OFFSET #{offset}
+</select>
+```
+
+### **🛠 변경 내용**
+- `getAllUsers` → 검색 조건 없이 **모든 데이터를 불러오는 SQL** 추가  
+- `searchUsers` → 검색 조건이 있을 경우에만 실행  
+
+---
+
+## **✅ 2️⃣ DAO 수정 (`UserDAO.java`)**
+```java
+public List<User> searchUsers(String groupname, String name, int currentPage, int pageSize) {
+    try (SqlSession session = MyBatisUtil.getSession()) {
+        int offset = (currentPage - 1) * pageSize;
+        int limit = pageSize;
+        
+        if ((groupname == null || groupname.isEmpty()) && (name == null || name.isEmpty())) {
+            // 검색 조건이 없으면 전체 데이터 조회
+            Map<String, Integer> params = new HashMap<>();
+            params.put("limit", limit);
+            params.put("offset", offset);
+            return session.selectList("UserMapper.getAllUsers", params);
+        } else {
+            // 검색 조건이 있으면 필터링된 데이터 조회
+            Map<String, Object> params = new HashMap<>();
+            params.put("groupname", groupname);
+            params.put("name", "%" + name + "%");
+            params.put("limit", limit);
+            params.put("offset", offset);
+            return session.selectList("UserMapper.searchUsers", params);
+        }
+    }
+}
+```
+
+### **🛠 변경 내용**
+- **검색 조건이 없으면 `getAllUsers` 실행**  
+- **검색 조건이 있으면 `searchUsers` 실행**  
+
+---
+
+## **✅ 결과**
+1. **검색 조건 없이 실행하면 전체 데이터 조회**
+2. **검색 조건 입력하면 필터링된 데이터만 조회**
+3. **페이징도 정상 동작**
+
+이제 모든 데이터를 불러오고 싶으면 **그냥 검색 조건 없이 검색 버튼을 누르면 됨**  
+이 방식이 더 간단하니까 한 번 테스트해보고 알려줘! 🚀
