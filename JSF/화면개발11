@@ -1,0 +1,101 @@
+검색하기 전에는 테이블이 **비표시**되고, 검색 후에는 **결과가 있을 때만 표시**되도록 수정해볼게요. 또한, **초기화 버튼을 클릭하면 테이블을 숨기도록 변경**하겠습니다.  
+
+---
+
+## **✅ 수정된 JSF 검색 화면 (`search.xhtml`)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupname" value="Group Name" />
+        <h:selectOneMenu id="groupname" value="#{userBean.searchGroupname}">
+            <f:selectItem itemLabel="-- 선택 --" itemValue="" />
+            <f:selectItems value="#{userBean.groupnameList}" var="group" itemValue="#{group}" itemLabel="#{group}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="name" value="Name" />
+        <h:inputText id="name" value="#{userBean.searchName}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+        <h:commandButton value="초기화" action="#{userBean.clearSearch}" />
+    </h:panelGrid>
+
+    <!-- 검색 결과가 있을 때만 테이블 표시 -->
+    <h:panelGroup rendered="#{not empty userBean.users}">
+        <h:dataTable value="#{userBean.users}" var="user" border="1">
+            <h:column>
+                <f:facet name="header">Group Name</f:facet>
+                #{user.groupname}
+            </h:column>
+            <h:column>
+                <f:facet name="header">Group Code</f:facet>
+                #{user.groupcode}
+            </h:column>
+            <h:column>
+                <f:facet name="header">Name</f:facet>
+                #{user.name}
+            </h:column>
+        </h:dataTable>
+    </h:panelGroup>
+</h:form>
+```
+
+---
+
+## **✅ 수정된 Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String searchGroupname;
+    private String searchName;
+    private List<User> users = new ArrayList<>();
+    private List<String> groupnameList = new ArrayList<>();
+    private final UserDAO userDAO = new UserDAO();
+
+    @PostConstruct
+    public void init() {
+        groupnameList = userDAO.getAllGroupNames(); // 풀다운 리스트 데이터 조회
+    }
+
+    public String getSearchGroupname() { return searchGroupname; }
+    public void setSearchGroupname(String searchGroupname) { this.searchGroupname = searchGroupname; }
+    public String getSearchName() { return searchName; }
+    public void setSearchName(String searchName) { this.searchName = searchName; }
+    public List<User> getUsers() { return users; }
+    public List<String> getGroupnameList() { return groupnameList; }
+
+    // 검색 실행
+    public void searchUsers() {
+        users = userDAO.searchUsers(searchGroupname, searchName);
+    }
+
+    // 검색 조건 초기화 및 테이블 숨기기
+    public void clearSearch() {
+        searchGroupname = "";
+        searchName = "";
+        users.clear(); // 리스트 초기화하여 테이블 숨김
+    }
+}
+```
+
+---
+
+## **✅ 변경 사항 요약**
+1. `h:panelGroup`의 `rendered` 속성을 활용하여 **검색 결과가 없을 때는 테이블을 숨김**  
+   ```xml
+   <h:panelGroup rendered="#{not empty userBean.users}">
+   ```
+2. `clearSearch()` 메서드에서 **users 리스트를 초기화하여 테이블을 숨김**  
+   ```java
+   public void clearSearch() {
+       searchGroupname = "";
+       searchName = "";
+       users.clear();
+   }
+   ```
+
+---
+
+이제 **검색 전에는 테이블이 보이지 않고**, **검색 후에만 결과가 표시**됩니다.  
+또한, **초기화 버튼을 누르면 테이블이 다시 사라지도록 동작**합니다.  
+이제 원하는 동작이 될 거예요! 😊 🚀
