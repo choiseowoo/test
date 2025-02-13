@@ -1,0 +1,105 @@
+검색 조건을 입력하지 않고 검색 버튼을 누르면 **모든 데이터를 조회**하도록 변경할게요.  
+즉, `groupname`과 `name` 입력값이 없으면 **전체 리스트**를 가져오도록 처리하면 됩니다.  
+
+---
+
+## **✅ 수정된 Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String searchGroupname;
+    private String searchName;
+    private List<User> users = new ArrayList<>();
+    private List<String> groupnameList = new ArrayList<>();
+    private final UserDAO userDAO = new UserDAO();
+
+    @PostConstruct
+    public void init() {
+        groupnameList = userDAO.getAllGroupNames(); // 풀다운 리스트 데이터 조회
+    }
+
+    public String getSearchGroupname() { return searchGroupname; }
+    public void setSearchGroupname(String searchGroupname) { this.searchGroupname = searchGroupname; }
+    public String getSearchName() { return searchName; }
+    public void setSearchName(String searchName) { this.searchName = searchName; }
+    public List<User> getUsers() { return users; }
+    public List<String> getGroupnameList() { return groupnameList; }
+
+    // 검색 실행 (조건 없으면 모든 데이터 조회)
+    public void searchUsers() {
+        if ((searchGroupname == null || searchGroupname.isEmpty()) && 
+            (searchName == null || searchName.isEmpty())) {
+            users = userDAO.getAllUsers(); // 모든 데이터 조회
+        } else {
+            users = userDAO.searchUsers(searchGroupname, searchName);
+        }
+    }
+
+    // 검색 조건 초기화 및 테이블 숨기기
+    public void clearSearch() {
+        searchGroupname = "";
+        searchName = "";
+        users.clear(); // 리스트 초기화하여 테이블 숨김
+    }
+}
+```
+
+---
+
+## **✅ 수정된 DAO (`UserDAO.java`)**
+```java
+public class UserDAO {
+    public List<String> getAllGroupNames() {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            return session.selectList("UserMapper.getAllGroupNames");
+        }
+    }
+
+    // 검색 조건이 있을 경우 실행
+    public List<User> searchUsers(String groupname, String name) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("groupname", groupname.isEmpty() ? null : groupname);
+            params.put("name", name.isEmpty() ? null : "%" + name + "%");
+            return session.selectList("UserMapper.searchUsers", params);
+        }
+    }
+
+    // 모든 데이터 조회
+    public List<User> getAllUsers() {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            return session.selectList("UserMapper.getAllUsers");
+        }
+    }
+}
+```
+
+---
+
+## **✅ 수정된 MyBatis Mapper (`UserMapper.xml`)**
+```xml
+<!-- 모든 데이터 조회 -->
+<select id="getAllUsers" resultType="User">
+    SELECT groupname, groupcode, name FROM users
+</select>
+
+<!-- 조건 검색 -->
+<select id="searchUsers" parameterType="map" resultType="User">
+    SELECT groupname, groupcode, name FROM users
+    WHERE (#{groupname} IS NULL OR groupname = #{groupname})
+    AND (#{name} IS NULL OR name LIKE #{name})
+</select>
+```
+
+---
+
+## **✅ 변경 사항 요약**
+1. **검색 조건 없이 검색 버튼 클릭** → **모든 데이터 조회 (`getAllUsers()`)**  
+2. **검색 조건 입력 후 검색 버튼 클릭** → **검색 조건에 맞는 데이터 조회 (`searchUsers()`)**  
+3. **초기화 버튼 클릭 시 검색 결과 숨김**
+
+---
+
+이제 검색 조건을 입력하지 않아도 **전체 데이터를 조회**할 수 있습니다! 🚀  
+필요한 부분이 있으면 추가로 알려주세요 😊
