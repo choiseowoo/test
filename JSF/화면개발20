@@ -1,0 +1,163 @@
+## ✅ **기능 설명**
+1. **검색 페이지 (`search.xhtml`)**  
+   - **그룹명 선택 (`h:selectOneMenu`)**, **이름 검색 (`h:inputText`)**  
+   - **검색 결과 테이블 (`h:dataTable`)** → **라디오 버튼으로 그룹 선택 가능**  
+   - **선택 버튼 (`h:commandButton`)** → **선택한 `groupcode`를 이전 페이지로 전송**  
+
+2. **권한 부여 페이지 (`authorization.xhtml`)**  
+   - **선택한 `groupcode`를 `h:outputLabel`에 표시** (수정 불가)  
+   - **등록 버튼 (`h:commandButton`)** → `groupcode`의 유저에게 권한 부여  
+
+---
+
+# ✅ **1️⃣ 검색 페이지 (`search.xhtml`)**
+```xml
+<h:form id="searchForm">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupname" value="Group Name" />
+        <h:selectOneMenu id="groupname" value="#{userBean.searchGroupname}">
+            <f:selectItem itemLabel="-- 선택 --" itemValue="" />
+            <f:selectItems value="#{userBean.groupnameList}" var="group" itemValue="#{group}" itemLabel="#{group}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="name" value="Name" />
+        <h:inputText id="name" value="#{userBean.searchName}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" update="resultTable" />
+        <h:commandButton value="초기화" action="#{userBean.clearSearch}" update="resultTable" />
+    </h:panelGrid>
+</h:form>
+
+<h:form id="resultForm">
+    <h:panelGroup id="resultTable" rendered="#{not empty userBean.users}">
+        <h:dataTable value="#{userBean.users}" var="user" border="1">
+            <h:column>
+                <f:facet name="header">선택</f:facet>
+                <h:selectOneRadio value="#{userBean.selectedUserId}">
+                    <f:selectItem itemValue="#{user.id}" />
+                </h:selectOneRadio>
+            </h:column>
+            <h:column><f:facet name="header">Group Name</f:facet> #{user.groupname} </h:column>
+            <h:column><f:facet name="header">Group Code</f:facet> #{user.groupcode} </h:column>
+            <h:column><f:facet name="header">Name</f:facet> #{user.name} </h:column>
+        </h:dataTable>
+
+        <h:commandButton value="선택" action="#{userBean.selectUser}" />
+    </h:panelGroup>
+</h:form>
+```
+
+✅ **추가된 기능**  
+- **`h:selectOneRadio`** → 한 개의 선택지만 가능  
+- **`h:commandButton (선택)`** → 선택한 `groupcode`를 **이전 페이지 (`authorization.xhtml`)로 이동**  
+
+---
+
+# ✅ **2️⃣ 권한 부여 페이지 (`authorization.xhtml`)**
+```xml
+<h:form id="authForm">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupcode" value="선택된 Group Code" />
+        <h:outputLabel id="groupcode" value="#{userBean.selectedGroupCode}" />
+
+        <h:commandButton value="등록" action="#{userBean.grantPermission}" />
+    </h:panelGrid>
+</h:form>
+```
+
+✅ **추가된 기능**  
+- **`h:outputLabel`** → **선택된 `groupcode` 표시 (수정 불가)**  
+- **`h:commandButton (등록)`** → 선택된 `groupcode`의 유저에게 권한 부여  
+
+---
+
+# ✅ **3️⃣ Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String searchGroupname;
+    private String searchName;
+    private List<User> users = new ArrayList<>();
+    private String selectedUserId;
+    private String selectedGroupCode;
+    private final UserDAO userDAO = new UserDAO();
+
+    public void searchUsers() {
+        users = userDAO.searchUsers(searchGroupname, searchName);
+    }
+
+    public void clearSearch() {
+        searchGroupname = "";
+        searchName = "";
+        users.clear();
+    }
+
+    public void selectUser() {
+        if (selectedUserId != null) {
+            for (User user : users) {
+                if (user.getId().equals(selectedUserId)) {
+                    selectedGroupCode = user.getGroupcode();
+                    break;
+                }
+            }
+        }
+    }
+
+    public void grantPermission() {
+        if (selectedGroupCode != null && !selectedGroupCode.isEmpty()) {
+            userDAO.assignPermission(selectedGroupCode);
+        }
+    }
+
+    // Getter & Setter 생략
+}
+```
+
+✅ **추가된 기능**  
+- `selectUser()`: 선택한 `groupcode`를 저장  
+- `grantPermission()`: 선택한 `groupcode`에 권한 부여  
+
+---
+
+# ✅ **4️⃣ DAO (`UserDAO.java`)**
+```java
+public class UserDAO {
+    public void assignPermission(String groupcode) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            session.update("UserMapper.assignPermission", groupcode);
+            session.commit();
+        }
+    }
+}
+```
+
+✅ **추가된 기능**  
+- `assignPermission()`: MyBatis를 이용해 `groupcode`의 유저에게 권한 부여  
+
+---
+
+# ✅ **5️⃣ MyBatis Mapper (`UserMapper.xml`)**
+```xml
+<update id="assignPermission" parameterType="string">
+    UPDATE users SET permission = 'GRANTED' WHERE groupcode = #{groupcode}
+</update>
+```
+
+✅ **추가된 기능**  
+- `groupcode`가 일치하는 유저에게 **권한을 'GRANTED'로 설정**  
+
+---
+
+# ✅ **최종 동작**
+1. **검색 페이지 (`search.xhtml`)**  
+   - **그룹 선택 후 `선택 버튼` 클릭** → `groupcode` 저장  
+   - **이전 페이지 (`authorization.xhtml`)로 이동**  
+
+2. **권한 부여 페이지 (`authorization.xhtml`)**  
+   - **선택된 `groupcode`가 `h:outputLabel`에 표시됨**  
+   - **`등록 버튼` 클릭 시 권한 부여**  
+
+---
+
+테스트해보고 문제 있으면 알려줘! 🚀
