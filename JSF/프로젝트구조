@@ -1,0 +1,83 @@
+DTO의 위치는 프로젝트 구조와 개발 스타일에 따라 다를 수 있지만, **일반적인 Java 프로젝트의 계층 구조** 및 **네이밍 컨벤션**을 따르는 것이 좋다.  
+
+### **1. DTO의 일반적인 위치**
+✅ **추천 위치:**  
+`src/main/java/com/example/project/domain/dto/`  
+✅ **JSF + MyBatis 프로젝트에서는?**  
+- DTO는 **데이터 전송을 위한 객체**이므로, 일반적으로 **`entity` 폴더가 아닌 `dto` 폴더에 배치**  
+- `bean` 폴더는 **JSF의 Managed Bean**을 위한 공간이므로 DTO를 넣지 않는 것이 좋음  
+
+### **2. 프로젝트 구조 예시**  
+**💡 일본어로 설명한 프로젝트 구조에서 가장 적절한 위치**
+```
+src/main/java/com/example/project/
+ ├── bean/                → JSF ManagedBean (ex. `UserBean.java`)
+ ├── dao/                 → 데이터 접근 계층 (ex. `UserDAO.java`)
+ ├── dto/                 → DTO 객체 (ex. `UserDTO.java`)
+ ├── entity/              → Entity 객체 (ex. `User.java`, `Group.java`)
+ ├── mapper/              → MyBatis Mapper (ex. `UserMapper.java`)
+ ├── service/             → 서비스 로직 (ex. `UserService.java`)
+ ├── util/                → 유틸리티 클래스 (ex. `MyBatisUtil.java`)
+```
+
+### **3. DTO vs Entity 구분**  
+✅ **`entity/` 폴더**  
+- **DB와 직접 매핑되는 객체**  
+- **JPA 엔티티** 또는 **MyBatis에서 매핑되는 도메인 객체**  
+- `@Table(name = "users")` 같은 DB 매핑 정보가 포함될 수도 있음  
+
+✅ **`dto/` 폴더**  
+- **데이터를 화면(UI)과 주고받을 때 사용**  
+- `bean`과 `dao`에서 데이터를 주고받을 때 DTO를 사용하여 전송  
+- 비즈니스 로직이 없는 단순한 데이터 객체  
+
+### **4. 예제 코드 (DTO vs Entity 차이점)**  
+
+✅ **`entity/User.java` (Entity 객체)**
+```java
+public class User {
+    private Long id;
+    private String name;
+    private String email;
+    private String password;
+
+    // Getter, Setter
+}
+```
+
+✅ **`dto/UserDTO.java` (DTO 객체)**
+```java
+public class UserDTO {
+    private String name;
+    private String email;
+
+    // DTO는 보통 비밀번호 같은 민감한 정보는 포함하지 않음
+}
+```
+
+✅ **`UserBean.java` (JSF Managed Bean에서 DTO 사용)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private UserDTO userDTO = new UserDTO();
+    private UserDAO userDAO = new UserDAO();
+
+    public void register() {
+        userDAO.insertUser(userDTO);
+    }
+
+    // Getter, Setter
+}
+```
+
+---
+
+### **✅ 결론**
+1. **DTO는 `dto/` 폴더에 두는 것이 가장 적절**  
+2. `bean` 폴더는 **JSF Managed Bean을 위한 공간**이므로 DTO를 넣지 않음  
+3. `entity/` 폴더는 **DB와 직접 매핑되는 객체(User, Group 등)를 넣는 곳**  
+4. **JSF Bean ↔ DTO ↔ DAO 간 데이터를 주고받는 구조를 유지**  
+
+**💡 이 구조를 따르면, 유지보수하기 쉬운 JSF + MyBatis 프로젝트가 될 거야!**  
+더 궁금한 점 있으면 알려줘!
