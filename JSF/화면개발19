@@ -1,0 +1,122 @@
+## **✅ 기능 설명**
+1. **검색 조건**  
+   - **풀다운 리스트 (`h:selectOneMenu`)** → `groupname` 선택  
+   - **입력 필드 (`h:inputText`)** → `name` 검색  
+   - **검색 버튼** → 검색 실행  
+   - **초기화 버튼** → 검색 조건 초기화  
+
+2. **검색 결과 출력 (`h:dataTable`)**  
+   - **라디오 버튼 (`h:selectOneRadio`)** → 하나만 선택 가능  
+   - **테이블 컬럼** → `groupname`, `groupcode`, `name` 표시  
+   - **선택 버튼** → 선택한 `groupcode`를 이전 페이지에 표시  
+
+---
+
+## **✅ 1️⃣ JSF 검색 화면 (`search.xhtml`)**
+```xml
+<h:form id="searchForm">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupname" value="Group Name" />
+        <h:selectOneMenu id="groupname" value="#{userBean.searchGroupname}">
+            <f:selectItem itemLabel="-- 선택 --" itemValue="" />
+            <f:selectItems value="#{userBean.groupnameList}" var="group" itemValue="#{group}" itemLabel="#{group}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="name" value="Name" />
+        <h:inputText id="name" value="#{userBean.searchName}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" update="resultTable" />
+        <h:commandButton value="초기화" action="#{userBean.clearSearch}" update="resultTable" />
+    </h:panelGrid>
+</h:form>
+
+<h:form id="resultForm">
+    <h:panelGroup id="resultTable" rendered="#{not empty userBean.users}">
+        <h:dataTable value="#{userBean.users}" var="user" border="1">
+            <h:column>
+                <f:facet name="header">선택</f:facet>
+                <h:selectOneRadio value="#{userBean.selectedUserId}">
+                    <f:selectItem itemValue="#{user.id}" />
+                </h:selectOneRadio>
+            </h:column>
+            <h:column><f:facet name="header">Group Name</f:facet> #{user.groupname} </h:column>
+            <h:column><f:facet name="header">Group Code</f:facet> #{user.groupcode} </h:column>
+            <h:column><f:facet name="header">Name</f:facet> #{user.name} </h:column>
+        </h:dataTable>
+
+        <h:commandButton value="선택" action="#{userBean.selectUser}" update="selectedGroupCode" />
+    </h:panelGroup>
+</h:form>
+
+<h:outputText id="selectedGroupCode" value="선택된 그룹코드: #{userBean.selectedGroupCode}" />
+```
+
+✅ **추가된 기능**  
+- `h:selectOneRadio`: **하나의 라디오 버튼만 선택 가능**  
+- `h:commandButton` (선택 버튼): **선택한 `groupcode`를 이전 페이지에 표시**  
+- `rendered="#{not empty userBean.users}"`: **검색 결과 없으면 테이블 숨김**  
+
+---
+
+## **✅ 2️⃣ Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String searchGroupname;
+    private String searchName;
+    private List<User> users = new ArrayList<>();
+    private String selectedUserId;
+    private String selectedGroupCode;
+    private final UserDAO userDAO = new UserDAO();
+
+    public void searchUsers() {
+        users = userDAO.searchUsers(searchGroupname, searchName);
+    }
+
+    public void clearSearch() {
+        searchGroupname = "";
+        searchName = "";
+        users.clear();
+    }
+
+    public void selectUser() {
+        if (selectedUserId != null) {
+            for (User user : users) {
+                if (user.getId().equals(selectedUserId)) {
+                    selectedGroupCode = user.getGroupcode();
+                    break;
+                }
+            }
+        }
+    }
+
+    // Getter & Setter 생략
+}
+```
+
+✅ **추가된 기능**  
+- `selectedUserId`: **라디오 버튼에서 선택된 유저 ID 저장**  
+- `selectedGroupCode`: **선택된 `groupcode`를 저장하여 출력**  
+- `selectUser()`: **선택된 ID에 해당하는 `groupcode`를 설정**  
+
+---
+
+## **✅ 3️⃣ 검색 후 결과 예시**
+| 선택 | Group Name | Group Code | Name |
+|------|------------|------------|--------|
+| ○ | IT | G001 | John Doe |
+| ○ | HR | G002 | Jane Smith |
+| ○ | Finance | G003 | Michael Lee |
+
+### **➡ `선택` 버튼 클릭 시**
+- `"선택된 그룹코드: G002"` 가 표시됨 (Jane Smith 선택 시)
+
+---
+
+## **✅ 최종 해결된 기능**
+1. **라디오 버튼으로 하나의 행만 선택 가능**  
+2. **검색 결과 없을 때 테이블 숨김**  
+3. **선택 버튼 클릭 시 선택한 `groupcode`를 출력**  
+
+테스트해보고 문제 있으면 알려줘! 🚀
