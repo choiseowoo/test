@@ -1,0 +1,160 @@
+쿼리에서 조인하지 않고 하나의 테이블에서 `groupname`, `groupcode`, `name`을 받아서 처리하는 JSF + MyBatis 예제 코드를 만들어 줄게.  
+
+---
+
+## **✅ 기능 설명**
+1. **검색 조건**  
+   - **풀다운 리스트 (`h:selectOneMenu`)** → `groupname` 선택  
+   - **입력 필드 (`h:inputText`)** → `name` 검색  
+2. **버튼**  
+   - **검색 버튼** → 검색 실행  
+   - **초기화 버튼** → 검색 조건 초기화  
+3. **검색 결과 출력 (`h:dataTable`)**  
+   - **`name`, `groupname`, `groupcode`** 표시  
+
+---
+
+## **✅ 1. JSF 검색 화면 (`search.xhtml`)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupname" value="Group Name" />
+        <h:selectOneMenu id="groupname" value="#{userBean.searchGroupname}">
+            <f:selectItem itemLabel="-- 선택 --" itemValue="" />
+            <f:selectItems value="#{userBean.groupnameList}" var="group" itemValue="#{group}" itemLabel="#{group}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="name" value="Name" />
+        <h:inputText id="name" value="#{userBean.searchName}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+        <h:commandButton value="초기화" action="#{userBean.clearSearch}" />
+    </h:panelGrid>
+
+    <h:dataTable value="#{userBean.users}" var="user" border="1">
+        <h:column>
+            <f:facet name="header">Name</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Group Name</f:facet>
+            #{user.groupname}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Group Code</f:facet>
+            #{user.groupcode}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+## **✅ 2. Managed Bean (`UserBean.java`)**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String searchGroupname;
+    private String searchName;
+    private List<User> users = new ArrayList<>();
+    private List<String> groupnameList = new ArrayList<>();
+    private final UserDAO userDAO = new UserDAO();
+
+    @PostConstruct
+    public void init() {
+        groupnameList = userDAO.getAllGroupNames(); // 풀다운 리스트용 데이터 조회
+    }
+
+    public String getSearchGroupname() { return searchGroupname; }
+    public void setSearchGroupname(String searchGroupname) { this.searchGroupname = searchGroupname; }
+    public String getSearchName() { return searchName; }
+    public void setSearchName(String searchName) { this.searchName = searchName; }
+    public List<User> getUsers() { return users; }
+    public List<String> getGroupnameList() { return groupnameList; }
+
+    public void searchUsers() {
+        users = userDAO.searchUsers(searchGroupname, searchName);
+    }
+
+    public void clearSearch() {
+        searchGroupname = "";
+        searchName = "";
+        users.clear();
+    }
+}
+```
+
+---
+
+## **✅ 3. DAO (`UserDAO.java`)**
+```java
+public class UserDAO {
+    public List<String> getAllGroupNames() {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            return session.selectList("UserMapper.getAllGroupNames");
+        }
+    }
+
+    public List<User> searchUsers(String groupname, String name) {
+        try (SqlSession session = MyBatisUtil.getSession()) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("groupname", groupname.isEmpty() ? null : groupname);
+            params.put("name", name.isEmpty() ? null : "%" + name + "%");
+            return session.selectList("UserMapper.searchUsers", params);
+        }
+    }
+}
+```
+
+✅ **하나의 테이블에서 직접 데이터 가져옴**  
+✅ **groupname 목록은 `getAllGroupNames()`에서 조회**  
+
+---
+
+## **✅ 4. MyBatis Mapper (`UserMapper.xml`)**
+```xml
+<select id="getAllGroupNames" resultType="string">
+    SELECT DISTINCT groupname FROM users ORDER BY groupname
+</select>
+
+<select id="searchUsers" parameterType="map" resultType="User">
+    SELECT name, groupname, groupcode FROM users
+    WHERE (#{groupname} IS NULL OR groupname = #{groupname})
+    AND (#{name} IS NULL OR name LIKE #{name})
+</select>
+```
+
+✅ **하나의 테이블에서 데이터 가져옴 (JOIN 없음)**  
+✅ **groupname, name 검색 조건 반영**  
+✅ **검색어가 없으면 전체 데이터 조회 가능하도록 처리**  
+
+---
+
+## **✅ 5. DTO (`User.java`)**
+```java
+public class User {
+    private String name;
+    private String groupname;
+    private String groupcode;
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getGroupname() { return groupname; }
+    public void setGroupname(String groupname) { this.groupname = groupname; }
+    public String getGroupcode() { return groupcode; }
+    public void setGroupcode(String groupcode) { this.groupcode = groupcode; }
+}
+```
+
+---
+
+# **✅ 정리**
+✅ **하나의 테이블에서 `groupname`, `groupcode`, `name` 가져오기**  
+✅ **JOIN 없이 `users` 테이블에서 직접 검색**  
+✅ **JSF에서 `h:selectOneMenu`, `h:inputText`로 검색**  
+✅ **검색 버튼 클릭 시 `searchUsers()` 실행**  
+✅ **초기화 버튼 클릭 시 검색 조건 초기화**  
+
+이제 하나의 테이블에서 데이터를 받아서 동작할 거야! 🚀  
+추가로 수정할 부분 있으면 말해줘!
