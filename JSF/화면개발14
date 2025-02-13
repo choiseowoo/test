@@ -1,0 +1,74 @@
+검색 조건 없이 모든 값을 불러올 때 에러가 발생하는 원인은 **SQL에서 NULL 조건을 처리하는 방식** 때문이에요. 현재 `WHERE` 절에서 `NULL` 비교를 할 때 `#{parameter} IS NULL OR column = #{parameter}`처럼 작성했지만, MyBatis에서 `NULL`을 직접 비교할 때 문제가 발생할 수 있어요.  
+
+### **✅ 해결 방법**
+1. **MyBatis Mapper에서 NULL 체크 수정**
+   - 현재 `NULL` 값이 들어오면 `WHERE` 조건이 무시되도록 수정  
+   - `NULL` 값 대신 빈 문자열(`''`)을 `NULL`로 변환  
+
+2. **DAO에서 `null`을 처리하여 검색 조건 없이 모든 데이터를 조회하도록 수정**  
+
+---
+
+## **🔹 1️⃣ MyBatis Mapper 수정 (`UserMapper.xml`)**
+```xml
+<!-- 전체 데이터 개수 조회 -->
+<select id="getUserCount" parameterType="map" resultType="int">
+    SELECT COUNT(*) FROM users
+    WHERE (#{groupname} IS NULL OR #{groupname} = '' OR groupname = #{groupname})
+    AND (#{name} IS NULL OR #{name} = '' OR name LIKE #{name})
+</select>
+
+<!-- 조건 검색 (페이징 적용) -->
+<select id="searchUsers" parameterType="map" resultType="User">
+    SELECT groupname, groupcode, name FROM users
+    WHERE (#{groupname} IS NULL OR #{groupname} = '' OR groupname = #{groupname})
+    AND (#{name} IS NULL OR #{name} = '' OR name LIKE #{name})
+    LIMIT #{limit} OFFSET #{offset}
+</select>
+```
+
+### **🛠 변경 내용**
+- `#{groupname} IS NULL OR #{groupname} = '' OR groupname = #{groupname}`  
+  → `NULL`이거나 빈 문자열(`''`)이면 모든 데이터를 조회할 수 있도록 변경  
+- `#{name} IS NULL OR #{name} = '' OR name LIKE #{name}`  
+  → `NULL`이거나 빈 문자열이면 모든 이름을 조회  
+
+---
+
+## **🔹 2️⃣ DAO 수정 (`UserDAO.java`)**
+```java
+public List<User> searchUsers(String groupname, String name, int currentPage, int pageSize) {
+    try (SqlSession session = MyBatisUtil.getSession()) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("groupname", (groupname == null || groupname.isEmpty()) ? null : groupname);
+        params.put("name", (name == null || name.isEmpty()) ? null : "%" + name + "%");
+        params.put("offset", (currentPage - 1) * pageSize);
+        params.put("limit", pageSize);
+        return session.selectList("UserMapper.searchUsers", params);
+    }
+}
+
+public int getUserCount(String groupname, String name) {
+    try (SqlSession session = MyBatisUtil.getSession()) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("groupname", (groupname == null || groupname.isEmpty()) ? null : groupname);
+        params.put("name", (name == null || name.isEmpty()) ? null : "%" + name + "%");
+        return session.selectOne("UserMapper.getUserCount", params);
+    }
+}
+```
+
+### **🛠 변경 내용**
+- `null` 또는 빈 문자열(`""`)이면 `null`로 변환  
+- `name`이 없을 경우 `LIKE`을 사용하지 않도록 `null`로 설정  
+- **이제 검색 조건이 없을 때도 모든 데이터를 조회할 수 있음**  
+
+---
+
+## **✅ 결과**
+### **🔹 검색 조건 없이 실행하면 모든 데이터가 정상 출력됨**  
+- 그룹명 또는 이름 입력 없이 `검색` 버튼을 누르면 **모든 데이터가 출력됨**  
+- 특정 검색어를 입력하면 해당 조건에 맞는 데이터만 표시됨  
+- **페이징 기능도 정상 동작**  
+
+이제 검색 조건이 없어도 **모든 데이터가 조회**되니 테스트해보고 알려줘! 🚀
