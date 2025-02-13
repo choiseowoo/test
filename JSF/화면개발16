@@ -1,0 +1,76 @@
+`List<User>`를 반환하는 메소드에서 **전체 개수를 가져오려고 `int`를 사용하면 충돌**이 발생해요.  
+이 문제를 해결하려면 **전체 개수를 가져오는 메소드와 데이터를 가져오는 메소드를 분리**해야 합니다.  
+
+---
+
+## **✅ 1️⃣ MyBatis Mapper 수정 (`UserMapper.xml`)**
+```xml
+<!-- 전체 데이터 개수 조회 -->
+<select id="getUserCount" resultType="int">
+    SELECT COUNT(*) FROM users
+</select>
+
+<!-- 모든 데이터 조회 -->
+<select id="getAllUsers" resultType="User">
+    SELECT groupname, groupcode, name FROM users
+    LIMIT #{limit} OFFSET #{offset}
+</select>
+
+<!-- 조건 검색 -->
+<select id="searchUsers" parameterType="map" resultType="User">
+    SELECT groupname, groupcode, name FROM users
+    WHERE (#{groupname} IS NULL OR groupname = #{groupname})
+    AND (#{name} IS NULL OR name LIKE #{name})
+    LIMIT #{limit} OFFSET #{offset}
+</select>
+```
+### **🛠 변경 내용**
+1. `getUserCount`: **전체 데이터 개수 조회**
+2. `getAllUsers`: **검색 조건 없이 전체 데이터 조회**
+3. `searchUsers`: **검색 조건에 따라 데이터 조회**
+
+---
+
+## **✅ 2️⃣ DAO 수정 (`UserDAO.java`)**
+```java
+public int getUserCount() {
+    try (SqlSession session = MyBatisUtil.getSession()) {
+        return session.selectOne("UserMapper.getUserCount");
+    }
+}
+
+public List<User> searchUsers(String groupname, String name, int currentPage, int pageSize) {
+    try (SqlSession session = MyBatisUtil.getSession()) {
+        int offset = (currentPage - 1) * pageSize;
+        int limit = pageSize;
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("groupname", (groupname == null || groupname.isEmpty()) ? null : groupname);
+        params.put("name", (name == null || name.isEmpty()) ? null : "%" + name + "%");
+        params.put("limit", limit);
+        params.put("offset", offset);
+
+        if (groupname == null && name == null) {
+            // 검색 조건이 없으면 전체 데이터 조회
+            return session.selectList("UserMapper.getAllUsers", params);
+        } else {
+            // 검색 조건이 있으면 필터링된 데이터 조회
+            return session.selectList("UserMapper.searchUsers", params);
+        }
+    }
+}
+```
+
+### **🛠 변경 내용**
+1. **`getUserCount()`**: 전체 데이터 개수를 가져옴  
+2. **`searchUsers()`**: 검색 조건 없이 실행하면 `getAllUsers`, 조건이 있으면 `searchUsers` 실행  
+
+---
+
+## **✅ 3️⃣ 해결 방법 요약**
+- **개수를 가져오는 `getUserCount()`와 데이터를 가져오는 `searchUsers()`를 분리**  
+- `getUserCount()`는 **int 반환**, `searchUsers()`는 **List<User> 반환**
+- 검색 조건이 없을 경우에도 `getAllUsers()`를 실행하여 **모든 데이터를 정상적으로 불러옴**
+
+이제 **검색 조건 없이도 전체 데이터를 가져올 수 있어요!** 🚀  
+테스트해보고 추가 수정이 필요하면 알려줘!
