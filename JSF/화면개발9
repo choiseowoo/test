@@ -1,0 +1,217 @@
+### **✅ 요구사항 정리**  
+- **검색 폼**  
+  - **조직명 (Pulldown) → `Group` 테이블에서 가져옴**  
+  - **이름 (InputText) → 직접 입력**  
+  - **검색 버튼, 클리어 버튼**  
+- **검색 결과**  
+  - 테이블에 **이름, 조직명, 조직코드 표시**  
+- **데이터 소스**  
+  - `User` 테이블 (이름, 조직코드 저장)  
+  - `Group` 테이블 (조직명, 조직코드 저장)  
+  - **User와 Group을 JOIN하여 조직명 가져오기**
+
+---
+
+## **1️⃣ UserDTO.java (DTO)**
+```java
+package com.example.project.dto;
+
+public class UserDTO {
+    private String name;
+    private String groupName;
+    private String groupCode;
+
+    public UserDTO() {}
+
+    public UserDTO(String name, String groupName, String groupCode) {
+        this.name = name;
+        this.groupName = groupName;
+        this.groupCode = groupCode;
+    }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getGroupName() { return groupName; }
+    public void setGroupName(String groupName) { this.groupName = groupName; }
+
+    public String getGroupCode() { return groupCode; }
+    public void setGroupCode(String groupCode) { this.groupCode = groupCode; }
+}
+```
+
+---
+
+## **2️⃣ UserMapper.xml (MyBatis)**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.project.mapper.UserMapper">
+
+    <!-- 조직명 Pulldown 리스트 -->
+    <select id="getGroupList" resultType="map">
+        SELECT group_code, group_name FROM Group
+    </select>
+
+    <!-- 사용자 검색 (이름, 조직명) -->
+    <select id="searchUsers" resultType="com.example.project.dto.UserDTO">
+        SELECT u.name, g.group_name, u.group_code
+        FROM User u
+        JOIN Group g ON u.group_code = g.group_code
+        WHERE (#{name} IS NULL OR u.name LIKE CONCAT('%', #{name}, '%'))
+        AND (#{groupCode} IS NULL OR u.group_code = #{groupCode})
+    </select>
+
+</mapper>
+```
+
+---
+
+## **3️⃣ UserMapper.java (Mapper Interface)**
+```java
+package com.example.project.mapper;
+
+import com.example.project.dto.UserDTO;
+import java.util.List;
+import java.util.Map;
+import org.apache.ibatis.annotations.Param;
+
+public interface UserMapper {
+    List<Map<String, String>> getGroupList();
+    List<UserDTO> searchUsers(@Param("name") String name, @Param("groupCode") String groupCode);
+}
+```
+
+---
+
+## **4️⃣ UserDAO.java (DAO)**
+```java
+package com.example.project.dao;
+
+import com.example.project.dto.UserDTO;
+import com.example.project.mapper.UserMapper;
+import com.example.project.util.MyBatisUtil;
+import org.apache.ibatis.session.SqlSession;
+import java.util.List;
+import java.util.Map;
+
+public class UserDAO {
+    public List<Map<String, String>> getGroupList() {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            return mapper.getGroupList();
+        }
+    }
+
+    public List<UserDTO> searchUsers(String name, String groupCode) {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            return mapper.searchUsers(name, groupCode);
+        }
+    }
+}
+```
+
+---
+
+## **5️⃣ UserBean.java (JSF Managed Bean)**
+```java
+package com.example.project.bean;
+
+import com.example.project.dao.UserDAO;
+import com.example.project.dto.UserDTO;
+import jakarta.faces.bean.ManagedBean;
+import jakarta.faces.bean.ViewScoped;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
+
+@ManagedBean
+@ViewScoped
+public class UserBean implements Serializable {
+    private String name;
+    private String selectedGroupCode;
+    private List<UserDTO> userList;
+    private List<Map<String, String>> groupList;
+
+    private final UserDAO userDAO = new UserDAO();
+
+    public UserBean() {
+        groupList = userDAO.getGroupList();
+    }
+
+    public void search() {
+        userList = userDAO.searchUsers(name, selectedGroupCode);
+    }
+
+    public void clear() {
+        name = null;
+        selectedGroupCode = null;
+        userList = null;
+    }
+
+    // Getter, Setter
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getSelectedGroupCode() { return selectedGroupCode; }
+    public void setSelectedGroupCode(String selectedGroupCode) { this.selectedGroupCode = selectedGroupCode; }
+
+    public List<UserDTO> getUserList() { return userList; }
+    public List<Map<String, String>> getGroupList() { return groupList; }
+}
+```
+
+---
+
+## **6️⃣ search.xhtml (검색 화면)**
+```xml
+<h:form>
+    <h:panelGrid columns="3">
+        <!-- 조직명 Pulldown -->
+        <h:outputLabel value="조직명" />
+        <h:selectOneMenu value="#{userBean.selectedGroupCode}">
+            <f:selectItem itemLabel="선택하세요" itemValue="" />
+            <f:selectItems value="#{userBean.groupList}" var="group"
+                           itemLabel="#{group.group_name}" itemValue="#{group.group_code}" />
+        </h:selectOneMenu>
+        
+        <!-- 이름 검색 -->
+        <h:outputLabel value="이름" />
+        <h:inputText value="#{userBean.name}" />
+
+        <!-- 버튼 -->
+        <h:commandButton value="검색" action="#{userBean.search}" />
+        <h:commandButton value="클리어" action="#{userBean.clear}" />
+    </h:panelGrid>
+</h:form>
+
+<!-- 검색 결과 -->
+<h:dataTable value="#{userBean.userList}" var="user" border="1">
+    <h:column>
+        <f:facet name="header">이름</f:facet>
+        #{user.name}
+    </h:column>
+    <h:column>
+        <f:facet name="header">조직명</f:facet>
+        #{user.groupName}
+    </h:column>
+    <h:column>
+        <f:facet name="header">조직코드</f:facet>
+        #{user.groupCode}
+    </h:column>
+</h:dataTable>
+```
+
+---
+
+### **✅ 결론**
+- `Group` 테이블의 `group_code`, `group_name`을 가져와 Pulldown에 표시  
+- `User` 테이블에서 **이름 & 조직코드로 검색** 가능  
+- 검색 결과를 **이름, 조직명, 조직코드** 테이블에 표시  
+- **JSF + MyBatis**를 사용한 **검색 페이지 예제 완성**  
+
+이 코드로 원하는 기능이 구현될 거야!  
+혹시 추가 기능이 필요하면 알려줘!
