@@ -1,0 +1,94 @@
+이 문제는 **데이터테이블에서 `selectedUser` 값이 초기화되지 않거나, 리스트가 렌더링된 후에 라디오 버튼 값이 제대로 바인딩되지 않아서 발생**할 수 있습니다.
+
+### 원인:
+1. **초기 상태에서 `selectedUser` 값이 null**일 수 있습니다.
+2. **JSF 페이지 렌더링 시 라디오 버튼 값이 올바르게 바인딩되지 않거나**, `h:dataTable`의 반복문 내에서 라디오 버튼이 **이전 값과 결합되어 의도한 바인딩을 제대로 하지 못할 수 있습니다.**
+
+이를 해결하려면 **`<h:selectOneRadio>`를 `f:ajax`와 함께 사용하여 데이터테이블이 업데이트될 때마다 선택된 유저 값을 정확히 처리**하도록 해야 합니다.
+
+### 해결 방법:
+`h:dataTable`의 각 항목마다 `h:selectOneRadio`와 함께 `f:ajax`를 사용하여 라디오 버튼 선택 시마다 선택된 값이 즉시 **서버로 전송**되도록 해야 합니다.
+
+### 수정된 코드:
+
+```xml
+<h:form>
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <f:facet name="header">Select</f:facet>
+            <h:selectOneRadio value="#{userBean.selectedUser}"  
+                              listener="#{userBean.updateSelectedUser}">
+                <f:selectItem itemValue="#{user}" itemLabel="Select" />
+                <f:ajax execute="@form" render="@form" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Name</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" action="#{userBean.submitSelection}" />
+</h:form>
+```
+
+### 변경된 부분 설명:
+1. **`h:selectOneRadio`에 `f:ajax` 추가**:
+   - `f:ajax`는 **라디오 버튼이 선택될 때마다** 현재 선택된 값을 서버로 전송하고, 서버의 상태를 클라이언트에서 다시 렌더링하도록 합니다.
+   - `execute="@form"`: 폼 전체를 서버로 전송합니다.
+   - `render="@form"`: 서버에서 반환된 데이터를 폼 전체에 적용하여 화면을 새로 고칩니다.
+
+2. **`listener="#{userBean.updateSelectedUser}"`**:
+   - 라디오 버튼을 클릭할 때마다 **`updateSelectedUser`** 메서드가 호출되어 **선택된 유저**를 서버에 바인딩합니다.
+   - `updateSelectedUser` 메서드를 **`UserBean`에 추가**합니다.
+
+### `UserBean`의 메서드 추가:
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    @Inject
+    private UserService userService;
+
+    private List<User> userList;
+    private User selectedUser;
+
+    public void loadUsers() {
+        userList = userService.getAllUsers();
+    }
+
+    public List<User> getUserList() {
+        return userList;
+    }
+
+    public User getSelectedUser() {
+        return selectedUser;
+    }
+
+    public void setSelectedUser(User selectedUser) {
+        this.selectedUser = selectedUser;
+    }
+
+    public void updateSelectedUser() {
+        // 선택된 유저를 처리하는 로직을 넣을 수 있음
+        System.out.println("Selected User Updated: " + selectedUser.getName());
+    }
+
+    public void submitSelection() {
+        if (selectedUser != null) {
+            System.out.println("Selected User: " + selectedUser.getId() + " - " + selectedUser.getName());
+        }
+    }
+}
+```
+
+### **결과**:
+1. `h:selectOneRadio`에 `f:ajax`를 추가함으로써 **라디오 버튼 클릭 시 `selectedUser` 값이 서버로 즉시 전송**됩니다.
+2. **`updateSelectedUser()`** 메서드를 추가하여 선택된 유저가 즉시 업데이트되도록 합니다.
+3. `submitSelection()` 버튼을 클릭하면 **최종적으로 선택된 유저** 정보가 출력됩니다.
+
+이렇게 하면, **데이터테이블에 리스트가 로드된 후에도 라디오 버튼을 클릭하면 선택된 유저가 제대로 바인딩**되고, **"선택" 버튼 클릭 시에도 정상적으로 값을 리턴**받을 수 있습니다.
