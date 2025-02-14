@@ -1,0 +1,149 @@
+JSF + MyBatis에서 데이터테이블을 이용하여 **유저 리스트 출력**, **라디오 버튼으로 유저 선택**, 그리고 **선택 버튼 클릭 시 선택된 유저 정보 리턴**하는 방법을 설명합니다.  
+
+---
+
+## **1. User Entity**
+유저 정보를 담는 Java 클래스 (`User.java`)를 정의합니다.
+```java
+import java.io.Serializable;
+
+public class User implements Serializable {
+    private String id;
+    private String name;
+
+    // 기본 생성자
+    public User() {}
+
+    // 생성자
+    public User(String id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    // Getter & Setter
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+}
+```
+
+---
+
+## **2. UserMapper (MyBatis XML)**
+MyBatis에서 유저 리스트를 가져오는 SQL을 작성합니다.  
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+    <select id="getAllUsers" resultType="com.example.model.User">
+        SELECT id, name FROM users;
+    </select>
+</mapper>
+```
+
+---
+
+## **3. UserService**
+MyBatis를 이용하여 DB에서 유저 리스트를 가져오는 서비스 클래스입니다.
+```java
+import java.util.List;
+import org.apache.ibatis.session.SqlSession;
+import javax.inject.Inject;
+import javax.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
+public class UserService {
+    @Inject
+    private SqlSession sqlSession;
+
+    public List<User> getAllUsers() {
+        return sqlSession.selectList("com.example.mapper.UserMapper.getAllUsers");
+    }
+}
+```
+
+---
+
+## **4. UserBean (JSF Managed Bean)**
+JSF에서 사용할 `@Named` Bean을 생성하여 유저 리스트와 선택된 유저를 관리합니다.
+```java
+import java.io.Serializable;
+import java.util.List;
+import javax.enterprise.context.SessionScoped;
+import javax.inject.Inject;
+import javax.inject.Named;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    @Inject
+    private UserService userService;
+
+    private List<User> userList;
+    private User selectedUser; // 선택된 유저
+
+    public void loadUsers() {
+        userList = userService.getAllUsers();
+    }
+
+    public List<User> getUserList() {
+        return userList;
+    }
+
+    public User getSelectedUser() {
+        return selectedUser;
+    }
+
+    public void setSelectedUser(User selectedUser) {
+        this.selectedUser = selectedUser;
+    }
+
+    public void submitSelection() {
+        if (selectedUser != null) {
+            System.out.println("Selected User: " + selectedUser.getId() + " - " + selectedUser.getName());
+        }
+    }
+}
+```
+
+---
+
+## **5. JSF (XHTML) 데이터테이블 & 선택 버튼**
+`users.xhtml`에서 `h:dataTable`을 이용하여 유저 리스트를 출력하고, 라디오 버튼으로 유저를 선택합니다.
+```xml
+<h:form>
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <f:facet name="header">Select</f:facet>
+            <h:selectOneRadio value="#{userBean.selectedUser}">
+                <f:selectItem itemValue="#{user}" itemLabel="Select" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Name</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" action="#{userBean.submitSelection}" />
+</h:form>
+```
+
+---
+
+## **6. 실행 흐름**
+1. `UserBean.loadUsers()`가 실행되어 **유저 리스트를 불러옴**.  
+2. `h:dataTable`에 **유저 목록이 출력**됨.  
+3. 사용자가 **라디오 버튼을 클릭하여 유저 선택**.  
+4. **"선택" 버튼 클릭 시 `submitSelection()` 메서드가 실행**되어 **선택된 유저 정보가 콘솔에 출력**됨.
+
+---
+
+## **결론**
+이 방법을 사용하면 **JSF 데이터테이블에서 유저 목록을 표시하고, 선택한 유저를 서버에서 처리**할 수 있습니다.  
+추가적으로 선택된 값을 다른 페이지로 전달하거나 DB에 저장할 수도 있습니다.  
+더 필요한 기능이 있으면 알려주세요!
