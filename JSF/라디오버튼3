@@ -1,0 +1,101 @@
+### **✅ 팝업창에서 라디오 버튼으로 선택한 `userid`와 `username`을 부모 창으로 넘기기**  
+**JSF의 `h:selectOneRadio`로 선택한 값을 부모 창으로 넘기는 방법**을 설명할게요.  
+
+---
+
+## **1️⃣ 팝업창에서 사용자 선택 및 값 전달**  
+팝업창에서 `userid`와 `username`을 선택하고, **부모 창으로 전달 후 창을 닫는** 방식입니다.  
+
+### **🔹 팝업창 (userSearch.xhtml)**
+```xml
+<h:form>
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <f:facet name="header">선택</f:facet>
+            <h:selectOneRadio value="#{userBean.selectedUser}">
+                <f:selectItem itemValue="#{user.userid}-#{user.username}" itemLabel="선택" />
+            </h:selectOneRadio>
+        </h:column>
+
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.userid}
+        </h:column>
+
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.username}
+        </h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택"
+        action="#{userBean.sendSelectedUser}" 
+        onclick="window.opener.receiveUserData('#{userBean.selectedUser}'); window.close(); return false;" />
+</h:form>
+```
+🔹 **`h:selectOneRadio`의 `value`를 `"userid-username"` 형태로 설정**  
+🔹 **버튼 클릭 시 `window.opener.receiveUserData()`를 호출하여 부모 창으로 값 전달**  
+🔹 **팝업 창을 닫음 (`window.close()`)**  
+
+---
+
+## **2️⃣ 부모 창에서 값 받기**
+부모 창에서 **팝업창이 넘긴 데이터를 `label` 태그에 표시**  
+
+### **🔹 부모창 (parent.xhtml)**
+```xml
+<h:outputLabel id="selectedUserLabel" value="#{userBean.selectedUserLabel}" />
+<h:commandButton value="사용자 선택" onclick="openUserPopup()" />
+
+<script>
+    function openUserPopup() {
+        window.open("userSearch.xhtml", "UserSearch", "width=600,height=400");
+    }
+
+    function receiveUserData(data) {
+        let label = document.getElementById('form:selectedUserLabel');
+        label.innerText = data; // userid username 형식으로 표시됨
+    }
+</script>
+```
+🔹 **팝업창에서 `receiveUserData()` 호출 → `label` 태그에 값 표시**  
+🔹 **`openUserPopup()`을 실행하면 팝업창이 열림**  
+
+---
+
+## **3️⃣ Java Bean에서 값 저장**
+팝업창에서 넘긴 데이터를 **JavaBean에도 반영**  
+
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private List<User> users;
+    private String selectedUser;  // "userid-username" 형식
+    private String selectedUserLabel;
+
+    public void sendSelectedUser() {
+        if (selectedUser != null) {
+            this.selectedUserLabel = selectedUser;
+        }
+    }
+
+    // Getter & Setter
+    public String getSelectedUser() { return selectedUser; }
+    public void setSelectedUser(String selectedUser) { this.selectedUser = selectedUser; }
+
+    public String getSelectedUserLabel() { return selectedUserLabel; }
+    public void setSelectedUserLabel(String selectedUserLabel) { this.selectedUserLabel = selectedUserLabel; }
+}
+```
+🔹 **선택한 `userid username`을 `selectedUserLabel`에 저장**  
+🔹 **부모 창에서 `h:outputLabel`로 표시**  
+
+---
+
+## **✅ 최종 결과**
+1️⃣ 팝업 창에서 **라디오 버튼으로 `userid`와 `username` 선택**  
+2️⃣ **선택 버튼 클릭 → 부모 창의 `label` 태그에 `userid username` 표시**  
+3️⃣ 팝업 창 자동 종료  
+
+이제 부모 창에서 선택한 값이 제대로 넘어가고 `label` 태그에 표시될 거예요! 🚀
