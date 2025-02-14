@@ -1,0 +1,130 @@
+### ✅ **`h:selectOneRadio`에서 `selectedUser`로 값이 넘어가지 않는 문제 해결**  
+
+현재 `h:selectOneRadio`에서 값을 선택해도 `userBean.selectedUser`로 값이 전달되지 않는 이유는 **바인딩 방식과 데이터 타입 문제**일 가능성이 큽니다.  
+
+---
+
+## 🔍 **1️⃣ 주요 원인**
+### 🛑 **(1) `selectedUser`의 데이터 타입 문제**
+- 현재 `selectedUser`는 `User` 객체인데, `h:selectOneRadio`에서 **`String` 값을 넘기고 있음**  
+  ```xml
+  <f:selectItem itemValue="#{user.userid}-#{user.username}" itemLabel="선택" />
+  ```
+  → **`itemValue` 값이 `String`("userid-username")이므로, 객체에 매핑되지 않음**  
+
+✔ **해결 방법:** `selectedUser`를 `String` 타입으로 변경하거나, `User` 객체 자체를 넘겨야 함.
+
+---
+
+## 🔍 **2️⃣ 해결 방법**
+### ✅ **방법 1: `selectedUser`를 `String`으로 변경**
+#### **📌 JSF 코드 (XHTML)**
+```xml
+<h:form id="userForm">
+    <h:dataTable id="userTable" value="#{userBean.users}" var="user">
+        <h:column>
+            <h:selectOneRadio value="#{userBean.selectedUser}">
+                <f:selectItem itemValue="#{user.userid}-#{user.username}" itemLabel="선택" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>#{user.userid}</h:column>
+        <h:column>#{user.username}</h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" action="#{userBean.selectUser}" />
+</h:form>
+```
+  
+#### **📌 Java Bean 코드 (`UserBean.java`)**
+```java
+@Named("userBean")
+@ViewScoped
+public class UserBean implements Serializable {
+    private List<User> users;
+    private String selectedUser;  // String 타입으로 변경
+
+    @PostConstruct
+    public void init() {
+        users = userService.getUsers();  // 초기 데이터 로딩
+    }
+
+    public void selectUser() {
+        System.out.println("📌 선택된 값: " + selectedUser);
+    }
+
+    // Getter & Setter
+    public String getSelectedUser() {
+        return selectedUser;
+    }
+
+    public void setSelectedUser(String selectedUser) {
+        this.selectedUser = selectedUser;
+    }
+}
+```
+
+✔ **결과:** `selectedUser`에 `"userid-username"` 문자열이 정상적으로 전달됨.  
+✔ **하지만:** 이후 `userid`와 `username`을 따로 사용하려면 `split("-")`으로 분리해야 함.
+
+---
+
+### ✅ **방법 2: `selectedUser`를 `User` 객체로 유지하는 방법**
+#### **📌 JSF 코드 (XHTML)**
+```xml
+<h:form id="userForm">
+    <h:dataTable id="userTable" value="#{userBean.users}" var="user">
+        <h:column>
+            <h:selectOneRadio value="#{userBean.selectedUser}">
+                <f:selectItem itemValue="#{user}" itemLabel="선택" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>#{user.userid}</h:column>
+        <h:column>#{user.username}</h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" action="#{userBean.selectUser}" />
+</h:form>
+```
+
+#### **📌 Java Bean 코드 (`UserBean.java`)**
+```java
+@Named("userBean")
+@ViewScoped
+public class UserBean implements Serializable {
+    private List<User> users;
+    private User selectedUser;  // User 객체로 유지
+
+    @PostConstruct
+    public void init() {
+        users = userService.getUsers();
+    }
+
+    public void selectUser() {
+        if (selectedUser != null) {
+            System.out.println("📌 선택된 유저: " + selectedUser.getUserid() + " " + selectedUser.getUsername());
+        } else {
+            System.out.println("⚠️ 선택된 유저 없음!");
+        }
+    }
+
+    // Getter & Setter
+    public User getSelectedUser() {
+        return selectedUser;
+    }
+
+    public void setSelectedUser(User selectedUser) {
+        this.selectedUser = selectedUser;
+    }
+}
+```
+
+✔ **결과:** `selectedUser`가 `User` 객체로 정상 바인딩됨  
+✔ **추가 설정 필요:** `User` 클래스에서 `equals()`와 `hashCode()`를 오버라이드해야 할 수도 있음.  
+
+---
+
+## 🔥 **결론**
+1. **간단한 해결법:** `selectedUser`를 `String`으로 변경하고 `userid-username`을 `split("-")`으로 나누는 방법.  
+2. **객체 그대로 사용:** `selectedUser`를 `User` 객체로 유지하고 `<f:selectItem itemValue="#{user}" />`로 설정.  
+
+두 번째 방법이 **더 안전하고 유지보수에 유리**합니다. 🚀
