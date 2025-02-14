@@ -1,0 +1,89 @@
+검색 전에는 `datatable`이 비어 있어서 **라디오 버튼이 독립적으로 동작**하지만, 검색 후 `datatable`이 다시 렌더링되면서 **기존 선택값이 초기화**될 가능성이 높아요.  
+
+---
+
+## 🔹 **이유**
+1. **데이터가 다시 로드될 때 기존 선택값이 초기화됨**  
+   - `datatable`이 업데이트되면서, `h:selectOneRadio`의 선택값이 재설정되지 않음  
+   
+2. **라디오 버튼이 재렌더링되면서 `value`가 바뀌지 않음**  
+   - `selectedUser`가 데이터 테이블의 새로운 데이터와 연동되지 않음  
+
+---
+
+## 🔹 **해결 방법**  
+검색 후에도 선택한 값이 유지되도록 **뷰스코프(ManagedBean)와 데이터 바인딩을 활용**  
+
+### ✅ **1️⃣ `UserBean.java` - 선택값 유지 처리**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private List<User> users;
+    private String selectedUser;  // "userid-username" 형식
+
+    public void searchUsers() {
+        users = userService.getUsers(); // 검색 후 데이터 리스트 업데이트
+        if (selectedUser != null) {
+            System.out.println("✅ 기존 선택값 유지됨: " + selectedUser);
+        }
+    }
+
+    public void selectUser() {
+        System.out.println("📌 선택한 유저: " + selectedUser);
+    }
+
+    // Getter & Setter
+    public List<User> getUsers() { return users; }
+    public void setUsers(List<User> users) { this.users = users; }
+
+    public String getSelectedUser() { return selectedUser; }
+    public void setSelectedUser(String selectedUser) { 
+        this.selectedUser = selectedUser; 
+        System.out.println("📌 setter 호출됨 - 값: " + selectedUser);
+    }
+}
+```
+### 📌 **설명**
+✔️ `searchUsers()` 실행 시 기존 선택값 `selectedUser`가 유지되도록 로그 출력  
+✔️ `setSelectedUser()`에서 값이 변경될 때마다 콘솔에 확인  
+
+---
+
+### ✅ **2️⃣ `userSearch.xhtml` - 라디오 버튼과 데이터 테이블 수정**
+```xml
+<h:form id="searchForm">
+    <h:commandButton value="검색" action="#{userBean.searchUsers}" update="userTable" />
+</h:form>
+
+<h:form id="userTable">
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <f:facet name="header">선택</f:facet>
+            <h:selectOneRadio value="#{userBean.selectedUser}" onchange="submitSelection()">
+                <f:selectItem itemValue="#{user.userid}-#{user.username}" itemLabel="선택" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>#{user.userid}</h:column>
+        <h:column>#{user.username}</h:column>
+    </h:dataTable>
+</h:form>
+
+<script>
+    function submitSelection() {
+        document.getElementById("userTable").submit();
+    }
+</script>
+```
+### 📌 **설명**
+✔️ `onchange="submitSelection()"`으로 **라디오 버튼 변경 시 자동 제출**  
+✔️ 검색 후에도 선택값이 유지되도록 `userBean.selectedUser`와 바인딩  
+
+---
+
+## 🔹 **최종 확인**
+1️⃣ **초기 상태에서 선택하면 값이 정상적으로 넘어가는지 확인**  
+2️⃣ **검색 후에도 라디오 버튼이 정상적으로 선택되는지 확인**  
+3️⃣ **JavaBean `System.out.println("📌 선택한 유저: " + selectedUser);` 로 확인**  
+
+이제 검색 후에도 라디오 버튼 선택이 정상 동작할 거예요! 🚀
