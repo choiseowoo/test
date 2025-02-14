@@ -1,0 +1,47 @@
+네, `@PostConstruct`에서 `users`를 초기화하는 것이 좋습니다.  
+
+### **이유:**
+1. **초기 데이터 로딩**  
+   - `users` 리스트가 `null`이면 화면에 아무것도 표시되지 않음.  
+   - 초기에 데이터를 로딩해두면 화면이 처음 표시될 때 자동으로 유저 목록이 나타남.
+
+2. **NullPointerException 방지**  
+   - `users`가 `null`인 상태에서 `h:dataTable`이 값을 읽으려고 하면 오류 발생 가능.  
+   - `new ArrayList<>()`로 초기화하면 오류 방지 가능.
+
+3. **검색과의 연계**  
+   - 처음 화면이 로드될 때 `users`가 초기화되어야 검색 시에도 정상 작동.
+
+---
+
+### ✅ **올바른 `@PostConstruct` 코드 예시**
+```java
+@PostConstruct
+public void init() {
+    users = userService.getUsers();  // 데이터베이스에서 유저 목록 가져오기
+
+    if (users == null) {
+        users = new ArrayList<>();  // NullPointerException 방지
+    }
+}
+```
+
+---
+
+### ✅ **검색 시 데이터 변경하는 메서드 추가**
+검색 버튼을 눌렀을 때 데이터를 업데이트할 수도 있어야 합니다.
+
+```java
+public void searchUsers() {
+    users = userService.searchUsers(searchCriteria);  // 검색 조건 적용
+    if (users == null) {
+        users = new ArrayList<>();
+    }
+}
+```
+
+---
+
+### **📌 결론**
+✅ **`@PostConstruct`에서 `users` 초기화하는 것이 좋음!**  
+✅ **검색 시에도 `null` 체크하여 안정적인 코드 작성 필요!**
