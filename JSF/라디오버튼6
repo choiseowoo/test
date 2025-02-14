@@ -1,0 +1,86 @@
+초기 화면에서 자동으로 유저 리스트가 표시되지만, 라디오 버튼에서 선택 후 값을 못 받는 이유는 다음과 같습니다.  
+
+---
+
+## 🔹 **이유**
+1. **초기 데이터 로딩 시점과 라디오 버튼 값 바인딩 문제**  
+   - `selectedUser` 값이 초기 데이터와 제대로 연결되지 않음  
+
+2. **폼이 여러 개일 경우 값 전달이 안 됨**  
+   - `h:form` 태그가 `datatable`과 버튼을 감싸지 않으면, `selectedUser` 값이 업데이트되지 않음  
+
+3. **라디오 버튼이 `immediate="true"` 일 경우**  
+   - `@ViewScoped`와 함께 사용할 때, `immediate="true"`가 있으면 `selectedUser` 값이 갱신되기 전에 액션이 실행됨  
+
+---
+
+## 🔹 **해결 방법**  
+검색 버튼을 누르지 않아도 **초기 화면에서 자동으로 유저 리스트를 표시하고**, 선택한 값을 정상적으로 받아서 버튼 클릭 시 부모 페이지로 전달하도록 수정합니다.  
+
+### ✅ **1️⃣ `UserBean.java` - 초기 로딩 시 데이터 가져오기**  
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private List<User> users;
+    private String selectedUser;  // "userid-username" 형식
+
+    @PostConstruct
+    public void init() {
+        users = userService.getUsers(); // 초기 데이터 자동 로딩
+    }
+
+    public void selectUser() {
+        if (selectedUser != null) {
+            System.out.println("📌 선택한 유저: " + selectedUser);
+        } else {
+            System.out.println("⚠️ 선택된 유저 없음!");
+        }
+    }
+
+    // Getter & Setter
+    public List<User> getUsers() { return users; }
+    public void setUsers(List<User> users) { this.users = users; }
+
+    public String getSelectedUser() { return selectedUser; }
+    public void setSelectedUser(String selectedUser) { 
+        this.selectedUser = selectedUser; 
+        System.out.println("📌 setter 호출됨 - 값: " + selectedUser);
+    }
+}
+```
+### 📌 **설명**
+✔️ `@PostConstruct`를 사용해 화면이 처음 표시될 때 `userService.getUsers()`로 자동 로딩  
+✔️ `selectUser()`에서 선택값을 받아서 확인  
+
+---
+
+### ✅ **2️⃣ `userSearch.xhtml` - 폼과 테이블을 하나의 `h:form`에 포함**  
+```xml
+<h:form id="userForm">
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <f:facet name="header">선택</f:facet>
+            <h:selectOneRadio value="#{userBean.selectedUser}">
+                <f:selectItem itemValue="#{user.userid}-#{user.username}" itemLabel="선택" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>#{user.userid}</h:column>
+        <h:column>#{user.username}</h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" action="#{userBean.selectUser}" update="userForm" />
+</h:form>
+```
+### 📌 **설명**
+✔️ `h:form`을 **테이블과 버튼을 감싸도록 수정** → 값이 정상적으로 전달됨  
+✔️ `update="userForm"`으로 **선택한 값이 정상적으로 갱신**  
+
+---
+
+## 🔹 **최종 확인**
+1️⃣ **화면이 처음 열릴 때 자동으로 유저 리스트 표시**  
+2️⃣ **라디오 버튼 클릭 후 선택 버튼 클릭 시 값 정상 출력 (`System.out.println`)**  
+3️⃣ **값을 부모 창으로 넘기는 작업도 정상 동작**  
+
+이제 자동 로딩된 데이터에서도 정상적으로 선택이 가능할 거예요! 🚀
