@@ -1,0 +1,100 @@
+JSF에서 `<h:selectOneRadio>`의 `value`를 `userBean.selectedUser`로 매핑하지 않고, 개별적으로 값을 처리하는 방법은 **Ajax로 직접 값을 설정**하는 방식이 있습니다.  
+
+---
+
+## **🔹 개별적으로 선택한 값 매핑하는 방법**
+1️⃣ **각 `user`의 정보를 `<h:selectOneRadio>`의 `itemValue`에 문자열 형태로 저장**  
+2️⃣ **Ajax 이벤트를 사용하여 Java Bean에서 개별적인 필드(`selectedUserId`, `selectedUserName`)에 값을 설정**  
+
+---
+
+### **1️⃣ Java Bean 코드 (`UserBean.java`)**
+```java
+@ViewScoped
+@Named("userBean")
+public class UserBean {
+    private List<User> users;
+    private String selectedUserId;    // 개별적으로 저장
+    private String selectedUserName;  // 개별적으로 저장
+
+    @Inject
+    private UserService userService;
+
+    public void searchUsers() {
+        users = userService.searchUsers();
+    }
+
+    // Getter & Setter
+    public List<User> getUsers() {
+        return users;
+    }
+
+    public String getSelectedUserId() {
+        return selectedUserId;
+    }
+
+    public void setSelectedUserId(String selectedUserId) {
+        this.selectedUserId = selectedUserId;
+    }
+
+    public String getSelectedUserName() {
+        return selectedUserName;
+    }
+
+    public void setSelectedUserName(String selectedUserName) {
+        this.selectedUserName = selectedUserName;
+    }
+}
+```
+➡ **`selectedUserId`와 `selectedUserName`을 따로 선언하여 개별적으로 값을 저장**  
+
+---
+
+### **2️⃣ JSF 코드 (`search.xhtml`)**
+```xhtml
+<h:form id="searchForm">
+    <h:commandButton value="검색" action="#{userBean.searchUsers}">
+        <f:ajax execute="@form" render="resultTable"/>
+    </h:commandButton>
+</h:form>
+
+<h:panelGroup id="resultTable" rendered="#{not empty userBean.users}">
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <h:selectOneRadio>
+                <f:selectItem itemValue="#{user.userid},#{user.username}" itemLabel="선택"/>
+                <f:ajax event="change" listener="#{userBean.setSelectedUserId(user.userid)}" render="selectedUserId selectedUserName"/>
+                <f:ajax event="change" listener="#{userBean.setSelectedUserName(user.username)}" render="selectedUserId selectedUserName"/>
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.userid}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.username}" />
+        </h:column>
+    </h:dataTable>
+</h:panelGroup>
+
+<h:panelGroup>
+    <h:outputLabel value="선택된 사용자: " />
+    <h:outputText id="selectedUserId" value="#{userBean.selectedUserId}" />
+    <h:outputText id="selectedUserName" value="#{userBean.selectedUserName}" />
+</h:panelGroup>
+```
+---
+
+### **3️⃣ 코드 설명**
+✅ **`<f:selectItem>`에 `itemValue="#{user.userid},#{user.username}"`을 사용하여 ID와 이름을 전달**  
+✅ **`<f:ajax>`의 `event="change"`에서 각각 `setSelectedUserId(user.userid)`와 `setSelectedUserName(user.username)`을 호출하여 개별적인 값을 저장**  
+✅ **검색 결과 테이블이 나타난 후 선택한 값이 자동으로 `selectedUserId`와 `selectedUserName`에 매핑됨**  
+
+---
+
+## **📌 실행 결과**
+1️⃣ 검색 실행 전에는 **테이블이 보이지 않음**  
+2️⃣ 검색 버튼을 누르면 테이블이 생성됨  
+3️⃣ 라디오 버튼을 클릭하면 **선택한 `userid`와 `username`이 개별적으로 저장됨**  
+4️⃣ 선택한 값이 하단에 출력됨  
+
+이제 `userBean.users` 리스트와 무관하게 개별적인 값으로 매핑할 수 있습니다! 🚀
