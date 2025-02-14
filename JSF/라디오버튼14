@@ -1,0 +1,88 @@
+이 문제는 **JSF의 상태 관리와 데이터 바인딩 문제** 때문일 가능성이 큽니다. 특히 `@ViewScoped`을 사용할 때 데이터가 올바르게 유지되지 않는 경우 발생할 수 있습니다.  
+
+---
+
+## 🔍 **원인 분석**
+1. **`h:dataTable`이 새로 렌더링될 때 기존 선택 값이 초기화됨**
+   - 검색 버튼을 눌러 `users` 리스트를 다시 세팅할 경우, 기존 선택된 라디오 버튼 값이 사라질 수 있음.
+   - 테이블이 새로 그려지면서 `selectedUser` 값이 올바르게 바인딩되지 않을 수 있음.
+
+2. **JSF의 `@ViewScoped`와 라디오 버튼의 동작 차이**
+   - `@ViewScoped`를 사용해도 `users` 리스트가 재설정되면, 기존 선택된 라디오 값이 사라짐.
+   - 특히, `users` 리스트가 **새 객체로 교체되면** JSF는 기존에 선택한 값을 찾을 수 없음.
+
+3. **라디오 버튼에서 선택한 값이 JSF의 `FacesContext`에서 처리되지 않는 문제**
+   - "같은 Faces 큐에서 표시되지 않는다"는 메시지는 `selectOneRadio`의 값이 `users` 리스트와 연관되지 않았음을 의미.
+
+---
+
+## 🔧 **해결 방법**
+### ✅ 1. `users` 리스트를 새로 교체하지 않고 값만 변경
+`users = userService.searchUsers();` 이렇게 새 리스트를 할당하면 기존 값이 사라지므로, **기존 리스트를 비우고 새로운 데이터를 추가**하는 방식으로 변경합니다.
+
+```java
+public void searchUsers() {
+    users.clear();  // 기존 리스트를 비우고
+    users.addAll(userService.searchUsers(searchCriteria));  // 새로운 데이터를 추가
+}
+```
+➡ 이렇게 하면 `users` 객체 자체는 유지되므로, 라디오 버튼의 선택 값이 유지될 가능성이 높아집니다.
+
+---
+
+### ✅ 2. `selectedUser`의 데이터 타입 변경  
+라디오 버튼의 `value`가 `String` 형식(`userid-username`)이면 객체로 변환해야 합니다.
+
+**🔹 기존 코드 (문제 발생 가능)**
+```xhtml
+<h:selectOneRadio value="#{userBean.selectedUser}">
+    <f:selectItem itemValue="#{user.userid}-#{user.username}" itemLabel="선택" />
+</h:selectOneRadio>
+```
+➡ **문제:** JSF가 `selectedUser`를 `userid-username` 문자열로 처리하기 때문에, 데이터 바인딩 오류 발생 가능.
+
+**✅ 해결 방법: `User` 객체 자체를 바인딩**
+```xhtml
+<h:selectOneRadio value="#{userBean.selectedUser}">
+    <f:selectItems value="#{userBean.users}" var="user" 
+        itemValue="#{user}" itemLabel="#{user.username}" />
+</h:selectOneRadio>
+```
+
+**🔹 Java 코드에서 `User` 객체 사용**
+```java
+private User selectedUser;  // String이 아니라 User 타입으로 변경
+
+public User getSelectedUser() {
+    return selectedUser;
+}
+
+public void setSelectedUser(User selectedUser) {
+    this.selectedUser = selectedUser;
+}
+```
+
+➡ **이렇게 하면 JSF가 객체를 바인딩하므로 데이터 유지가 더 안정적!**  
+
+---
+
+### ✅ 3. `update` 속성 추가하여 선택 값 유지
+라디오 버튼을 선택한 후에도 `selectedUser` 값이 유지되도록 `update` 속성을 추가하세요.
+
+```xhtml
+<h:selectOneRadio value="#{userBean.selectedUser}" layout="pageDirection">
+    <f:selectItems value="#{userBean.users}" var="user"
+        itemValue="#{user}" itemLabel="#{user.username}" />
+    <f:ajax event="change" render="@form"/>
+</h:selectOneRadio>
+```
+➡ **이렇게 하면 JSF가 선택한 값을 다시 바인딩하여 "같은 Faces 큐에서 표시되지 않음" 오류를 방지합니다.**
+
+---
+
+## **📌 결론**
+✅ `users` 리스트를 새로 교체하지 않고 기존 리스트에 데이터를 추가  
+✅ `selectedUser`를 `String`이 아니라 `User` 객체로 바인딩  
+✅ `f:ajax`를 사용하여 선택된 값이 UI에 반영되도록 처리  
+
+이렇게 수정하면 검색 후에도 라디오 버튼에서 선택한 값이 정상적으로 부모 페이지에 전달될 것입니다! 🚀
