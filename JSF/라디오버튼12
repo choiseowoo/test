@@ -1,0 +1,114 @@
+네, `@ViewScoped`나 `@ManagedBean` 관련 문제일 수도 있습니다. 가능성이 높은 원인을 몇 가지 정리하고 해결 방법을 제시해 드릴게요.  
+
+---
+
+## 🔍 **1️⃣ `@ViewScoped`와 `@Named("userBean")` 문제**  
+### 🛑 **문제 원인:**  
+- `@Named("userBean")`은 **CDI (Context and Dependency Injection)** 방식이고,  
+- `@ViewScoped`는 **JSF의 Managed Bean 방식이 아니라 CDI에서 사용하는 방식**입니다.  
+- `@ManagedBean` 없이 `@Named`만 사용했다면, `@ViewScoped`가 제대로 동작하지 않을 가능성이 있음.  
+
+### ✅ **해결 방법:**  
+#### (1) **CDI 방식 (권장)**
+```java
+import jakarta.inject.Named;
+import jakarta.enterprise.context.ViewScoped;
+
+@Named("userBean")
+@ViewScoped
+public class UserBean implements Serializable {
+    // Bean 코드
+}
+```
+✔ **이렇게 하면 CDI의 ViewScoped가 정상적으로 동작**  
+
+#### (2) **JSF Managed Bean 방식**
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+
+@ManagedBean(name = "userBean")
+@ViewScoped
+public class UserBean implements Serializable {
+    // Bean 코드
+}
+```
+✔ **JSF 2.x에서 사용 (CDI를 사용하지 않는 경우)**  
+
+---
+
+## 🔍 **2️⃣ `h:form`이 있는지 확인**  
+- `h:selectOneRadio` 태그가 `h:form` 안에 없으면 값이 전송되지 않음.  
+
+✅ **확인할 것:**  
+```xml
+<h:form id="userForm">
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <h:selectOneRadio value="#{userBean.selectedUser}">
+                <f:selectItem itemValue="#{user.userid}" itemLabel="선택" />
+            </h:selectOneRadio>
+        </h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" action="#{userBean.selectUser}" />
+</h:form>
+```
+✔ `h:form`을 감싸지 않으면 **JSF에서 값이 전송되지 않음**.
+
+---
+
+## 🔍 **3️⃣ `@PostConstruct`에서 초기화 코드 확인**  
+- `users` 리스트가 `null`이면 화면에 아무것도 안 나옴.  
+
+✅ **해결 방법**  
+```java
+@PostConstruct
+public void init() {
+    users = userService.getUsers();  // 초기 데이터 로딩
+    if (users == null) {
+        users = new ArrayList<>();  // NullPointerException 방지
+    }
+}
+```
+✔ **`users`가 `null`이면 빈 리스트로 초기화해야 함.**
+
+---
+
+## 🔍 **4️⃣ `selectedUser`가 `null`인지 디버깅**  
+### ✅ **디버깅 방법:**  
+JSF에서는 값이 제대로 바인딩되지 않으면 `selectedUser`가 `null`이 됨.  
+확인하려면 `selectUser()` 메서드에서 `System.out.println()`으로 로그 출력.  
+
+```java
+public void selectUser() {
+    if (selectedUser == null) {
+        System.out.println("⚠️ 선택된 유저 없음!");
+    } else {
+        System.out.println("📌 선택된 유저: " + selectedUser);
+    }
+}
+```
+✔ 콘솔에 `⚠️ 선택된 유저 없음!`이 뜨면, 값이 바인딩되지 않은 것.
+
+---
+
+## 🔍 **5️⃣ `<h:selectOneRadio>` 내부의 `<f:selectItem>` 확인**  
+✅ **올바른 코드 예시**
+```xml
+<h:selectOneRadio value="#{userBean.selectedUser}">
+    <f:selectItems value="#{userBean.users}" var="user" itemValue="#{user.userid}" itemLabel="#{user.username}" />
+</h:selectOneRadio>
+```
+✔ **여러 개의 `f:selectItem`을 만들 필요 없이, `f:selectItems`를 사용하는 것이 더 안정적**.  
+
+---
+
+## 🔥 **결론: 무엇을 확인해야 할까?**  
+1️⃣ `@Named("userBean")` + `@ViewScoped`을 올바르게 설정했는지 확인  
+2️⃣ `h:form`이 `<h:selectOneRadio>`를 감싸고 있는지 확인  
+3️⃣ `@PostConstruct`에서 `users`가 `null`이 아닌지 확인  
+4️⃣ `selectedUser` 값이 `null`인지 `System.out.println()`으로 디버깅  
+5️⃣ `<f:selectItem>` 대신 `<f:selectItems>` 사용해보기  
+
+이 중 하나라도 잘못되어 있으면 값이 바인딩되지 않을 가능성이 큽니다! 🚀
