@@ -1,0 +1,82 @@
+네, 맞습니다! **테이블에 표시하는 쿼리에 `userid` 값을 포함하면**, JSF에서 해당 값을 정상적으로 가져올 수 있습니다.  
+
+---
+
+### **🔹 현재 문제점**
+- `SELECT` 문에서 `userid`를 가져오지 않음 → **라디오 버튼에서 `userid`를 사용할 수 없음**  
+
+---
+
+### **✅ 해결 방법**
+#### **1️⃣ `SELECT` 문에서 `userid` 추가하기**  
+현재 쿼리가 이렇게 되어 있다면:  
+```sql
+SELECT username, groupname FROM users;
+```
+👉 `userid`를 포함해서 수정합니다.
+```sql
+SELECT userid, username, groupname FROM users;
+```
+
+---
+
+#### **2️⃣ JSF 데이터 테이블에서 `userid`를 활용하기**
+쿼리에서 `userid`를 가져오면, **JSF의 라디오 버튼에서 해당 값을 사용할 수 있습니다.**  
+```xml
+<h:dataTable value="#{userBean.users}" var="user">
+    <h:column>
+        <f:facet name="header">선택</f:facet>
+        <h:selectOneRadio value="#{userBean.selectedUserId}">
+            <f:selectItem itemValue="#{user.userid}" itemLabel="선택" />
+        </h:selectOneRadio>
+    </h:column>
+
+    <h:column>
+        <f:facet name="header">이름</f:facet>
+        #{user.username}
+    </h:column>
+
+    <h:column>
+        <f:facet name="header">그룹명</f:facet>
+        #{user.groupname}
+    </h:column>
+</h:dataTable>
+```
+
+---
+
+#### **3️⃣ 선택한 `userid` 값을 부모 창으로 전달**
+팝업 창에서 **부모 창으로 `userid` 값을 전달하고, 팝업 창을 닫을 때 적용되도록 처리**합니다.
+
+```xml
+<h:commandButton value="선택" action="#{userBean.selectUser}" />
+```
+
+```java
+public void selectUser() {
+    RequestContext.getCurrentInstance().closeDialog(selectedUserId);
+}
+```
+
+그리고 부모 창에서는 **이 값을 받아서 처리합니다.**
+```java
+public void onUserSelect(SelectEvent event) {
+    this.selectedUserId = (Long) event.getObject();
+}
+```
+
+---
+
+### **📌 결론**
+✔ **쿼리에서 `userid` 값을 포함해야 JSF에서 사용할 수 있음**  
+✔ **JSF 테이블에서 `userid`를 라디오 버튼의 `itemValue`에 설정하면 선택 가능**  
+✔ **부모 창으로 `userid` 값을 정상적으로 전달 가능**  
+
+---
+
+### **✅ 최종적으로 확인해야 할 것**
+1. **쿼리에 `userid` 포함되어 있는지 확인**
+2. **JSF에서 `userid`를 가져오도록 설정**
+3. **부모 창으로 값이 정상적으로 넘어가는지 체크**
+
+이제 이 방법으로 **userid를 가져오는 문제를 해결할 수 있을 거예요!** 🚀
