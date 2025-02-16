@@ -1,0 +1,129 @@
+네, 가능합니다! 일반적인 `<input type="radio">` 요소에서 **JavaScript로 선택한 값을 가져와서 부모 페이지로 전달하는 방법**을 설명하겠습니다.  
+
+---
+
+## **1. 기본적인 `getElementsByTagName("input")`을 이용한 값 가져오기**  
+이 방법은 **모든 `<input>` 요소 중에서 `type="radio"`인 것만 선택하여 값을 가져오는 방식**입니다.
+
+### **📌 예제: 현재 페이지에서 선택된 라디오 버튼 값 가져오기**
+```html
+<input type="radio" name="user" value="User1"> User1<br>
+<input type="radio" name="user" value="User2"> User2<br>
+<input type="radio" name="user" value="User3"> User3<br>
+<button onclick="getSelectedUser()">선택</button>
+
+<script>
+    function getSelectedUser() {
+        var inputs = document.getElementsByTagName("input");  // 모든 input 태그 가져오기
+        var selectedValue = "";
+
+        for (var i = 0; i < inputs.length; i++) {
+            if (inputs[i].type === "radio" && inputs[i].checked) {
+                selectedValue = inputs[i].value;  // 체크된 라디오 버튼의 값 저장
+                break;
+            }
+        }
+
+        if (selectedValue) {
+            alert("선택된 유저: " + selectedValue);
+        } else {
+            alert("선택된 유저가 없습니다.");
+        }
+    }
+</script>
+```
+
+### **🔹 설명**
+- `document.getElementsByTagName("input")`을 사용하여 **모든 `<input>` 태그를 가져옵니다.**
+- `for` 루프를 돌면서 `type="radio"`인 요소 중에서 `checked` 속성이 있는 값을 찾습니다.
+- `selectedValue`에 값을 저장한 후 `alert()`으로 출력합니다.
+
+---
+
+## **2. 선택한 라디오 버튼 값을 부모 페이지로 전달 (`window.opener`)**
+만약 **팝업 창에서 부모 페이지로 값을 전달**해야 한다면 `window.opener`를 사용할 수 있습니다.
+
+### **📌 자식 페이지 (팝업)**
+```html
+<input type="radio" name="user" value="User1"> User1<br>
+<input type="radio" name="user" value="User2"> User2<br>
+<input type="radio" name="user" value="User3"> User3<br>
+<button onclick="sendToParent()">확인</button>
+
+<script>
+    function sendToParent() {
+        var inputs = document.getElementsByTagName("input"); 
+        var selectedValue = "";
+
+        for (var i = 0; i < inputs.length; i++) {
+            if (inputs[i].type === "radio" && inputs[i].checked) {
+                selectedValue = inputs[i].value;
+                break;
+            }
+        }
+
+        if (selectedValue) {
+            if (window.opener) {
+                window.opener.document.getElementById("selectedUser").value = selectedValue;
+                window.close();  // 팝업 닫기
+            } else {
+                alert("부모 창이 없습니다.");
+            }
+        } else {
+            alert("선택된 유저가 없습니다.");
+        }
+    }
+</script>
+```
+
+### **📌 부모 페이지**
+```html
+<input type="text" id="selectedUser" readonly>
+<button onclick="openPopup()">유저 선택</button>
+
+<script>
+    function openPopup() {
+        window.open('child.html', 'popup', 'width=400,height=300');
+    }
+</script>
+```
+
+### **🔹 설명**
+- 자식 페이지에서 선택된 라디오 버튼의 값을 `window.opener.document.getElementById("selectedUser").value`로 부모 창에 전달합니다.
+- 이후 `window.close()`로 팝업을 닫습니다.
+
+---
+
+## **3. `document.querySelector()`로 더 간단하게 값 가져오기**
+만약 `document.getElementsByTagName()` 대신 더 간단한 방법을 원한다면, **`document.querySelector("input[name='user']:checked")`**를 사용할 수도 있습니다.
+
+```html
+<script>
+    function getSelectedUser() {
+        var selectedInput = document.querySelector("input[name='user']:checked");
+        if (selectedInput) {
+            alert("선택된 유저: " + selectedInput.value);
+        } else {
+            alert("선택된 유저가 없습니다.");
+        }
+    }
+</script>
+```
+
+### **🔹 장점**
+- `querySelector("input[name='user']:checked")`를 사용하면 **선택된 값만 바로 가져올 수 있어 코드가 짧아집니다.**
+- `getElementsByTagName()`처럼 루프를 돌 필요가 없습니다.
+
+---
+
+## **📌 결론**
+| 방법 | 설명 |
+|------|------|
+| `getElementsByTagName("input")` | 모든 `<input>` 태그를 가져와서 `for` 루프를 돌며 값 찾기 |
+| `querySelector("input[name='user']:checked")` | 선택된 라디오 버튼을 바로 가져옴 (더 간결함) |
+| `window.opener` | 팝업에서 부모 창으로 값 전달 |
+| `localStorage` | 같은 창에서 페이지 이동 후에도 값 유지 |
+
+어떤 방법을 사용할지 고민된다면, **간단한 경우에는 `querySelector()`**, **팝업과 부모 페이지 간의 값 전달이 필요하면 `window.opener`**를 추천합니다.  
+
+추가로 궁금한 점 있으면 알려주세요!
