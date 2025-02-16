@@ -1,0 +1,120 @@
+네, **검색 버튼을 누를 때만 데이터 테이블이 표시**되도록 하려면 `init()`에서 데이터를 로드하는 것이 적절하지 않습니다.  
+이유는 `init()`이 **페이지 로드 시 자동으로 실행**되므로, 검색 버튼을 누르기 전에 **이미 데이터 테이블이 표시될 가능성이 있기 때문**입니다.  
+
+---
+
+## **✅ 올바른 구현 방법**
+### **1. 초기에는 데이터 테이블이 보이지 않도록 설정**
+- `init()`에서는 데이터를 불러오지 않음
+- 검색 버튼을 눌렀을 때만 `searchResults`에 데이터가 저장됨 → 데이터가 있을 때만 테이블 표시
+
+```java
+import jakarta.annotation.PostConstruct;
+import jakarta.faces.bean.ManagedBean;
+import jakarta.faces.bean.ViewScoped;
+import jakarta.inject.Inject;
+import java.io.Serializable;
+import java.util.List;
+
+@ManagedBean
+@ViewScoped
+public class UserSearchBean implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private String orgName;
+    private String userName;
+    private String userEnglishName;
+    private String orgCode;
+    private List<User> searchResults; // 검색 결과 (초기에는 null 또는 빈 리스트)
+    private User selectedUser;
+
+    @Inject
+    private UserService userService;
+
+    @PostConstruct
+    public void init() {
+        searchResults = null; // 처음에는 데이터 테이블이 표시되지 않도록 설정
+    }
+
+    public void searchUsers() {
+        searchResults = userService.findUsers(orgName, userName, userEnglishName, orgCode);
+    }
+
+    public void clearSearch() {
+        orgName = "";
+        userName = "";
+        userEnglishName = "";
+        orgCode = "";
+        searchResults = null; // 검색 초기화 시 데이터 테이블 숨김
+    }
+
+    public void selectUser() {
+        if (selectedUser != null) {
+            FacesContext.getCurrentInstance().getExternalContext().getFlash().put("selectedUser", selectedUser);
+        }
+    }
+
+    // Getters and Setters...
+}
+```
+
+---
+
+### **2. 데이터 테이블을 조건부 렌더링 (`rendered`)**
+`searchResults`에 데이터가 있을 때만 테이블이 표시되도록 함
+
+```xhtml
+<h:form id="searchForm">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="orgName" value="조직명:" />
+        <h:inputText id="orgName" value="#{userSearchBean.orgName}" />
+
+        <h:outputLabel for="userName" value="유저명:" />
+        <h:inputText id="userName" value="#{userSearchBean.userName}" />
+
+        <h:outputLabel for="userEnglishName" value="영어명:" />
+        <h:inputText id="userEnglishName" value="#{userSearchBean.userEnglishName}" />
+
+        <h:outputLabel for="orgCode" value="조직코드:" />
+        <h:inputText id="orgCode" value="#{userSearchBean.orgCode}" />
+    </h:panelGrid>
+
+    <h:commandButton value="검색" action="#{userSearchBean.searchUsers()}" update="resultsTable" />
+    <h:commandButton value="클리어" action="#{userSearchBean.clearSearch()}" update="searchForm resultsTable" />
+
+    <!-- 검색 결과가 있을 때만 테이블 표시 -->
+    <h:dataTable id="resultsTable" value="#{userSearchBean.searchResults}" var="user"
+                 rendered="#{not empty userSearchBean.searchResults}">
+        <h:column>
+            <h:selectOneRadio value="#{userSearchBean.selectedUser}">
+                <f:selectItem itemValue="#{user}" itemLabel="#{user.userName} (#{user.userEnglishName}, #{user.orgCode}, #{user.orgName})" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.userName}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.userEnglishName}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.orgCode}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.orgName}" />
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+## **📌 정리**
+1. **초기에는 `searchResults = null` 설정**  
+   → 테이블이 표시되지 않음  
+2. **검색 버튼을 눌렀을 때만 `searchUsers()` 실행**  
+   → `searchResults`에 데이터가 저장되면 테이블이 표시됨  
+3. **클리어 버튼을 누르면 `searchResults = null`로 다시 숨김**  
+4. **테이블은 `rendered="#{not empty userSearchBean.searchResults}"` 조건을 추가하여 검색 결과가 있을 때만 보이도록 설정**  
+
+이제 검색 버튼을 누르기 전까지는 테이블이 보이지 않고, 검색을 실행하면 테이블이 나타나는 형태가 됩니다.  
+이 방식으로 구현하면 `init()`이 데이터를 가져오지 않으므로 **의도한 대로 검색 후에만 테이블이 나타나는 동작이 가능합니다.**
