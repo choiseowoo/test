@@ -1,0 +1,133 @@
+네, 맞습니다.  
+현재 `<h:selectOneRadio>`를 사용하여 선택한 유저 정보를 `selectedUser`에 저장하고, "선택" 버튼을 클릭하면 부모 페이지(`UserAuthBean`)로 값을 넘겨야 합니다.  
+
+하지만, **현재 상태로는 자식 페이지가 자동으로 닫히지 않으므로**, 값을 넘긴 후 `window.close()`를 호출하거나 `FacesContext`를 이용해 부모 페이지로 이동하도록 설정해야 합니다.
+
+---
+
+## **1. 검색 페이지 (UserSearch.xhtml) 수정**
+```xhtml
+<h:form id="searchForm">
+    <h:dataTable value="#{userSearchBean.searchResults}" var="user">
+        <h:column>
+            <h:selectOneRadio value="#{userSearchBean.selectedUser}">
+                <f:selectItem itemValue="#{user}" itemLabel="#{user.userName} (#{user.userEnglishName}, #{user.orgCode}, #{user.orgName})" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.userName}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.userEnglishName}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.orgCode}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.orgName}" />
+        </h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" action="#{userSearchBean.selectUser}" onclick="window.opener.updateParentForm(); window.close();" />
+</h:form>
+```
+✅ **변경 내용:**  
+- `onclick="window.opener.updateParentForm(); window.close();"` 추가 → **부모 페이지로 값 전달 후 창 닫기**
+
+---
+
+## **2. 부모 페이지 (UserAuth.xhtml)**
+```xhtml
+<h:form id="userForm">
+    <h:panelGrid columns="3">
+        <h:outputLabel value="유저ID:" />
+        <h:outputText id="userId" value="#{userAuthBean.selectedUserId}" />
+        
+        <h:outputLabel value="유저명:" />
+        <h:outputText id="userName" value="#{userAuthBean.selectedUserName}" />
+        
+        <h:commandButton value="검색" onclick="window.open('UserSearch.xhtml', '검색', 'width=600,height=400')" />
+        <h:commandButton value="클리어" action="#{userAuthBean.clearSelection}" />
+    </h:panelGrid>
+    
+    <h:commandButton value="등록" action="#{userAuthBean.registerUser}" />
+</h:form>
+
+<script>
+function updateParentForm() {
+    var userId = "#{userAuthBean.selectedUserId}";
+    var userName = "#{userAuthBean.selectedUserName}";
+
+    document.getElementById('userForm:userId').innerText = userId;
+    document.getElementById('userForm:userName').innerText = userName;
+}
+</script>
+```
+✅ **변경 내용:**  
+- 검색 버튼 클릭 시 `window.open('UserSearch.xhtml', ...)` 사용 → **검색 창 띄우기**
+- `updateParentForm()` 함수 추가 → **자식 창에서 선택한 값을 부모 페이지로 업데이트**
+
+---
+
+## **3. UserSearchBean.java (자식 페이지에서 부모로 값 전달)**
+```java
+public void selectUser() {
+    if (selectedUser != null) {
+        FacesContext.getCurrentInstance().getExternalContext().getFlash().put("selectedUser", selectedUser);
+        FacesContext.getCurrentInstance().getExternalContext().getFlash().put("selectedUserId", selectedUser.getUserId());
+        FacesContext.getCurrentInstance().getExternalContext().getFlash().put("selectedUserName", selectedUser.getUserName());
+    }
+}
+```
+✅ **변경 내용:**  
+- `selectedUserId`와 `selectedUserName`을 부모 페이지에 넘김
+
+---
+
+## **4. UserAuthBean.java (부모 페이지에서 값 받기)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserAuthBean {
+    private String selectedUserId;
+    private String selectedUserName;
+
+    public void init() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext.getExternalContext().getFlash().containsKey("selectedUserId")) {
+            selectedUserId = (String) facesContext.getExternalContext().getFlash().get("selectedUserId");
+            selectedUserName = (String) facesContext.getExternalContext().getFlash().get("selectedUserName");
+        }
+    }
+
+    public void clearSelection() {
+        selectedUserId = "";
+        selectedUserName = "";
+    }
+
+    public void registerUser() {
+        // 등록 로직
+    }
+
+    public String getSelectedUserId() {
+        return selectedUserId;
+    }
+
+    public String getSelectedUserName() {
+        return selectedUserName;
+    }
+}
+```
+✅ **변경 내용:**  
+- `init()` 메서드를 추가하여 검색 창에서 넘긴 값을 **Flash Scope**로 가져옴
+
+---
+
+## **결과 흐름**
+1. **부모 페이지에서 "검색" 버튼 클릭 → 자식 창 (`UserSearch.xhtml`) 열림**
+2. **자식 창에서 유저를 선택 → "선택" 버튼 클릭**
+3. **선택한 유저 정보가 부모 페이지로 전달되며, 자식 창이 자동으로 닫힘**
+4. **부모 페이지의 라벨(`h:outputText`)에 선택한 값이 표시됨**
+
+이제 부모 페이지에서 검색된 유저를 선택하여 바로 반영할 수 있습니다!  
+추가 수정이 필요하면 알려주세요.
