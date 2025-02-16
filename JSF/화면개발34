@@ -1,0 +1,96 @@
+네, 맞습니다! 현재 구현 방식에서 **라디오 버튼에는 모든 값(유저명, 영어명, 조직코드, 조직명)이 저장되어 있고, 사용자가 선택한 데이터만 부모 페이지로 전달**됩니다.  
+
+---
+
+### **🔹 구현 방식 확인**  
+현재 라디오 버튼은 다음과 같이 `h:selectOneRadio`를 사용하고 있습니다:
+
+```xhtml
+<h:selectOneRadio value="#{userSearchBean.selectedUser}">
+    <f:selectItem itemValue="#{user}" 
+                  itemLabel="#{user.userName} (#{user.userEnglishName}, #{user.orgCode}, #{user.orgName})" />
+</h:selectOneRadio>
+```
+
+✅ **이 코드의 동작**  
+- `itemValue="#{user}"` → 선택한 `user` 객체 전체가 `selectedUser`에 저장됨.  
+- `itemLabel`에는 **유저명, 영어명, 조직코드, 조직명**이 표시됨.  
+- 사용자가 라디오 버튼을 클릭하면 해당 `user` 객체가 `selectedUser`에 저장됨.  
+
+---
+
+### **🔹 부모 페이지로 데이터 보내는 처리 (`selectUser()`)**
+검색 페이지에서 **"선택" 버튼을 클릭하면** 부모 페이지로 데이터를 보내야 하므로, `selectUser()` 메서드에서 Flash Scope를 사용하여 값 전달:
+
+```java
+public void selectUser() {
+    if (selectedUser != null) {
+        FacesContext.getCurrentInstance().getExternalContext().getFlash().put("selectedUser", selectedUser);
+    }
+}
+```
+✅ **이 코드의 동작**  
+1. `selectedUser`에 선택된 유저 정보가 저장됨.  
+2. `FacesContext.getCurrentInstance().getExternalContext().getFlash().put("selectedUser", selectedUser);`  
+   → **Flash Scope를 사용하여 부모 페이지로 데이터 전달**  
+3. 검색 페이지를 닫고 부모 페이지로 이동하면, `selectedUser` 값을 받아서 표시할 수 있음.  
+
+---
+
+### **🔹 부모 페이지에서 데이터 받기 (`UserAuthBean`)**
+부모 페이지에서 데이터를 받아 텍스트 라벨에 표시하려면, `@PostConstruct`에서 Flash Scope에서 값을 가져오면 됩니다.
+
+```java
+import jakarta.annotation.PostConstruct;
+import jakarta.faces.bean.ManagedBean;
+import jakarta.faces.bean.ViewScoped;
+import java.io.Serializable;
+
+@ManagedBean
+@ViewScoped
+public class UserAuthBean implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private String selectedUserId;
+    private String selectedUserName;
+
+    @PostConstruct
+    public void init() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext.getExternalContext().getFlash().containsKey("selectedUser")) {
+            User selectedUser = (User) facesContext.getExternalContext().getFlash().get("selectedUser");
+            if (selectedUser != null) {
+                this.selectedUserId = selectedUser.getId();
+                this.selectedUserName = selectedUser.getUserName();
+            }
+        }
+    }
+
+    // Getters and Setters...
+}
+```
+✅ **이 코드의 동작**  
+1. `init()`에서 **Flash Scope에서 `selectedUser` 데이터를 가져옴**  
+2. `selectedUserId`, `selectedUserName`에 저장  
+3. 부모 페이지의 **텍스트 라벨에 선택된 유저 정보가 표시됨**  
+
+---
+
+### **🔹 부모 페이지에서 선택된 유저 정보 표시 (JSF)**
+```xhtml
+<h:outputLabel value="유저 ID:" />
+<h:outputText value="#{userAuthBean.selectedUserId}" />
+
+<h:outputLabel value="유저명:" />
+<h:outputText value="#{userAuthBean.selectedUserName}" />
+```
+
+---
+
+## **📌 최종 정리**
+✔ **라디오 버튼에는 모든 값(유저명, 영어명, 조직코드, 조직명)이 저장됨.**  
+✔ **사용자가 선택한 데이터만 부모 페이지로 전달됨.**  
+✔ **검색 페이지에서 선택한 데이터를 `Flash Scope`을 이용해 부모 페이지로 전달함.**  
+✔ **부모 페이지에서는 `init()`에서 Flash Scope에서 값을 가져와 라벨에 표시함.**  
+
+이제 선택한 데이터만 정확히 부모 페이지로 전달되고 표시됩니다! 🚀
