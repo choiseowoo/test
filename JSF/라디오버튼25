@@ -1,0 +1,68 @@
+현재 `h:selectOneRadio`를 사용하면 기본적으로 **한 그룹 내에서 하나의 라디오 버튼만 선택**되도록 동작합니다. 하지만, **각 라디오 버튼이 개별 그룹으로 인식되면 여러 개가 선택될 수도 있습니다.**  
+
+---
+
+### **라디오 버튼이 하나만 선택되도록 보장하는 방법**
+만약 한 개만 선택되지 않는 문제가 있다면, **모든 라디오 버튼이 같은 name 속성을 공유해야 합니다.**  
+JSF에서는 `h:selectOneRadio`가 내부적으로 `name`을 자동으로 관리하지만, 테이블 안에서 의도대로 동작하지 않을 수도 있습니다.  
+이를 보장하려면 **명시적으로 name 속성을 설정**하거나, **JavaScript로 수동으로 제어**할 수 있습니다.  
+
+---
+
+## **1. JSF의 기본 동작을 유지하는 방법 (추천)**
+JSF의 `h:selectOneRadio`는 자동으로 같은 `name`을 가지도록 관리합니다.  
+하지만 `h:dataTable` 내부에서는 `h:selectOneRadio`를 적절히 감싸지 않으면 개별 그룹처럼 인식될 수 있습니다.
+
+### ✅ **올바른 예제**
+아래처럼 `h:selectOneRadio`를 `h:panelGroup`으로 감싸면 하나만 선택되도록 동작합니다.
+
+```xhtml
+<h:form id="userForm">
+    <h:panelGroup id="radioGroup">
+        <h:dataTable value="#{userBean.userList}" var="user">
+            <h:column>
+                <h:selectOneRadio value="#{userBean.selectedUser}">
+                    <f:selectItem itemValue="#{user.id}/#{user.name}/#{user.code}/#{user.email}" itemLabel="선택" />
+                </h:selectOneRadio>
+            </h:column>
+            <h:column>#{user.name}</h:column>
+            <h:column>#{user.code}</h:column>
+            <h:column>#{user.email}</h:column>
+        </h:dataTable>
+    </h:panelGroup>
+</h:form>
+```
+이렇게 하면 **JSF가 자동으로 하나만 선택되도록 관리**합니다.
+
+---
+
+## **2. JavaScript로 직접 제어하는 방법**
+만약 위 방법으로도 한 개만 선택되지 않는다면, JavaScript로 강제로 제어할 수도 있습니다.
+
+### ✅ **JavaScript로 강제 단일 선택 처리**
+```javascript
+document.addEventListener("DOMContentLoaded", function() {
+    // 모든 라디오 버튼에 클릭 이벤트 추가
+    document.querySelectorAll("input[type='radio']").forEach(radio => {
+        radio.addEventListener("change", function() {
+            // 같은 그룹 내 다른 라디오 버튼 해제
+            document.querySelectorAll("input[type='radio']").forEach(r => {
+                if (r !== this) {
+                    r.checked = false;
+                }
+            });
+        });
+    });
+});
+```
+
+**설명**  
+- `DOMContentLoaded` 이벤트를 사용하여 문서가 로드되면 모든 라디오 버튼에 이벤트를 추가.  
+- 선택된 라디오 버튼 외에 나머지 버튼들은 `checked = false`로 해제.
+
+---
+
+### **결론**
+✅ **JSF에서 `h:selectOneRadio`를 올바르게 사용하면 기본적으로 하나만 선택 가능**  
+✅ **테이블 내부에서는 `h:panelGroup`으로 감싸서 처리하는 것이 안전한 방법**  
+✅ **문제가 발생하면 JavaScript로 강제적으로 하나만 선택되도록 제어 가능**
