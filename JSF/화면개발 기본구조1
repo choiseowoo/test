@@ -1,0 +1,123 @@
+JSF + MyBatis 환경에서 **라디오 버튼을 하나만 선택**할 수 있도록 하고, 선택 후 **푸터의 "선택" 버튼을 클릭하면 부모 페이지로 값이 전달**되도록 구현할 수 있습니다.  
+
+---
+
+## ✅ **1. 핵심 요구사항**
+- **라디오 버튼**은 하나만 선택 가능  
+- 푸터의 **"선택" 버튼 클릭 시 선택한 데이터(id, name, code, email)를 부모 페이지로 전달**  
+- **HTML `<table>-<tr>-<td>` 구조 사용**  
+- **JavaScript로 선택한 값 유지 및 전달**  
+
+---
+
+## ✅ **2. XHTML 코드 (테이블 + 라디오 버튼 + 선택 버튼)**
+```xhtml
+<h:form id="userForm">
+    <table border="1">
+        <thead>
+            <tr>
+                <th>선택</th>
+                <th>이름</th>
+                <th>코드</th>
+                <th>이메일</th>
+            </tr>
+        </thead>
+        <tbody>
+            <ui:repeat value="#{userBean.userList}" var="user">
+                <tr>
+                    <td>
+                        <input type="radio" name="userSelect"
+                            value="#{user.name}/#{user.code}/#{user.email}"
+                            onclick="setSelectedUser(this.value)" />
+                    </td>
+                    <td>#{user.name}</td>
+                    <td>#{user.code}</td>
+                    <td>#{user.email}</td>
+                </tr>
+            </ui:repeat>
+        </tbody>
+    </table>
+
+    <!-- 선택 버튼 및 결과 표시 -->
+    <div>
+        <h:outputText id="selectedUser" value="선택된 사용자: " />
+        <h:outputText id="selectedUserValue" value="" />
+    </div>
+    
+    <h:commandButton value="선택" onclick="sendToParent()" />
+</h:form>
+
+<!-- JavaScript -->
+<script>
+    let selectedUser = "";
+
+    function setSelectedUser(value) {
+        selectedUser = value;
+        document.getElementById('userForm:selectedUserValue').innerText = selectedUser;
+    }
+
+    function sendToParent() {
+        if (!selectedUser) {
+            alert("사용자를 선택하세요.");
+            return;
+        }
+        window.opener.document.getElementById("parentInput").value = selectedUser;
+        window.close();
+    }
+</script>
+```
+
+---
+
+## ✅ **3. 부모 페이지 (`parent.xhtml`)**
+```xhtml
+<h:form>
+    <h:inputText id="parentInput" value="#{userBean.selectedUser}" readonly="true" />
+    <h:commandButton value="사용자 검색" onclick="openSearchWindow()" />
+</h:form>
+
+<script>
+    function openSearchWindow() {
+        window.open("userSearch.xhtml", "사용자 검색", "width=600,height=400");
+    }
+</script>
+```
+
+---
+
+## ✅ **4. 동작 방식**
+1. **자식 페이지 (`userSearch.xhtml`)**에서 라디오 버튼을 클릭하면 `setSelectedUser()` 함수가 실행되어 **선택한 사용자 정보가 저장**됨.  
+2. **푸터의 "선택" 버튼 클릭 시 `sendToParent()` 함수가 실행**되며,  
+   - 선택한 사용자 정보가 **부모 페이지의 `inputText` 필드로 전달**됨.  
+   - `window.close()`를 호출하여 검색 창 닫음.  
+3. **부모 페이지 (`parent.xhtml`)에서 `inputText`에 선택한 값이 표시됨.**  
+
+---
+
+## ✅ **5. 실행 결과**
+### **① 사용자 검색 창 (`userSearch.xhtml`)**
+| 선택 | 이름 | 코드 | 이메일 |
+|------|------|------|------|
+| ⭘ | 홍길동 | 001 | hong@example.com |
+| ⭘ | 이순신 | 002 | lee@example.com |
+| ⭘ | 강감찬 | 003 | kang@example.com |
+
+🔘 **홍길동 선택 후 → 선택 버튼 클릭**  
+
+---
+
+### **② 부모 페이지 (`parent.xhtml`)**
+```
+홍길동/001/hong@example.com
+```
+📌 **부모 페이지의 `inputText`에 자동 입력됨.**  
+
+---
+
+## ✅ **6. 결론**
+✔ **JSF 태그 없이 HTML 테이블을 사용하면서도 선택 기능 유지**  
+✔ **라디오 버튼은 하나만 선택 가능 (`name="userSelect"`으로 그룹화)**  
+✔ **선택 버튼 클릭 시 부모 페이지로 값 전달 가능 (`window.opener`)**  
+✔ **JavaScript를 활용하여 동적으로 선택한 값 업데이트 가능**  
+
+이제 원하는 방식으로 **JSF + MyBatis 기반에서 동작하도록 구현 완료!**
