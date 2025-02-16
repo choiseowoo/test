@@ -1,0 +1,109 @@
+아래는 `UserSearchBean.java`의 전체 코드입니다. 검색 조건을 받아 MyBatis를 통해 검색을 수행하고, 결과를 데이터테이블에 표시하며, 선택한 유저 정보를 부모 페이지로 전달하는 기능을 포함합니다.
+
+### **UserSearchBean.java**
+```java
+import jakarta.faces.bean.ManagedBean;
+import jakarta.faces.bean.ViewScoped;
+import jakarta.faces.context.FacesContext;
+import jakarta.inject.Inject;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
+
+@ManagedBean
+@ViewScoped
+public class UserSearchBean implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private String orgName;
+    private String userName;
+    private String userEnglishName;
+    private String orgCode;
+    private List<User> searchResults;
+    private User selectedUser;
+
+    @Inject
+    private UserService userService;
+
+    // 검색 실행
+    public void searchUsers() {
+        searchResults = userService.findUsers(orgName, userName, userEnglishName, orgCode);
+    }
+
+    // 검색 조건 초기화
+    public void clearSearch() {
+        orgName = "";
+        userName = "";
+        userEnglishName = "";
+        orgCode = "";
+        searchResults = null;
+    }
+
+    // 선택한 유저 정보를 부모 페이지로 전달
+    public void selectUser() {
+        if (selectedUser != null) {
+            FacesContext.getCurrentInstance().getExternalContext().getFlash().put("selectedUser", selectedUser);
+        }
+    }
+
+    // Getters and Setters
+    public String getOrgName() {
+        return orgName;
+    }
+
+    public void setOrgName(String orgName) {
+        this.orgName = orgName;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getUserEnglishName() {
+        return userEnglishName;
+    }
+
+    public void setUserEnglishName(String userEnglishName) {
+        this.userEnglishName = userEnglishName;
+    }
+
+    public String getOrgCode() {
+        return orgCode;
+    }
+
+    public void setOrgCode(String orgCode) {
+        this.orgCode = orgCode;
+    }
+
+    public List<User> getSearchResults() {
+        return searchResults;
+    }
+
+    public void setSearchResults(List<User> searchResults) {
+        this.searchResults = searchResults;
+    }
+
+    public User getSelectedUser() {
+        return selectedUser;
+    }
+
+    public void setSelectedUser(User selectedUser) {
+        this.selectedUser = selectedUser;
+    }
+}
+```
+
+---
+
+### **설명**
+1. **검색 조건 (`orgName`, `userName`, `userEnglishName`, `orgCode`)을 입력받음.**
+2. **`searchUsers()` 메서드로 MyBatis를 통해 유저 정보를 검색하고 `searchResults` 리스트에 저장.**
+3. **`clearSearch()` 메서드를 통해 검색 조건과 결과를 초기화.**
+4. **`selectUser()` 메서드로 선택한 유저 정보를 부모 페이지(`UserAuthBean`)로 전달.**
+5. **페이징을 적용하려면 `searchResults`를 페이징 처리하도록 수정 가능.**
+
+추가 기능이 필요하면 알려주세요!
