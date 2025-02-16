@@ -1,0 +1,99 @@
+**JSF + MyBatis 환경에서, 데이터테이블에서 나온 값 중 하나만 선택하여 부모 페이지로 값을 전달하는 방법**을 설명하겠습니다.  
+
+✅ **요구사항 정리:**  
+1. `h:dataTable`에서 데이터 출력  
+2. 각 행마다 라디오 버튼 제공 (하나만 선택 가능)  
+3. "선택" 버튼을 누르면 부모 페이지로 값 전달  
+4. **라디오 버튼은 하나만 선택 가능**  
+
+---
+
+## **📌 1. XHTML 코드 (JSF)**
+아래 코드에서는 **JSF의 `h:dataTable`에서 출력된 데이터에서 하나만 선택 가능**하도록 설정했습니다.  
+
+```xml
+<h:form id="userForm">
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <!-- 라디오 버튼 -->
+            <h:selectOneRadio id="userRadio" value="#{userBean.selectedUser}">
+                <f:selectItem itemValue="#{user.id}" itemLabel="" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.name}" />
+        </h:column>
+    </h:dataTable>
+
+    <!-- 선택 버튼 -->
+    <h:commandButton value="선택" type="button" onclick="sendToParent()" />
+</h:form>
+
+<script>
+    function sendToParent() {
+        var selectedRadio = document.querySelector("input[name='userForm:userRadio']:checked");
+        if (selectedRadio) {
+            var selectedValue = selectedRadio.value;
+            window.opener.postMessage(selectedValue, "*"); // 부모 창으로 값 전달
+            window.close(); // 현재 창 닫기
+        } else {
+            alert("유저를 선택해주세요.");
+        }
+    }
+</script>
+```
+
+---
+
+## **📌 2. Java Bean (`UserBean.java`)**
+**선택된 값을 관리하는 빈을 설정**합니다.  
+
+```java
+import jakarta.inject.Named;
+import jakarta.enterprise.context.SessionScoped;
+import java.io.Serializable;
+import java.util.List;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private List<User> userList;  // DB에서 가져온 유저 리스트
+    private String selectedUser;  // 선택된 유저 ID
+
+    // Getter & Setter
+    public List<User> getUserList() { return userList; }
+    public void setUserList(List<User> userList) { this.userList = userList; }
+    
+    public String getSelectedUser() { return selectedUser; }
+    public void setSelectedUser(String selectedUser) { this.selectedUser = selectedUser; }
+}
+```
+
+---
+
+## **📌 3. 부모 페이지에서 값 받기**
+JSF는 팝업을 통한 값 전달이 어려울 수 있으므로, **JavaScript의 `postMessage()`를 사용하여 부모 페이지로 값 전달**합니다.  
+
+부모 페이지에서 `message` 이벤트를 받아 처리합니다.
+
+```html
+<script>
+    window.addEventListener("message", function(event) {
+        console.log("받은 값:", event.data);
+        document.getElementById("selectedUser").innerText = "선택된 유저 ID: " + event.data;
+    });
+</script>
+
+<p id="selectedUser">선택된 유저 없음</p>
+```
+
+---
+
+## **📌 4. 결과**
+1. `h:dataTable`에서 유저 리스트 출력  
+2. **한 개의 라디오 버튼만 선택 가능**  
+3. "선택" 버튼 클릭 시, **부모 페이지로 값 전달 (`postMessage`)**  
+4. **현재 창 닫기 (`window.close()`)**  
+5. **부모 페이지에서 선택된 값 출력**  
+
+✅ **테이블 내에서 라디오 버튼을 하나만 선택 가능하도록 설정했고, 선택 후 부모 페이지로 값을 넘기는 방식이 구현되었습니다!**
