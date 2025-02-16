@@ -1,0 +1,97 @@
+**JSF + JavaScript를 사용하여 `h:dataTable`에서 선택한 라디오 버튼의 `name/groupcode/groupname/userid` 값을 부모 페이지로 전달하는 방법**을 정리해 드리겠습니다.  
+
+✅ **요구사항 정리:**  
+1. `h:dataTable`에서 유저 정보를 출력 (name, groupcode, groupname, userid)  
+2. 각 행에 **라디오 버튼을 배치**하고, 선택 시 해당 행의 데이터를 보냄  
+3. "선택" 버튼을 누르면 **부모 페이지로 값 전달**  
+4. 부모 페이지에서 **`userid name` 형식으로 표시**  
+
+---
+
+## **📌 1. XHTML 코드 (JSF)**
+아래 코드에서는 **라디오 버튼을 선택하면 해당 행의 모든 정보를 가져와서 부모 페이지로 전달**합니다.
+
+```xml
+<h:form id="userForm">
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <!-- 라디오 버튼 (데이터 속성 포함) -->
+            <h:selectOneRadio id="userRadio" onclick="selectUser(this)"
+                value="#{userBean.selectedUser}">
+                <f:selectItem itemValue="#{user.id}" itemLabel="" />
+            </h:selectOneRadio>
+
+            <!-- Hidden fields to store data -->
+            <h:inputHidden id="name" value="#{user.name}" />
+            <h:inputHidden id="groupcode" value="#{user.groupcode}" />
+            <h:inputHidden id="groupname" value="#{user.groupname}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.name}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.groupcode}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.groupname}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.id}" />
+        </h:column>
+    </h:dataTable>
+
+    <!-- 선택 버튼 -->
+    <h:commandButton value="선택" type="button" onclick="sendToParent()" />
+</h:form>
+
+<script>
+    let selectedData = {};
+
+    function selectUser(radio) {
+        let row = radio.closest("tr"); // 현재 라디오 버튼이 있는 행 찾기
+        selectedData = {
+            name: row.querySelector("[id$='name']").value,
+            groupcode: row.querySelector("[id$='groupcode']").value,
+            groupname: row.querySelector("[id$='groupname']").value,
+            userid: radio.value
+        };
+    }
+
+    function sendToParent() {
+        if (selectedData.userid) {
+            let formattedValue = `${selectedData.userid} ${selectedData.name}`;
+            window.opener.postMessage(formattedValue, "*"); // 부모 창으로 값 전달
+            window.close(); // 현재 창 닫기
+        } else {
+            alert("유저를 선택해주세요.");
+        }
+    }
+</script>
+```
+
+---
+
+## **📌 2. 부모 페이지에서 값 받기**
+부모 페이지에서 `postMessage()`를 받아서 `userid name` 형태로 표시합니다.
+
+```html
+<script>
+    window.addEventListener("message", function(event) {
+        console.log("받은 값:", event.data);
+        document.getElementById("selectedUser").innerText = "선택된 유저: " + event.data;
+    });
+</script>
+
+<p id="selectedUser">선택된 유저 없음</p>
+```
+
+---
+
+## **📌 3. 동작 방식**
+1. `h:dataTable`에서 유저 리스트 출력  
+2. **라디오 버튼 클릭 시 해당 행의 데이터 저장 (`selectUser()`)**  
+3. "선택" 버튼 클릭 시 **부모 페이지로 `userid name` 형식으로 값 전달**  
+4. **현재 창 닫기 (`window.close()`)**  
+5. **부모 페이지에서 `userid name` 형식으로 값 표시**  
+
+✅ **이 방식으로 원하는 형식대로 데이터를 부모 페이지에 보낼 수 있습니다!**
