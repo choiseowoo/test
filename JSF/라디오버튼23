@@ -1,0 +1,86 @@
+`itemValue="#{user.id}/#{user.name}/#{user.groupcode}"` 방식도 가능합니다!  
+다만, **JSF에서는 `itemValue`에 복합 데이터를 넣을 때 문자열로 변환되므로**, 이를 JavaScript에서 파싱해서 사용할 수 있습니다.  
+
+---
+
+## **📌 1. XHTML 코드 (JSF)**  
+JSF의 `<f:selectItem>`에 **userid, name, groupcode, groupname을 포함**한 문자열을 설정합니다.  
+
+```xml
+<h:form id="userForm">
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <!-- 라디오 버튼 (값을 '/'로 구분하여 하나의 문자열로 전달) -->
+            <h:selectOneRadio id="userRadio">
+                <f:selectItem itemValue="#{user.id}/#{user.name}/#{user.groupcode}/#{user.groupname}" itemLabel="" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.name}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.groupcode}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.groupname}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.id}" />
+        </h:column>
+    </h:dataTable>
+
+    <!-- 선택 버튼 -->
+    <h:commandButton value="선택" type="button" onclick="sendToParent()" />
+</h:form>
+
+<script>
+    function sendToParent() {
+        // 선택된 라디오 버튼 가져오기
+        let selectedRadio = document.querySelector("input[name='userForm:userRadio']:checked");
+        
+        if (selectedRadio) {
+            let selectedValue = selectedRadio.value; // "userid/name/groupcode/groupname"
+            let values = selectedValue.split("/");  // '/' 기준으로 데이터 분리
+
+            if (values.length === 4) {
+                let userid = values[0];
+                let name = values[1];
+
+                let formattedValue = `${userid} ${name}`; // "userid name" 형식
+                window.opener.postMessage(formattedValue, "*"); // 부모 창으로 값 전달
+                window.close(); // 현재 창 닫기
+            }
+        } else {
+            alert("유저를 선택해주세요.");
+        }
+    }
+</script>
+```
+
+---
+
+## **📌 2. 부모 페이지에서 값 받기**
+부모 페이지에서 **`userid name` 형식으로 값 표시**합니다.  
+
+```html
+<script>
+    window.addEventListener("message", function(event) {
+        console.log("받은 값:", event.data);
+        document.getElementById("selectedUser").innerText = "선택된 유저: " + event.data;
+    });
+</script>
+
+<p id="selectedUser">선택된 유저 없음</p>
+```
+
+---
+
+## **📌 3. 동작 방식**
+1. `h:dataTable`에서 유저 정보를 출력  
+2. `h:selectOneRadio`의 `itemValue`에 `"userid/name/groupcode/groupname"` 형식의 문자열 저장  
+3. JavaScript에서 선택된 값을 가져와 `/`로 분리  
+4. **`userid name` 형식으로 부모 페이지에 값 전달**  
+5. **현재 창 닫기 (`window.close()`)**  
+6. **부모 페이지에서 선택된 유저 ID + 이름 출력**  
+
+✅ **JSF의 `itemValue`에 여러 값을 넣고 JavaScript에서 가공하는 방식으로, 원하는 데이터를 그대로 전달할 수 있습니다!**
