@@ -1,0 +1,196 @@
+JSF + MyBatis를 사용하여 **검색 조건(풀다운 1개, InputText 3개)을 활용한 검색 기능과 페이징(맨앞이동, 앞이동, 이전이동, 맨뒤이동)을 구현하는 방법**을 정리해 보겠습니다.  
+
+---
+
+## ✅ **1. 기본 요구사항**
+1. **검색 조건**  
+   - 풀다운(예: `organization`)  
+   - InputText 3개 (예: `userName`, `userCode`, `userEmail`)  
+2. **검색 결과**  
+   - 조건이 없으면 **전체 리스트** 출력  
+   - 조건이 있으면 **필터링된 데이터** 출력  
+3. **페이징 기능**  
+   - **맨앞 이동 (`<<`)**  
+   - **앞으로 이동 (`<`)**  
+   - **이전 이동 (`>`)**  
+   - **맨뒤 이동 (`>>`)**  
+
+---
+
+## ✅ **2. XHTML 구현 (`search.xhtml`)**
+JSF에서 `h:dataTable`을 사용하여 검색 결과와 페이징을 처리합니다.
+
+```xhtml
+<h:form id="searchForm">
+    <!-- 검색 조건 -->
+    <h:panelGrid columns="4">
+        <h:outputLabel for="organization" value="조직: " />
+        <h:selectOneMenu id="organization" value="#{userBean.organization}">
+            <f:selectItem itemLabel="전체" itemValue="" />
+            <f:selectItems value="#{userBean.organizationList}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="userName" value="이름: " />
+        <h:inputText id="userName" value="#{userBean.userName}" />
+
+        <h:outputLabel for="userCode" value="코드: " />
+        <h:inputText id="userCode" value="#{userBean.userCode}" />
+
+        <h:outputLabel for="userEmail" value="이메일: " />
+        <h:inputText id="userEmail" value="#{userBean.userEmail}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" update="userTable, paginationPanel" />
+    </h:panelGrid>
+
+    <!-- 검색 결과 테이블 -->
+    <h:dataTable id="userTable" value="#{userBean.userList}" var="user" border="1">
+        <h:column><f:facet name="header">이름</f:facet> #{user.name} </h:column>
+        <h:column><f:facet name="header">코드</f:facet> #{user.code} </h:column>
+        <h:column><f:facet name="header">이메일</f:facet> #{user.email} </h:column>
+    </h:dataTable>
+
+    <!-- 페이징 컨트롤 -->
+    <h:panelGroup id="paginationPanel">
+        <h:commandButton value="<<"
+                         action="#{userBean.goToFirstPage}"
+                         disabled="#{userBean.currentPage == 1}" 
+                         update="userTable, paginationPanel" />
+
+        <h:commandButton value="<"
+                         action="#{userBean.previousPage}"
+                         disabled="#{userBean.currentPage == 1}" 
+                         update="userTable, paginationPanel" />
+
+        <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+
+        <h:commandButton value=">"
+                         action="#{userBean.nextPage}"
+                         disabled="#{userBean.currentPage == userBean.totalPages}" 
+                         update="userTable, paginationPanel" />
+
+        <h:commandButton value=">>"
+                         action="#{userBean.goToLastPage}"
+                         disabled="#{userBean.currentPage == userBean.totalPages}" 
+                         update="userTable, paginationPanel" />
+    </h:panelGroup>
+</h:form>
+```
+
+---
+
+## ✅ **3. Java Bean (`UserBean.java`)**
+**페이징 로직과 MyBatis 검색 쿼리 실행**
+
+```java
+import jakarta.inject.Named;
+import jakarta.enterprise.context.SessionScoped;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String organization;
+    private String userName;
+    private String userCode;
+    private String userEmail;
+    private List<User> userList;
+
+    // 페이징 변수
+    private int currentPage = 1;
+    private int pageSize = 10;  // 한 페이지에 보여줄 개수
+    private int totalPages;
+
+    // DAO 객체 (MyBatis)
+    private UserDAO userDAO = new UserDAO();
+
+    public void searchUsers() {
+        Map<String, Object> params = new HashMap<>();
+        params.put("organization", organization);
+        params.put("userName", userName);
+        params.put("userCode", userCode);
+        params.put("userEmail", userEmail);
+
+        int totalRecords = userDAO.countUsers(params);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+
+        userList = userDAO.getUsers(params, (currentPage - 1) * pageSize, pageSize);
+    }
+
+    // 페이징 기능 구현
+    public void goToFirstPage() {
+        currentPage = 1;
+        searchUsers();
+    }
+
+    public void previousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            searchUsers();
+        }
+    }
+
+    public void nextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            searchUsers();
+        }
+    }
+
+    public void goToLastPage() {
+        currentPage = totalPages;
+        searchUsers();
+    }
+
+    // Getter/Setter 생략
+}
+```
+
+---
+
+## ✅ **4. MyBatis Mapper (`UserMapper.xml`)**
+MyBatis를 사용하여 **페이징 처리된 검색 쿼리** 실행
+
+```xml
+<select id="countUsers" parameterType="map" resultType="int">
+    SELECT COUNT(*) 
+    FROM users 
+    WHERE 
+        (#{organization} IS NULL OR organization = #{organization}) AND
+        (#{userName} IS NULL OR name LIKE CONCAT('%', #{userName}, '%')) AND
+        (#{userCode} IS NULL OR code LIKE CONCAT('%', #{userCode}, '%')) AND
+        (#{userEmail} IS NULL OR email LIKE CONCAT('%', #{userEmail}, '%'))
+</select>
+
+<select id="getUsers" parameterType="map" resultType="User">
+    SELECT * 
+    FROM users 
+    WHERE 
+        (#{organization} IS NULL OR organization = #{organization}) AND
+        (#{userName} IS NULL OR name LIKE CONCAT('%', #{userName}, '%')) AND
+        (#{userCode} IS NULL OR code LIKE CONCAT('%', #{userCode}, '%')) AND
+        (#{userEmail} IS NULL OR email LIKE CONCAT('%', #{userEmail}, '%'))
+    LIMIT #{offset}, #{limit}
+</select>
+```
+
+---
+
+## ✅ **5. 결론**
+### **✅ 검색 기능**
+- 검색 조건을 입력하지 않으면 **전체 데이터를 조회**
+- 조건 입력 시, 해당 조건에 맞는 데이터만 조회
+
+### **✅ 페이징 기능**
+- **맨앞 이동 (`<<`)** → 첫 번째 페이지로 이동  
+- **앞으로 이동 (`<`)** → 이전 페이지로 이동  
+- **이전 이동 (`>`)** → 다음 페이지로 이동  
+- **맨뒤 이동 (`>>`)** → 마지막 페이지로 이동  
+
+✔️ **`h:dataTable`의 데이터를 MyBatis에서 페이징하여 불러오기 때문에 성능 최적화 가능**  
+✔️ **JSF의 `h:commandButton`으로 Ajax 없이 간편하게 페이징 구현**  
+✔️ **MyBatis에서 `LIMIT #{offset}, #{limit}`을 활용하여 효율적으로 데이터 조회**  
+
+이제 **JSF + MyBatis 기반의 검색 및 페이징이 정상적으로 동작할 것**입니다! 🚀
