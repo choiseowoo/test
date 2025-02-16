@@ -1,0 +1,165 @@
+**페이징 처리**는 대개 데이터의 양이 많을 때 사용자에게 더 나은 경험을 제공하기 위해 사용됩니다. JSF와 MyBatis를 이용한 페이징 처리는 **검색된 결과**를 페이지 단위로 나누어 표시하는 방식입니다. 검색 결과에서 **한 번에 표시할 레코드 수**와 **현재 페이지 번호**를 기반으로 데이터베이스에서 필요한 데이터만 가져오도록 합니다.
+
+### **페이징 처리 구현**
+
+1. **페이지 단위로 데이터를 가져오기**  
+   MyBatis 쿼리에서 **`LIMIT`** 또는 **`OFFSET`**을 사용하여 데이터를 페이지 단위로 가져옵니다.
+
+2. **현재 페이지와 페이지 크기 관리**  
+   현재 페이지 번호와 한 페이지에 표시할 레코드 수를 관리하여, 그에 맞는 데이터를 가져옵니다.
+
+3. **페이징 버튼 구현**  
+   페이지 이동(맨 앞, 이전, 다음, 맨 뒤) 버튼을 통해 현재 페이지를 변경하고, 새로운 데이터를 로드합니다.
+
+### **1. MyBatis Mapper 쿼리**
+`UserMapper.xml`에서 **페이징 쿼리**를 작성합니다. 예를 들어, 10개의 레코드를 한 페이지에 표시한다고 가정할 경우:
+
+```xml
+<select id="searchUsers" resultType="User" parameterType="map">
+    SELECT *
+    FROM users
+    WHERE org_name LIKE CONCAT('%', #{searchOrgName}, '%')
+    AND user_name LIKE CONCAT('%', #{searchUserName}, '%')
+    AND user_english_name LIKE CONCAT('%', #{searchUserEnglishName}, '%')
+    AND org_code LIKE CONCAT('%', #{searchOrgCode}, '%')
+    LIMIT #{offset}, #{pageSize}
+</select>
+
+<select id="countUsers" resultType="int" parameterType="map">
+    SELECT COUNT(*) FROM users
+    WHERE org_name LIKE CONCAT('%', #{searchOrgName}, '%')
+    AND user_name LIKE CONCAT('%', #{searchUserName}, '%')
+    AND user_english_name LIKE CONCAT('%', #{searchUserEnglishName}, '%')
+    AND org_code LIKE CONCAT('%', #{searchOrgCode}, '%')
+</select>
+```
+
+- **`searchUsers`**: 조건에 맞는 사용자 데이터를 검색하는 쿼리입니다.
+- **`countUsers`**: 전체 데이터의 총 개수를 구하는 쿼리입니다.
+
+### **2. `UserSearchBean.java` (백엔드)**
+
+페이징 처리를 위한 변수를 추가하고, 데이터 로드와 페이지 전환 기능을 구현합니다.
+
+```java
+import jakarta.faces.application.FacesMessage;
+import jakarta.faces.bean.ManagedBean;
+import jakarta.faces.bean.ViewScoped;
+import jakarta.faces.context.FacesContext;
+import java.io.Serializable;
+import java.util.List;
+
+@ManagedBean
+@ViewScoped
+public class UserSearchBean implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private List<User> searchResults; // 검색 결과
+    private String searchOrgName, searchUserName, searchUserEnglishName, searchOrgCode;
+    private int currentPage = 1; // 현재 페이지
+    private int pageSize = 10; // 페이지당 레코드 수
+    private int totalRecords; // 전체 레코드 수
+    private int totalPages; // 전체 페이지 수
+
+    private UserMapper userMapper = MyBatisUtil.getSqlSessionFactory().openSession().getMapper(UserMapper.class);
+
+    // 검색 실행
+    public void searchUsers() {
+        int offset = (currentPage - 1) * pageSize;
+
+        // 검색 쿼리 실행
+        searchResults = userMapper.searchUsers(searchOrgName, searchUserName, searchUserEnglishName, searchOrgCode, offset, pageSize);
+
+        // 전체 레코드 수 구하기
+        totalRecords = userMapper.countUsers(searchOrgName, searchUserName, searchUserEnglishName, searchOrgCode);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+    }
+
+    // 페이지 전환
+    public void goToPage(int page) {
+        if (page < 1 || page > totalPages) return; // 유효한 페이지 범위 체크
+        currentPage = page;
+        searchUsers(); // 새 페이지로 데이터 로드
+    }
+
+    // Getter & Setter
+    public List<User> getSearchResults() { return searchResults; }
+    public void setSearchResults(List<User> searchResults) { this.searchResults = searchResults; }
+    public String getSearchOrgName() { return searchOrgName; }
+    public void setSearchOrgName(String searchOrgName) { this.searchOrgName = searchOrgName; }
+    public String getSearchUserName() { return searchUserName; }
+    public void setSearchUserName(String searchUserName) { this.searchUserName = searchUserName; }
+    public String getSearchUserEnglishName() { return searchUserEnglishName; }
+    public void setSearchUserEnglishName(String searchUserEnglishName) { this.searchUserEnglishName = searchUserEnglishName; }
+    public String getSearchOrgCode() { return searchOrgCode; }
+    public void setSearchOrgCode(String searchOrgCode) { this.searchOrgCode = searchOrgCode; }
+    public int getCurrentPage() { return currentPage; }
+    public void setCurrentPage(int currentPage) { this.currentPage = currentPage; }
+    public int getTotalPages() { return totalPages; }
+    public void setTotalPages(int totalPages) { this.totalPages = totalPages; }
+}
+```
+
+### **3. `userSearch.xhtml` (검색 페이지)**
+
+페이징 버튼과 데이터 테이블을 구성합니다.
+
+```xhtml
+<h:form id="userSearchForm">
+    <h:panelGrid columns="4">
+        <h:outputLabel for="orgName" value="조직명" />
+        <h:inputText id="orgName" value="#{userSearchBean.searchOrgName}" />
+        
+        <h:outputLabel for="userName" value="유저명" />
+        <h:inputText id="userName" value="#{userSearchBean.searchUserName}" />
+        
+        <h:outputLabel for="userEnglishName" value="유저영어명" />
+        <h:inputText id="userEnglishName" value="#{userSearchBean.searchUserEnglishName}" />
+        
+        <h:outputLabel for="orgCode" value="조직코드" />
+        <h:inputText id="orgCode" value="#{userSearchBean.searchOrgCode}" />
+    </h:panelGrid>
+
+    <h:commandButton value="검색" action="#{userSearchBean.searchUsers}" />
+    
+    <h:dataTable value="#{userSearchBean.searchResults}" var="user">
+        <h:column>
+            <f:facet name="header">유저명</f:facet>
+            #{user.userName}
+        </h:column>
+        <h:column>
+            <f:facet name="header">유저영어명</f:facet>
+            #{user.userEnglishName}
+        </h:column>
+        <h:column>
+            <f:facet name="header">조직코드</f:facet>
+            #{user.orgCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">조직명</f:facet>
+            #{user.orgName}
+        </h:column>
+    </h:dataTable>
+
+    <h:panelGrid columns="4">
+        <h:commandButton value="맨 앞" action="#{userSearchBean.goToPage(1)}" />
+        <h:commandButton value="이전" action="#{userSearchBean.goToPage(userSearchBean.currentPage - 1)}" />
+        <h:outputText value="페이지 #{userSearchBean.currentPage} / #{userSearchBean.totalPages}" />
+        <h:commandButton value="다음" action="#{userSearchBean.goToPage(userSearchBean.currentPage + 1)}" />
+        <h:commandButton value="맨 뒤" action="#{userSearchBean.goToPage(userSearchBean.totalPages)}" />
+    </h:panelGrid>
+</h:form>
+```
+
+### **설명:**
+1. **`searchUsers()`**: 검색 버튼 클릭 시 조건에 맞는 사용자 데이터를 가져옵니다. MyBatis에서 제공하는 **`LIMIT`** 및 **`OFFSET`**을 이용해 페이징을 처리합니다.
+2. **`goToPage()`**: 페이지 번호에 맞게 데이터를 가져오도록 합니다. 각 페이지 버튼 클릭 시 해당 페이지로 이동하고, 새로운 데이터를 로드합니다.
+3. **`h:dataTable`**: 검색 결과를 데이터 테이블로 표시합니다. 페이지 당 `10`개의 레코드만 표시되며, 나머지 레코드는 페이징 버튼을 통해 확인할 수 있습니다.
+
+### **페이징 버튼 동작:**
+- **맨 앞**: 페이지 1로 이동
+- **이전**: 현재 페이지에서 한 페이지 뒤로 이동
+- **다음**: 현재 페이지에서 한 페이지 앞으로 이동
+- **맨 뒤**: 마지막 페이지로 이동
+
+이 방식으로 페이징을 구현하면, 사용자가 **검색 조건에 맞는 데이터를 페이지별로 탐색**할 수 있게 됩니다.
