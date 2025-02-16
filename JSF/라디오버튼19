@@ -1,0 +1,126 @@
+네, **`f:selectOneRadio`와 `f:selectItem`을 사용하면서 JavaScript로 값을 가져와서 부모 페이지로 전달하는 것**이 가능합니다.  
+
+JSF의 `<h:selectOneRadio>`는 일반적인 HTML `<input type="radio">` 태그와 구조가 약간 다르지만, JavaScript로 값을 가져오는 방식은 거의 동일합니다.
+
+---
+
+## **1. 기본적인 `f:selectOneRadio` + JavaScript로 값 가져오기**  
+먼저 **JSF에서 라디오 버튼을 생성하는 방법**입니다.
+
+### **📌 JSF 코드 (XHTML)**
+```xml
+<h:form id="userForm">
+    <h:selectOneRadio id="userRadio" value="#{userBean.selectedUser}">
+        <f:selectItems value="#{userBean.userList}" var="user" itemValue="#{user.id}" itemLabel="#{user.name}" />
+    </h:selectOneRadio>
+
+    <h:commandButton value="선택" type="button" onclick="getSelectedUser()" />
+</h:form>
+
+<script>
+    function getSelectedUser() {
+        var radios = document.getElementById("userForm:userRadio").getElementsByTagName("input");
+        var selectedValue = "";
+
+        for (var i = 0; i < radios.length; i++) {
+            if (radios[i].type === "radio" && radios[i].checked) {
+                selectedValue = radios[i].value;
+                break;
+            }
+        }
+
+        if (selectedValue) {
+            alert("선택된 유저: " + selectedValue);
+        } else {
+            alert("선택된 유저가 없습니다.");
+        }
+    }
+</script>
+```
+
+---
+
+## **2. 부모 페이지로 값 전달 (팝업 사용)**
+만약 **팝업 창에서 부모 페이지로 값을 넘기려면** `window.opener`를 사용할 수 있습니다.
+
+### **📌 자식 페이지 (팝업 - `userSelection.xhtml`)**
+```xml
+<h:form id="userForm">
+    <h:selectOneRadio id="userRadio" value="#{userBean.selectedUser}">
+        <f:selectItems value="#{userBean.userList}" var="user" itemValue="#{user.id}" itemLabel="#{user.name}" />
+    </h:selectOneRadio>
+
+    <h:commandButton value="확인" type="button" onclick="sendToParent()" />
+</h:form>
+
+<script>
+    function sendToParent() {
+        var radios = document.getElementById("userForm:userRadio").getElementsByTagName("input");
+        var selectedValue = "";
+
+        for (var i = 0; i < radios.length; i++) {
+            if (radios[i].type === "radio" && radios[i].checked) {
+                selectedValue = radios[i].value;
+                break;
+            }
+        }
+
+        if (selectedValue) {
+            if (window.opener) {
+                window.opener.document.getElementById("selectedUser").value = selectedValue;
+                window.close();
+            } else {
+                alert("부모 창이 없습니다.");
+            }
+        } else {
+            alert("선택된 유저가 없습니다.");
+        }
+    }
+</script>
+```
+
+### **📌 부모 페이지 (`main.xhtml`)**
+```xml
+<h:form>
+    <h:outputLabel for="selectedUser" value="선택된 유저: " />
+    <h:inputText id="selectedUser" readonly="true" />
+
+    <h:commandButton value="유저 선택" type="button" onclick="openPopup()" />
+
+    <script>
+        function openPopup() {
+            window.open("userSelection.xhtml", "popup", "width=400,height=300");
+        }
+    </script>
+</h:form>
+```
+
+---
+
+## **3. `querySelector`를 사용하여 더 간단하게 가져오기**
+`getElementsByTagName("input")` 대신 `document.querySelector("input[name='userForm:userRadio']:checked")`를 사용할 수도 있습니다.
+
+```xml
+<script>
+    function getSelectedUser() {
+        var selectedInput = document.querySelector("input[name='userForm:userRadio']:checked");
+        if (selectedInput) {
+            alert("선택된 유저: " + selectedInput.value);
+        } else {
+            alert("선택된 유저가 없습니다.");
+        }
+    }
+</script>
+```
+
+---
+
+## **📌 결론**
+| 방법 | 설명 |
+|------|------|
+| `getElementsByTagName("input")` | `<h:selectOneRadio>` 내부의 라디오 버튼 값을 가져올 때 사용 |
+| `querySelector("input[name='userForm:userRadio']:checked")` | 더 간단한 방식으로 선택된 값만 가져오기 |
+| `window.opener` | 팝업 창에서 부모 창으로 값 전달 |
+
+JSF에서 `f:selectOneRadio`와 `f:selectItems`를 사용할 때 **JavaScript로 값을 가져오는 것**은 충분히 가능합니다.  
+추가로 궁금한 점 있으면 알려주세요!
