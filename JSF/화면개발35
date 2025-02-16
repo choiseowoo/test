@@ -1,0 +1,94 @@
+네, **라디오 버튼은 JavaScript로 구현되며, 데이터 테이블에서 하나의 라디오 버튼만 선택 가능하고, 선택된 값이 부모 페이지로 전달되는 방식**입니다.  
+
+---
+
+## **🔹 1. 라디오 버튼을 JavaScript로 구현하는 이유**
+JSF에서 `<h:selectOneRadio>`를 사용하면 자동으로 하나만 선택되도록 동작하지만, **데이터 테이블 내에서 선택을 더 유연하게 제어하려면 JavaScript를 사용**하는 것이 일반적입니다.  
+
+### **✅ JavaScript로 라디오 버튼 선택 구현**
+- 데이터 테이블에서 하나의 행(row)만 선택 가능하도록 JavaScript로 제어  
+- 클릭 시 해당 행이 강조되도록 스타일 변경 가능  
+- 선택된 값을 부모 페이지로 넘김  
+
+---
+
+## **🔹 2. JSF + JavaScript로 라디오 버튼 구현**
+### **(1) 데이터 테이블 내 라디오 버튼 + JavaScript 추가**
+```xhtml
+<h:dataTable id="resultsTable" value="#{userSearchBean.searchResults}" var="user">
+    <h:column>
+        <!-- 라디오 버튼을 JavaScript로 컨트롤 -->
+        <h:selectOneRadio id="radio" onclick="selectUser(this)" styleClass="radio-button">
+            <f:selectItem itemValue="#{user}" 
+                          itemLabel="#{user.userName} (#{user.userEnglishName}, #{user.orgCode}, #{user.orgName})" />
+        </h:selectOneRadio>
+    </h:column>
+    <h:column>
+        <h:outputText value="#{user.userName}" />
+    </h:column>
+    <h:column>
+        <h:outputText value="#{user.userEnglishName}" />
+    </h:column>
+    <h:column>
+        <h:outputText value="#{user.orgCode}" />
+    </h:column>
+    <h:column>
+        <h:outputText value="#{user.orgName}" />
+    </h:column>
+</h:dataTable>
+
+<!-- 선택 버튼 -->
+<h:commandButton value="선택" action="#{userSearchBean.selectUser}" onclick="sendSelectedUser()" />
+```
+
+---
+
+### **(2) JavaScript 코드 (단일 선택 강제 + 부모 페이지로 값 전달)**
+```javascript
+function selectUser(radio) {
+    // 모든 라디오 버튼을 가져와서 선택 해제
+    var radios = document.querySelectorAll(".radio-button input[type='radio']");
+    radios.forEach(function(r) {
+        r.checked = false;
+    });
+
+    // 현재 클릭한 라디오 버튼만 선택
+    radio.querySelector("input[type='radio']").checked = true;
+}
+
+function sendSelectedUser() {
+    var selectedRadio = document.querySelector(".radio-button input[type='radio']:checked");
+    if (!selectedRadio) {
+        alert("선택된 사용자가 없습니다.");
+        return false;
+    }
+
+    // 선택된 유저 정보 가져오기
+    var selectedUser = selectedRadio.value;
+
+    // 부모 창으로 값 전달 (예제: opener 사용)
+    if (window.opener) {
+        window.opener.document.getElementById("selectedUserLabel").innerText = selectedUser;
+        window.close();
+    }
+}
+```
+
+---
+
+## **🔹 3. 부모 페이지에서 값 받기**
+부모 페이지에서는 `window.opener`를 이용해 검색 페이지에서 선택된 데이터를 받아 표시합니다.
+
+```xhtml
+<h:outputLabel value="선택된 유저:" />
+<h:outputText id="selectedUserLabel" value="" />
+```
+
+---
+
+## **📌 최종 정리**
+✔ **라디오 버튼 선택은 JavaScript로 제어** (기존 선택 해제 후 새 선택 반영)  
+✔ **하나의 데이터만 선택 가능하도록 강제**  
+✔ **선택 버튼을 클릭하면 부모 페이지로 값 전달 후 검색 창 닫기**  
+
+이제 원하는 대로 **데이터 테이블에서 하나의 유저만 선택 가능하고, 부모 페이지로 값이 전달되는 동작**이 구현되었습니다! 🚀
