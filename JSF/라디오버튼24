@@ -1,0 +1,99 @@
+JSF의 XHTML 페이지에서 라디오 버튼을 사용하여 `id, name, code, email` 정보를 포함하고, JavaScript로 선택된 값을 부모 페이지로 전달하는 방법을 설명하겠습니다.  
+
+---
+
+### **1. XHTML (자식 페이지)**
+아래 코드는 `h:dataTable`을 사용하여 사용자 목록을 표시하며, 각 행의 `h:selectOneRadio` 버튼을 클릭할 수 있습니다.
+
+```xhtml
+<h:form id="userForm">
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <h:selectOneRadio id="radio" value="#{userBean.selectedUser}">
+                <f:selectItem itemValue="#{user.id},#{user.name},#{user.code},#{user.email}" itemLabel="선택" />
+                <f:ajax event="click" render="hiddenSelectedValue" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>#{user.name}</h:column>
+        <h:column>#{user.code}</h:column>
+        <h:column>#{user.email}</h:column>
+    </h:dataTable>
+
+    <!-- 선택된 값 저장 -->
+    <h:inputHidden id="hiddenSelectedValue" value="#{userBean.selectedUser}" />
+    
+    <h:commandButton value="선택" onclick="sendToParent(); return false;" />
+</h:form>
+```
+
+---
+
+### **2. JavaScript (부모 페이지로 데이터 전송)**
+선택된 라디오 버튼의 값을 가져와 `window.opener`를 통해 부모 페이지로 전달합니다.
+
+```javascript
+function sendToParent() {
+    let selectedValue = document.getElementById("userForm:hiddenSelectedValue").value;
+    
+    if (!selectedValue) {
+        alert("사용자를 선택하세요.");
+        return;
+    }
+
+    // 값 분할 (id, name, code, email)
+    let [id, name, code, email] = selectedValue.split(",");
+
+    // 부모 페이지에 값 전달
+    if (window.opener && !window.opener.closed) {
+        window.opener.document.getElementById("parentUserId").value = id;
+        window.opener.document.getElementById("parentUserName").value = name;
+        window.opener.document.getElementById("parentUserCode").value = code;
+        window.opener.document.getElementById("parentUserEmail").value = email;
+    }
+
+    // 창 닫기
+    window.close();
+}
+```
+
+---
+
+### **3. 부모 페이지 (예시)**
+부모 페이지에서 데이터를 받을 필드를 준비합니다.
+
+```xhtml
+<h:form>
+    <h:outputLabel for="parentUserId" value="User ID: " />
+    <h:inputText id="parentUserId" readonly="true" />
+
+    <h:outputLabel for="parentUserName" value="Name: " />
+    <h:inputText id="parentUserName" readonly="true" />
+
+    <h:outputLabel for="parentUserCode" value="Code: " />
+    <h:inputText id="parentUserCode" readonly="true" />
+
+    <h:outputLabel for="parentUserEmail" value="Email: " />
+    <h:inputText id="parentUserEmail" readonly="true" />
+
+    <h:commandButton value="사용자 선택" onclick="window.open('userSearch.xhtml', '_blank', 'width=800,height=600'); return false;" />
+</h:form>
+```
+
+---
+
+### **설명**
+1. **자식 페이지**
+   - `h:selectOneRadio`에서 `itemValue`에 `id, name, code, email`을 저장.
+   - 선택된 값은 `hiddenSelectedValue`에 저장됨.
+   - `선택` 버튼 클릭 시 `sendToParent()`가 실행됨.
+
+2. **JavaScript (자식 페이지)**
+   - `hiddenSelectedValue` 값을 가져와 `,`로 분할.
+   - 부모 페이지의 `input` 요소에 값 설정.
+   - 부모 페이지가 열려 있다면 값을 전달한 후 창을 닫음.
+
+3. **부모 페이지**
+   - 사용자 선택 창을 띄울 버튼 추가.
+   - 선택된 값을 받을 `inputText` 필드 배치.
+
+이렇게 하면 자식 페이지에서 선택한 사용자의 정보가 부모 페이지로 전달됩니다.
