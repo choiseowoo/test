@@ -1,0 +1,211 @@
+유저권한 페이지를 JSF와 MyBatis로 구현하려면 다음과 같은 방식으로 구성할 수 있습니다.
+
+### 1. **JSF 페이지 구성**
+#### **부모 페이지 (UserAuth.xhtml)**
+```xhtml
+<h:form id="userForm">
+    <h:panelGrid columns="3">
+        <h:outputLabel value="유저ID:" />
+        <h:outputText id="userId" value="#{userAuthBean.selectedUserId}" />
+        
+        <h:outputLabel value="유저명:" />
+        <h:outputText id="userName" value="#{userAuthBean.selectedUserName}" />
+        
+        <h:commandButton value="검색" action="searchPage" />
+        <h:commandButton value="클리어" action="#{userAuthBean.clearSelection}" />
+    </h:panelGrid>
+    
+    <h:commandButton value="등록" action="#{userAuthBean.registerUser}" />
+</h:form>
+```
+
+#### **검색 페이지 (UserSearch.xhtml)**
+```xhtml
+<h:form id="searchForm">
+    <h:panelGrid columns="2">
+        <h:outputLabel value="유저조직명:" />
+        <h:selectOneMenu value="#{userSearchBean.orgName}">
+            <f:selectItems value="#{userSearchBean.organizationList}" var="org" itemValue="#{org}" itemLabel="#{org}" />
+        </h:selectOneMenu>
+        
+        <h:outputLabel value="유저명:" />
+        <h:inputText value="#{userSearchBean.userName}" />
+        
+        <h:outputLabel value="유저영어명:" />
+        <h:inputText value="#{userSearchBean.userEnglishName}" />
+        
+        <h:outputLabel value="조직코드:" />
+        <h:inputText value="#{userSearchBean.orgCode}" />
+    </h:panelGrid>
+
+    <h:commandButton value="검색" action="#{userSearchBean.searchUsers}" />
+    <h:commandButton value="클리어" action="#{userSearchBean.clearSearch}" />
+
+    <h:dataTable value="#{userSearchBean.searchResults}" var="user">
+        <h:column>
+            <h:selectOneRadio value="#{userSearchBean.selectedUser}">
+                <f:selectItem itemValue="#{user}" itemLabel="#{user.userName} (#{user.userEnglishName}, #{user.orgCode}, #{user.orgName})" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.userName}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.userEnglishName}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.orgCode}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.orgName}" />
+        </h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" action="#{userSearchBean.selectUser}" />
+</h:form>
+```
+
+### 2. **백엔드 (JSF Bean + MyBatis)**
+#### **UserAuthBean.java (부모 페이지)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserAuthBean {
+    private String selectedUserId;
+    private String selectedUserName;
+
+    public void setSelectedUser(String userId, String userName) {
+        this.selectedUserId = userId;
+        this.selectedUserName = userName;
+    }
+
+    public void clearSelection() {
+        selectedUserId = "";
+        selectedUserName = "";
+    }
+
+    public void registerUser() {
+        // 등록 로직
+    }
+
+    // Getters & Setters
+}
+```
+
+#### **UserSearchBean.java (검색 페이지)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserSearchBean {
+    private String orgName;
+    private String userName;
+    private String userEnglishName;
+    private String orgCode;
+    private List<User> searchResults;
+    private User selectedUser;
+
+    @EJB
+    private UserService userService;
+
+    public void searchUsers() {
+        searchResults = userService.findUsers(orgName, userName, userEnglishName, orgCode);
+    }
+
+    public void clearSearch() {
+        orgName = "";
+        userName = "";
+        userEnglishName = "";
+        orgCode = "";
+        searchResults = new ArrayList<>();
+    }
+
+    public void selectUser() {
+        FacesContext.getCurrentInstance().getExternalContext().getFlash().put("selectedUser", selectedUser);
+    }
+
+    // Getters & Setters
+}
+```
+
+#### **UserMapper.xml (MyBatis)**
+```xml
+<select id="findUsers" resultType="User">
+    SELECT user_id, user_name, user_english_name, org_code, org_name
+    FROM users
+    WHERE (#{orgName} IS NULL OR org_name = #{orgName})
+    AND (#{userName} IS NULL OR user_name LIKE CONCAT('%', #{userName}, '%'))
+    AND (#{userEnglishName} IS NULL OR user_english_name LIKE CONCAT('%', #{userEnglishName}, '%'))
+    AND (#{orgCode} IS NULL OR org_code = #{orgCode})
+</select>
+```
+
+#### **UserService.java**
+```java
+@Stateless
+public class UserService {
+    @Inject
+    private SqlSession sqlSession;
+
+    public List<User> findUsers(String orgName, String userName, String userEnglishName, String orgCode) {
+        return sqlSession.selectList("findUsers", Map.of(
+            "orgName", orgName,
+            "userName", userName,
+            "userEnglishName", userEnglishName,
+            "orgCode", orgCode
+        ));
+    }
+}
+```
+
+### 3. **JavaScript로 라디오 버튼 핸들링**
+```javascript
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll("input[type='radio']").forEach(radio => {
+        radio.addEventListener("change", function() {
+            document.getElementById("selectedUser").value = this.value;
+        });
+    });
+});
+```
+
+### 4. **페이징 기능 구현 (Java)**
+```java
+public class Pagination {
+    private int totalRecords;
+    private int pageSize = 10;
+    private int currentPage = 1;
+
+    public List<User> getPaginatedUsers() {
+        int startIndex = (currentPage - 1) * pageSize;
+        return userService.getUsersWithPagination(startIndex, pageSize);
+    }
+
+    public void nextPage() {
+        if (currentPage * pageSize < totalRecords) {
+            currentPage++;
+        }
+    }
+
+    public void prevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+        }
+    }
+
+    public void firstPage() {
+        currentPage = 1;
+    }
+
+    public void lastPage() {
+        currentPage = (int) Math.ceil((double) totalRecords / pageSize);
+    }
+}
+```
+
+### **결론**
+- JSF를 사용하여 UI를 구성하고, MyBatis를 통해 DB와 연동하여 검색 및 페이징을 구현.
+- JavaScript로 라디오 버튼 선택 기능을 처리.
+- Java로 페이징 기능 구현 (첫 페이지, 이전 페이지, 다음 페이지, 마지막 페이지).
+- 검색된 데이터를 부모 페이지로 전송하여 사용자가 선택한 유저를 반영.
+
+이 방식으로 개발하면 원하는 유저권한 페이지를 효과적으로 구축할 수 있습니다! 추가 수정이 필요하면 알려주세요.
