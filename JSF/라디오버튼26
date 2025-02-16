@@ -1,0 +1,78 @@
+지금 상황을 정리하면,  
+- **각 데이터(행)마다 하나의 라디오 버튼이 출력됨**  
+- **사용자는 하나의 데이터만 선택해야 함 (즉, 하나의 라디오 버튼만 선택 가능해야 함)**  
+- 하지만 **각 라디오 버튼이 개별 그룹으로 인식되어 여러 개 선택 가능함**  
+
+### **문제 원인**  
+JSF의 `<h:selectOneRadio>`는 **기본적으로 그룹을 자동으로 인식**하지만, `<h:dataTable>` 내부에서 사용하면 **각 행이 개별 그룹처럼 동작**할 수 있습니다.  
+즉, **각 행의 라디오 버튼들이 같은 그룹으로 묶이지 않아 여러 개가 선택되는 문제**가 발생하는 것입니다.  
+
+---
+
+### **해결 방법: 같은 `name`을 가지도록 설정**  
+JSF에서는 `h:selectOneRadio` 대신 **`h:selectOneMenu` 또는 수동으로 `h:radio`를 작성**하는 방법이 있습니다.  
+하지만 **JavaScript로 `name` 속성을 통일해주는 방법이 가장 간단합니다.**  
+
+#### ✅ **1. JavaScript로 같은 `name`을 설정하여 해결**
+```javascript
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll("input[type='radio']").forEach((radio, index) => {
+        radio.name = "userSelect"; // 같은 name 속성을 부여하여 하나만 선택되도록 설정
+    });
+});
+```
+**✔️ 적용 효과**  
+- 모든 라디오 버튼이 **같은 `name="userSelect"`**을 가지므로 하나만 선택됨.  
+- 기존 JSF의 `h:dataTable` 내부 코드 변경 없이 해결 가능.  
+
+---
+
+#### ✅ **2. `h:selectOneRadio` 대신 `h:selectOneMenu` 사용 (JSF에서 관리)**
+이 방법은 **JSF가 자동으로 단일 선택을 보장**하는 방식입니다.  
+
+```xhtml
+<h:selectOneMenu value="#{userBean.selectedUser}">
+    <f:selectItems value="#{userBean.userList}" var="user"
+        itemValue="#{user.id}/#{user.name}/#{user.code}/#{user.email}" itemLabel="#{user.name}" />
+</h:selectOneMenu>
+```
+**✔️ 적용 효과**  
+- 라디오 버튼 대신 드롭다운으로 하나만 선택 가능.  
+- JSF가 자동으로 **단일 선택을 보장**해 줌.
+
+---
+
+#### ✅ **3. `h:selectOneRadio` 대신 수동으로 `h:radio` 사용**
+JSF `<h:selectOneRadio>` 대신 `<h:radio>`를 직접 설정하여 **같은 `name`을 강제 적용**할 수도 있습니다.  
+
+```xhtml
+<h:form id="userForm">
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <input type="radio" name="userSelect"
+                value="#{user.id}/#{user.name}/#{user.code}/#{user.email}" />
+        </h:column>
+        <h:column>#{user.name}</h:column>
+        <h:column>#{user.code}</h:column>
+        <h:column>#{user.email}</h:column>
+    </h:dataTable>
+</h:form>
+```
+**✔️ 적용 효과**  
+- 모든 라디오 버튼이 같은 `name="userSelect"`를 가지므로 하나만 선택됨.  
+- `<h:selectOneRadio>`의 제약 없이 동작.
+
+---
+
+### **결론**
+1. **JSF `<h:selectOneRadio>` 사용 시**  
+   - **JavaScript로 `name="userSelect"` 속성을 통일**하는 것이 가장 간단한 해결책.
+   
+2. **JSF `<h:selectOneMenu>`를 사용하면**  
+   - 기본적으로 단일 선택만 가능하도록 처리됨.
+
+3. **JSF 없이 수동으로 `<input type="radio">`를 작성**  
+   - `name="userSelect"`를 명확히 지정하면 단일 선택 가능.
+
+❗ **추천 해결 방법: JavaScript로 `name` 속성을 통일 (`방법 1`)**  
+이 방법이 **기존 구조를 유지하면서 가장 간단하게 해결**할 수 있습니다.
