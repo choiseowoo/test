@@ -1,0 +1,97 @@
+JSF에서 일반 HTML 테이블 구조를 유지하면서 `<tr>`, `<td>`, `<th>`뿐만 아니라 `<div>`도 포함하는 형태로 변환할 수 있습니다.  
+
+### **변경된 검색 테이블 구조**
+```xml
+<h:form id="searchForm">
+    <!-- 검색 조건 -->
+    <table border="1">
+        <thead>
+            <tr>
+                <th colspan="4">검색 조건</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><label for="organization">조직:</label></td>
+                <td>
+                    <select id="organization" name="organization">
+                        <option value="">전체</option>
+                        <ui:repeat value="#{userBean.organizationList}" var="org">
+                            <option value="#{org}">#{org}</option>
+                        </ui:repeat>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td><label for="userName">이름:</label></td>
+                <td><input type="text" id="userName" name="userName" value="#{userBean.userName}" /></td>
+
+                <td><label for="userCode">코드:</label></td>
+                <td><input type="text" id="userCode" name="userCode" value="#{userBean.userCode}" /></td>
+            </tr>
+            <tr>
+                <td><label for="userEmail">이메일:</label></td>
+                <td colspan="3"><input type="text" id="userEmail" name="userEmail" value="#{userBean.userEmail}" /></td>
+            </tr>
+            <tr>
+                <td colspan="4">
+                    <div style="text-align: center;">
+                        <button type="submit" name="search">검색</button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- 검색 결과 -->
+    <table border="1">
+        <thead>
+            <tr>
+                <th>이름</th>
+                <th>코드</th>
+                <th>이메일</th>
+            </tr>
+        </thead>
+        <tbody>
+            <ui:repeat value="#{userBean.userList}" var="user">
+                <tr>
+                    <td>#{user.name}</td>
+                    <td>#{user.code}</td>
+                    <td>#{user.email}</td>
+                </tr>
+            </ui:repeat>
+        </tbody>
+    </table>
+
+    <!-- 페이징 -->
+    <div id="paginationPanel" style="text-align: center; margin-top: 10px;">
+        <table>
+            <tr>
+                <td><button type="submit" name="firstPage" value="<<" disabled="#{userBean.currentPage == 1}"><<</button></td>
+                <td><button type="submit" name="prevPage" value="<" disabled="#{userBean.currentPage == 1}"><</button></td>
+                <td><span>페이지 #{userBean.currentPage} / #{userBean.totalPages}</span></td>
+                <td><button type="submit" name="nextPage" value=">" disabled="#{userBean.currentPage == userBean.totalPages}">></button></td>
+                <td><button type="submit" name="lastPage" value=">>" disabled="#{userBean.currentPage == userBean.totalPages}">>></button></td>
+            </tr>
+        </table>
+    </div>
+</h:form>
+```
+
+---
+
+### **변경 사항**
+1. **검색 조건 테이블**
+   - `<table>` 내부에 `<thead>`로 제목을 추가.
+   - `<tbody>`에 `<tr>`, `<td>`로 검색 필드 배치.
+   - `<div>`을 `<td>` 안에 배치하여 가운데 정렬된 검색 버튼 추가.
+
+2. **검색 결과 테이블**
+   - `<thead>`에 `<th>`를 배치하여 컬럼명 표시.
+   - `<tbody>` 내부에 `<ui:repeat>` 사용.
+
+3. **페이징 구조**
+   - `<div>` 안에 `<table>`을 배치하여 버튼을 정렬.
+   - `<button>`을 사용하여 페이지 이동 버튼을 구현.
+
+이제 `<div>`, `<tr>`, `<td>` 등의 구조를 유지하면서도 JSF의 데이터 바인딩 기능을 활용할 수 있습니다.
