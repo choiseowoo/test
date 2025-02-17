@@ -1,0 +1,82 @@
+네, **JSF의 `<h:selectOneRadio>`는 JavaScript로 직접 값을 가져오기 어렵습니다.**  
+
+**이유:**  
+1. **JSF 내부 구조**: `<h:selectOneRadio>`는 실제로 **숨겨진 `<input type="hidden">` 필드를 사용**해서 선택된 값을 관리합니다.  
+2. **렌더링 방식**: JSF가 변환하는 HTML을 보면 **라디오 버튼들이 같은 `name`을 가지지 않거나, 자동으로 변환된 ID를 사용**하기 때문에  
+   일반적인 `document.querySelector("input[name='userForm:userRadio']:checked")` 방식으로 값을 가져올 수 없습니다.  
+3. **JavaScript 접근 불가능**: **JSF가 생성한 숨겨진 필드는 JavaScript에서 직접 값을 가져올 수 없음**.  
+
+---
+
+### **✅ 해결 방법 ①: 일반 `<input type="radio">` 사용 (추천)**
+가장 간단하고 확실한 방법은 **JSF의 `<h:selectOneRadio>`를 버리고 `<input type="radio">`를 직접 사용**하는 것입니다.  
+👉 **이렇게 하면 JavaScript에서 값을 바로 가져올 수 있습니다.**  
+
+```xml
+<h:form id="userForm">
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <!-- ✅ 일반 HTML 라디오 버튼 사용 -->
+            <input type="radio" name="userRadio" value="#{user.id}/#{user.name}" onclick="setSelectedUser(this)">
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.name}" />
+        </h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" type="button" onclick="sendToParent()" />
+</h:form>
+
+<script>
+    let selectedValue = "";
+
+    function setSelectedUser(radio) {
+        selectedValue = radio.value; // 선택된 라디오 버튼 값 저장
+    }
+
+    function sendToParent() {
+        if (selectedValue) {
+            window.opener.postMessage(selectedValue, "*"); // 부모 창에 값 전달
+            window.close(); // 창 닫기
+        } else {
+            alert("유저를 선택하세요.");
+        }
+    }
+</script>
+```
+
+---
+
+### **✅ 해결 방법 ②: JSF의 `h:selectOneRadio`에서 값 가져오는 꼼수 (비추천)**
+**완전한 해결책은 아니지만,**  
+JSF의 `<h:selectOneRadio>`가 내부적으로 생성하는 **숨겨진 `<input type="hidden">`의 값을 JavaScript로 읽어오는 방법도 있음**.  
+이 방식은 **비표준적인 방식**이라 **JSF 버전에 따라 다르게 동작할 수 있어 추천하지 않음.**  
+
+```xml
+<h:form id="userForm">
+    <h:selectOneRadio id="userRadio" value="#{userBean.selectedUser}">
+        <f:selectItems value="#{userBean.userList}" var="user" itemValue="#{user.id}/#{user.name}" itemLabel="#{user.name}" />
+    </h:selectOneRadio>
+
+    <h:commandButton value="선택" type="button" onclick="sendToParent()" />
+</h:form>
+
+<script>
+    function sendToParent() {
+        // JSF가 생성한 숨겨진 input 필드에서 값 가져오기
+        let selectedHiddenInput = document.getElementById("userForm:userRadio");
+        
+        if (selectedHiddenInput && selectedHiddenInput.value) {
+            window.opener.postMessage(selectedHiddenInput.value, "*");
+            window.close();
+        } else {
+            alert("유저를 선택하세요.");
+        }
+    }
+</script>
+```
+
+✅ **결론:**  
+✔️ `h:selectOneRadio`는 **JavaScript에서 직접 값을 가져오기 어렵다.**  
+✔️ **해결 방법:** 일반 `<input type="radio">`를 사용하면 JavaScript에서 값을 쉽게 가져올 수 있다.  
+✔️ **꼼수 방법:** JSF의 숨겨진 `<input type="hidden">`을 읽을 수도 있지만, **비추천** (버전에 따라 다르게 동작할 가능성이 큼).
