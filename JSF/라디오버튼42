@@ -1,0 +1,92 @@
+`<h:selectOneRadio>` 자체에는 `hidden input`이 직접 보이지 않지만, JSF가 최종적으로 렌더링하는 HTML을 보면 **값을 저장하는 hidden 필드가 자동으로 추가될 가능성이 있습니다.**  
+
+### **🔍 JSF의 `<h:selectOneRadio>`가 렌더링하는 HTML 구조**
+JSF가 렌더링하는 실제 HTML을 확인하면 다음과 같은 형태가 됩니다.
+
+#### **XHTML 코드 (JSF)**
+```xml
+<h:form id="userForm">
+    <h:selectOneRadio id="userRadio" value="#{userBean.selectedUser}">
+        <f:selectItems value="#{userBean.userList}" var="user"
+            itemValue="#{user.id}/#{user.name}"
+            itemLabel="#{user.name}" />
+    </h:selectOneRadio>
+
+    <h:commandButton value="선택" type="button" onclick="sendToParent()" />
+</h:form>
+```
+
+#### **JSF가 변환한 HTML (렌더링 후)**
+```html
+<form id="userForm">
+    <table id="userForm:userRadio">
+        <tbody>
+            <tr>
+                <td><input type="radio" name="userForm:userRadio" value="101/John Doe"></td>
+                <td><label for="userForm:userRadio:0">John Doe</label></td>
+            </tr>
+            <tr>
+                <td><input type="radio" name="userForm:userRadio" value="102/Jane Smith"></td>
+                <td><label for="userForm:userRadio:1">Jane Smith</label></td>
+            </tr>
+        </tbody>
+    </table>
+    <!-- ❗ JSF에서 자동으로 추가한 hidden 필드 -->
+    <input type="hidden" name="userForm:userRadio_hidden" id="userForm:userRadio_hidden" value="">
+</form>
+```
+- **JSF는 `h:selectOneRadio`의 선택된 값을 서버로 전달하기 위해 hidden 필드를 자동으로 추가할 수 있음.**
+- **하지만 이 hidden 필드는 모든 JSF 구현에서 동일하게 동작하는 것은 아님.**
+- **따라서 JavaScript에서 직접 `getElementById('userForm:userRadio')`를 사용하면 값을 가져올 수 없을 가능성이 큼.**
+
+---
+
+### **📌 `h:selectOneRadio`에서 JavaScript로 값 가져오는 방법**
+만약 `<h:selectOneRadio>`를 유지하면서 JavaScript에서 값을 가져오려면 **JSF가 렌더링한 `<input type="radio">`를 직접 찾아야 합니다.**  
+
+#### ✅ **해결 코드 (JavaScript에서 값 가져오기)**
+```xml
+<h:form id="userForm">
+    <h:selectOneRadio id="userRadio" value="#{userBean.selectedUser}">
+        <f:selectItems value="#{userBean.userList}" var="user"
+            itemValue="#{user.id}/#{user.name}"
+            itemLabel="#{user.name}" />
+    </h:selectOneRadio>
+
+    <h:commandButton value="선택" type="button" onclick="sendToParent()" />
+</h:form>
+
+<script>
+    function sendToParent() {
+        // ✅ JSF가 생성한 라디오 버튼 찾기
+        let radios = document.getElementsByName("userForm:userRadio");
+        let selectedValue = "";
+
+        for (let radio of radios) {
+            if (radio.checked) {
+                selectedValue = radio.value;
+                break;
+            }
+        }
+
+        if (selectedValue) {
+            window.opener.postMessage(selectedValue, "*");
+            window.close();
+        } else {
+            alert("유저를 선택하세요.");
+        }
+    }
+</script>
+```
+
+---
+
+### **✅ 결론**
+1. **`h:selectOneRadio`는 숨겨진 필드를 자동으로 추가할 수도 있고, 없을 수도 있음.**
+2. **JavaScript에서 `document.getElementsByName("userForm:userRadio")`를 사용하여 직접 라디오 버튼을 찾아야 함.**
+3. **그렇기 때문에 일반 `<input type="radio">`를 사용하는 것이 JavaScript에서 값을 쉽게 다룰 수 있는 방법임.**
+
+---
+
+💡 **만약 JavaScript에서 더 간단하게 다루고 싶다면?**  
+👉 `<h:selectOneRadio>` 대신 **일반 `<input type="radio">`를 사용하는 것을 추천!**
