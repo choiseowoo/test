@@ -1,0 +1,238 @@
+### **📌 검색 조건 추가한 MyBatis + JSF 페이징 구현**  
+✅ **업데이트된 기능**  
+- **검색 조건 추가** → 유저 이름(name), 그룹 코드(groupcode), 그룹명(groupname)으로 검색  
+- **검색어가 없으면 전체 리스트 조회**, 있으면 검색된 데이터만 페이징 처리  
+- **페이징 유지** → 검색 결과에서도 페이징 처리 적용  
+
+---
+
+## **1️⃣ `UserMapper.xml` (검색 추가)**
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mapper.UserMapper">
+    
+    <!-- 유저 리스트 조회 (검색 & 페이징 포함) -->
+    <select id="selectUsers" resultType="com.example.model.User">
+        SELECT 
+            id, 
+            name, 
+            groupcode, 
+            groupname 
+        FROM users
+        WHERE 
+            (#{name} IS NULL OR name LIKE '%' || #{name} || '%')
+            AND (#{groupcode} IS NULL OR groupcode = #{groupcode})
+            AND (#{groupname} IS NULL OR groupname LIKE '%' || #{groupname} || '%')
+        ORDER BY id 
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 검색 결과에 대한 전체 유저 수 조회 -->
+    <select id="countUsers" resultType="int">
+        SELECT COUNT(*) FROM users
+        WHERE 
+            (#{name} IS NULL OR name LIKE '%' || #{name} || '%')
+            AND (#{groupcode} IS NULL OR groupcode = #{groupcode})
+            AND (#{groupname} IS NULL OR groupname LIKE '%' || #{groupname} || '%')
+    </select>
+
+</mapper>
+```
+---
+
+## **2️⃣ `UserMapper.java` (검색 추가)**
+```java
+package com.example.mapper;
+
+import com.example.model.User;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import java.util.List;
+
+public interface UserMapper {
+    
+    // 유저 리스트 조회 (검색 & 페이징 포함)
+    @Select("""
+        SELECT id, name, groupcode, groupname 
+        FROM users
+        WHERE 
+            (#{name} IS NULL OR name LIKE '%' || #{name} || '%')
+            AND (#{groupcode} IS NULL OR groupcode = #{groupcode})
+            AND (#{groupname} IS NULL OR groupname LIKE '%' || #{groupname} || '%')
+        ORDER BY id 
+        LIMIT #{limit} OFFSET #{offset}
+    """)
+    List<User> selectUsers(
+        @Param("name") String name, 
+        @Param("groupcode") String groupcode, 
+        @Param("groupname") String groupname, 
+        @Param("limit") int limit, 
+        @Param("offset") int offset
+    );
+
+    // 검색 결과의 전체 유저 수 조회
+    @Select("""
+        SELECT COUNT(*) FROM users
+        WHERE 
+            (#{name} IS NULL OR name LIKE '%' || #{name} || '%')
+            AND (#{groupcode} IS NULL OR groupcode = #{groupcode})
+            AND (#{groupname} IS NULL OR groupname LIKE '%' || #{groupname} || '%')
+    """)
+    int countUsers(
+        @Param("name") String name, 
+        @Param("groupcode") String groupcode, 
+        @Param("groupname") String groupname
+    );
+}
+```
+---
+
+## **3️⃣ `UserService.java` (검색 포함)**
+```java
+package com.example.service;
+
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import java.util.List;
+
+@ApplicationScoped
+public class UserService {
+
+    @Inject
+    private UserMapper userMapper;
+
+    private int pageSize = 10; // 한 페이지당 표시할 데이터 수
+
+    // 검색 조건을 적용한 유저 리스트 가져오기
+    public List<User> getUsers(String name, String groupcode, String groupname, int pageIndex) {
+        int offset = (pageIndex - 1) * pageSize;
+        return userMapper.selectUsers(name, groupcode, groupname, pageSize, offset);
+    }
+
+    // 검색 조건을 적용한 전체 유저 수 가져오기
+    public int getTotalUsers(String name, String groupcode, String groupname) {
+        return userMapper.countUsers(name, groupcode, groupname);
+    }
+
+    // 전체 페이지 수 계산
+    public int getTotalPages(String name, String groupcode, String groupname) {
+        int totalUsers = getTotalUsers(name, groupcode, groupname);
+        return (int) Math.ceil((double) totalUsers / pageSize);
+    }
+}
+```
+---
+
+## **4️⃣ `UserBean.java` (검색 추가)**
+```java
+package com.example.bean;
+
+import com.example.model.User;
+import com.example.service.UserService;
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import java.io.Serializable;
+import java.util.List;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+
+    @Inject
+    private UserService userService;
+
+    private int pageIndex = 1;  // 현재 페이지
+    private String name;        // 검색 조건 (유저명)
+    private String groupcode;   // 검색 조건 (그룹 코드)
+    private String groupname;   // 검색 조건 (그룹명)
+
+    // 현재 검색 조건으로 페이징된 유저 리스트 가져오기
+    public List<User> getPagedList() {
+        return userService.getUsers(name, groupcode, groupname, pageIndex);
+    }
+
+    // 전체 페이지 수 가져오기
+    public int getTotalPages() {
+        return userService.getTotalPages(name, groupcode, groupname);
+    }
+
+    // 페이징 컨트롤
+    public void firstPage() { pageIndex = 1; }
+    public void previousPage() { if (pageIndex > 1) pageIndex--; }
+    public void nextPage() { if (pageIndex < getTotalPages()) pageIndex++; }
+    public void lastPage() { pageIndex = getTotalPages(); }
+
+    // 검색 실행 (검색 버튼 클릭 시)
+    public void search() {
+        pageIndex = 1;  // 검색 시 첫 페이지로 초기화
+    }
+
+    // Getter & Setter
+    public int getPageIndex() { return pageIndex; }
+    public void setPageIndex(int pageIndex) { this.pageIndex = pageIndex; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getGroupcode() { return groupcode; }
+    public void setGroupcode(String groupcode) { this.groupcode = groupcode; }
+    public String getGroupname() { return groupname; }
+    public void setGroupname(String groupname) { this.groupname = groupname; }
+}
+```
+---
+
+## **5️⃣ `users.xhtml` (검색 UI 포함)**
+```xml
+<h:form>
+    <!-- 🔍 검색 조건 입력 -->
+    <h:panelGrid columns="2">
+        <h:outputLabel for="name" value="유저 이름:" />
+        <h:inputText id="name" value="#{userBean.name}" />
+
+        <h:outputLabel for="groupcode" value="그룹 코드:" />
+        <h:inputText id="groupcode" value="#{userBean.groupcode}" />
+
+        <h:outputLabel for="groupname" value="그룹 명:" />
+        <h:inputText id="groupname" value="#{userBean.groupname}" />
+
+        <h:commandButton value="검색" action="#{userBean.search}" />
+    </h:panelGrid>
+
+    <!-- 📋 유저 목록 테이블 -->
+    <h:dataTable value="#{userBean.pagedList}" var="user">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">그룹 코드</f:facet>
+            #{user.groupcode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">그룹 명</f:facet>
+            #{user.groupname}
+        </h:column>
+    </h:dataTable>
+
+    <!-- 📌 페이징 컨트롤 -->
+    <h:commandButton value="<< 처음" action="#{userBean.firstPage}" />
+    <h:commandButton value="< 이전" action="#{userBean.previousPage}" />
+    <h:outputText value="#{userBean.pageIndex} / #{userBean.totalPages}" />
+    <h:commandButton value="다음 >" action="#{userBean.nextPage}" />
+    <h:commandButton value="마지막 >>" action="#{userBean.lastPage}" />
+</h:form>
+```
+---
+
+## ✅ **결론**
+이제 **검색 조건을 추가**하여 유저 데이터를 필터링한 후, **페이징 처리**를 유지하면서 검색 결과를 보여줄 수 있습니다! 🚀  
+더 필요한 점 있으면 말해주세요!
