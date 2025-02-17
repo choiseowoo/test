@@ -1,0 +1,79 @@
+부모 페이지에서 `"userid username"` 형식으로 값을 받으려면, **팝업 창에서 선택된 값(`userid/name/groupcode/groupname`)을 가공해서 부모 페이지에 전달하면 됩니다.**  
+
+---
+
+## 🔹 **1. 변경할 부분**
+✅ **팝업 창에서 `userid`와 `name`만 추출하여 부모 페이지로 전달**  
+✅ **부모 페이지에서 전달받은 값(`userid name`)을 원하는 위치에 표시**  
+
+---
+
+## **🔹 2. 수정된 팝업 창 코드**
+```xml
+<h:form id="userForm">
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <!-- ✅ 라디오 버튼 값: userid/name/groupcode/groupname -->
+            <input type="radio" name="selectedUser" 
+                   value="#{user.id}/#{user.name}/#{user.groupcode}/#{user.groupname}" 
+                   onclick="setSelectedUser(this)">
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.name}" />
+        </h:column>
+        <h:column>
+            <h:outputText value="#{user.groupname}" />
+        </h:column>
+    </h:dataTable>
+
+    <h:commandButton value="선택" type="button" onclick="sendToParent()" />
+</h:form>
+
+<script>
+    let selectedValue = "";
+
+    function setSelectedUser(radio) {
+        selectedValue = radio.value; // ✅ 선택된 라디오 버튼 값 저장
+    }
+
+    function sendToParent() {
+        if (selectedValue) {
+            let values = selectedValue.split("/"); // ✅ "/"로 구분하여 배열로 변환
+            let formattedValue = values[0] + " " + values[1]; // ✅ "userid name" 형식으로 변환
+
+            window.opener.postMessage(formattedValue, "*"); // 부모 페이지로 값 전달
+            window.close(); // 현재 창 닫기
+        } else {
+            alert("유저를 선택하세요.");
+        }
+    }
+</script>
+```
+
+---
+
+## **🔹 3. 부모 페이지에서 값 표시**
+부모 페이지에서 값을 받는 부분을 아래처럼 수정하면 **"userid username" 형식으로 표시**됩니다.
+
+```html
+<!-- 부모 페이지 -->
+<input type="text" id="selectedUserInput" readonly />
+
+<script>
+    window.addEventListener("message", function(event) {
+        document.getElementById("selectedUserInput").value = event.data; 
+    });
+</script>
+```
+
+✅ **팝업에서 `userid name` 형식으로 변환 후 부모 페이지로 전송**  
+✅ **부모 페이지에서 받은 값을 `input` 태그에 표시**  
+
+---
+
+## **✅ 최종 동작 확인**
+✔️ **팝업 창에서 라디오 버튼을 선택하면 값이 `userid/name/groupcode/groupname` 형식으로 저장됨.**  
+✔️ **팝업 창에서 `userid name`만 추출하여 부모 페이지로 전달.**  
+✔️ **부모 페이지에서 전달받은 값을 `input` 태그에 자동으로 표시.**  
+
+🎯 **결론적으로 원하는 `"userid username"` 형식으로 부모 페이지에 값이 전달됩니다!**
