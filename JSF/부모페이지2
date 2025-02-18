@@ -1,0 +1,169 @@
+### **✅ 구현해야 할 기능**
+1. **유저 페이지에서 유저 ID 선택 후 부모 페이지로 JavaScript를 통해 전달**
+2. **부모 페이지에서 선택된 유저 ID를 `<h:outputLabel>`에 표시**
+3. **"등록" 버튼 클릭 시 다이얼로그 표시**
+4. **"예"를 누르면 유저 권한 테이블에서 존재 여부 확인 후 처리**
+   - 유저 ID가 존재하면 에러 메시지 출력
+   - 존재하지 않으면 등록 처리
+
+---
+
+## **1️⃣ 유저 페이지 (자식 페이지 - `user.xhtml`)**
+📌 **유저 ID를 선택하고 부모 페이지로 전달하는 기능**
+
+```xml
+<h:form id="userForm">
+    <h:dataTable id="userTable" value="#{userBean.pagedList}" var="user">
+        <h:column>
+            <f:facet name="header">선택</f:facet>
+            <h:selectOneRadio id="selectUser" value="#{userBean.selectedUserId}">
+                <f:selectItem itemValue="#{user.id}" />
+            </h:selectOneRadio>
+        </h:column>
+        <h:column>
+            <f:facet name="header">유저 ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+
+    <!-- 선택 버튼 -->
+    <h:commandButton value="선택" onclick="sendUserToParent()" />
+
+    <script>
+        function sendUserToParent() {
+            let selectedRadio = document.querySelector('input[type="radio"]:checked');
+            if (selectedRadio) {
+                let userId = selectedRadio.value;
+                let userName = selectedRadio.closest('tr').children[2].innerText;
+                window.opener.receiveUser(userId, userName);
+                window.close();
+            } else {
+                alert("유저를 선택하세요.");
+            }
+        }
+    </script>
+</h:form>
+```
+
+✔ **설명**  
+- **유저를 선택하고 "선택" 버튼 클릭 시 부모 페이지로 값 전송** (`window.opener.receiveUser(userId, userName)`)
+- **유저 ID와 이름을 부모 페이지로 넘긴 후 자식 창 닫기 (`window.close()`)**
+- **유저가 선택되지 않았을 경우 알림 표시**
+
+---
+
+## **2️⃣ 부모 페이지 (`parent.xhtml`)**
+📌 **유저 ID를 받아서 `<h:outputLabel>`에 표시하고 "등록" 버튼을 클릭하면 다이얼로그 표시**
+
+```xml
+<h:form id="parentForm">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="selectedUserId" value="선택된 유저:" />
+        <h:outputLabel id="selectedUserLabel" value="" />
+
+        <h:commandButton id="registerButton" value="등록" onclick="confirmRegistration()" disabled="true" />
+    </h:panelGrid>
+
+    <h:outputText id="errorMessage" style="color:red;" />
+
+    <!-- 다이얼로그 -->
+    <h:panelGroup id="dialogPanel" style="display:none;">
+        <h:outputText value="해당 유저를 등록하시겠습니까?" />
+        <h:commandButton value="예" action="#{userBean.registerUser}" />
+        <h:commandButton value="아니오" onclick="hideDialog()" />
+    </h:panelGroup>
+
+    <script>
+        function receiveUser(userId, userName) {
+            document.getElementById("parentForm:selectedUserLabel").innerText = userId + " " + userName;
+            document.getElementById("parentForm:registerButton").disabled = false;
+        }
+
+        function confirmRegistration() {
+            document.getElementById("parentForm:dialogPanel").style.display = 'block';
+        }
+
+        function hideDialog() {
+            document.getElementById("parentForm:dialogPanel").style.display = 'none';
+        }
+    </script>
+</h:form>
+```
+
+✔ **설명**  
+- `receiveUser(userId, userName)` → 유저 페이지에서 전달된 값을 받아 `<h:outputLabel>`에 표시
+- "등록" 버튼을 클릭하면 `confirmRegistration()`을 실행해 다이얼로그 표시
+- 다이얼로그에서 "예" 클릭 시 유저 등록 실행, "아니오" 클릭 시 닫기
+
+---
+
+## **3️⃣ 백엔드 처리 (`UserBean.java`)**
+📌 **유저 ID가 존재하는지 확인하고 등록하는 로직**
+
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String selectedUserId;
+    private String errorMessage;
+
+    @EJB
+    private UserService userService;
+
+    public void registerUser() {
+        if (userService.isUserExists(selectedUserId)) {
+            errorMessage = "이미 존재하는 유저입니다.";
+        } else {
+            userService.insertUser(selectedUserId);
+            errorMessage = "등록 완료되었습니다.";
+        }
+    }
+
+    // Getter & Setter
+}
+```
+
+✔ **설명**  
+- `isUserExists(selectedUserId)` → 유저 권한 테이블에 존재하는지 확인  
+- 존재하면 `"이미 존재하는 유저입니다."` 메시지 출력  
+- 존재하지 않으면 `insertUser(selectedUserId)` 실행  
+
+---
+
+## **4️⃣ MyBatis (`UserMapper.xml`)**
+📌 **유저 존재 여부 확인 및 등록 SQL**
+
+```xml
+<select id="isUserExists" resultType="boolean">
+    SELECT COUNT(*) > 0 FROM user_permissions WHERE user_id = #{userId}
+</select>
+
+<insert id="insertUser">
+    INSERT INTO user_permissions (user_id, created_at) VALUES (#{userId}, NOW())
+</insert>
+```
+
+---
+
+## **✅ 실행 흐름**
+1. **유저 페이지 (`user.xhtml`)**  
+   - 유저를 선택하고 "선택" 버튼을 클릭하면 부모 페이지로 값 전송  
+
+2. **부모 페이지 (`parent.xhtml`)**  
+   - `receiveUser(userId, userName)` 함수가 실행되어 `<h:outputLabel>`에 표시  
+   - "등록" 버튼 활성화됨  
+
+3. **"등록" 버튼 클릭 시**  
+   - 다이얼로그가 표시됨  
+
+4. **다이얼로그에서 "예" 클릭 시**  
+   - `registerUser()` 실행  
+   - 유저 권한 테이블에 존재하면 `"이미 존재하는 유저입니다."` 출력  
+   - 존재하지 않으면 등록 완료  
+
+이제 **유저 선택 → 부모 페이지에 표시 → 다이얼로그 확인 → 유저 등록 로직**이 완성되었어!  
+추가 수정이 필요하면 알려줘!
