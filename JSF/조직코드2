@@ -1,0 +1,115 @@
+### **📌 `groupcode`를 입력하면 `companyname`을 자동으로 표시하는 방법**  
+✅ **구현할 기능**  
+1. **사용자가 `groupcode`를 입력하면 해당 `companyname`을 자동으로 가져와 표시**  
+2. **검색 버튼을 눌러야만 데이터 테이블이 표시되도록 구현**  
+3. **초기 상태에서는 `companyname` 입력 필드가 비활성화되어 있으며, `groupcode`를 입력하면 자동으로 채워짐**  
+
+---
+
+## **✅ 1️⃣ JSF + MyBatis 설정 (`UserBean.java`)**  
+📌 **입력한 `groupcode`로 `companyname`을 조회하는 로직 추가**  
+
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String groupcode;
+    private String companyname; // 자동으로 채워질 값
+    private List<User> pagedList;
+
+    @EJB
+    private UserService userService;
+    
+    public void fetchCompanyName() {
+        if (groupcode != null && !groupcode.isEmpty()) {
+            companyname = userService.getCompanyNameByGroupcode(groupcode);
+        } else {
+            companyname = "";
+        }
+    }
+
+    public void search() {
+        pagedList = userService.searchUsersByGroupcode(groupcode);
+    }
+
+    // Getter & Setter
+}
+```
+
+✔ **설명:**  
+- `fetchCompanyName()` → `groupcode`를 입력하면 자동으로 `companyname`을 가져옴  
+- `search()` → `groupcode`를 기준으로 `user` 테이블에서 검색  
+
+---
+
+## **✅ 2️⃣ MyBatis 설정 (`UserMapper.xml`)**  
+📌 **입력한 `groupcode`로 `companyname`을 조회하는 쿼리**  
+```xml
+<select id="getCompanyNameByGroupcode" resultType="string">
+    SELECT companyname FROM company WHERE groupcode = #{groupcode} LIMIT 1
+</select>
+```
+📌 **유저 검색 쿼리 (`groupcode` 기준)**  
+```xml
+<select id="searchUsersByGroupcode" resultType="User">
+    SELECT * FROM user WHERE groupcode = #{groupcode}
+</select>
+```
+
+---
+
+## **✅ 3️⃣ 검색 조건 UI (JSF XHTML 파일)**  
+📌 **JSF에서 `groupcode` 입력 시 `companyname`을 자동으로 채우는 기능 추가**  
+
+```xml
+<h:form id="userForm">
+    <!-- 🔍 검색 조건 -->
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupcode" value="그룹 코드:" />
+        <h:inputText id="groupcode" value="#{userBean.groupcode}">
+            <f:ajax event="keyup" listener="#{userBean.fetchCompanyName}" render="companyname" />
+        </h:inputText>
+
+        <h:outputLabel for="companyname" value="회사명:" />
+        <h:inputText id="companyname" value="#{userBean.companyname}" readonly="true" />
+
+        <h:commandButton value="검색" action="#{userBean.search}" update="userTable selectButton" />
+    </h:panelGrid>
+
+    <!-- 📋 유저 목록 테이블 -->
+    <h:dataTable id="userTable" value="#{userBean.pagedList}" var="user">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">그룹 코드</f:facet>
+            #{user.groupcode}
+        </h:column>
+    </h:dataTable>
+
+    <!-- 📌 "선택" 버튼 (초기 비활성화, 검색 후 활성화) -->
+    <h:commandButton id="selectButton" value="선택" action="#{userBean.selectUser}" disabled="#{empty userBean.pagedList}" />
+</h:form>
+```
+
+✔ **설명:**  
+1. `groupcode` 입력 시 `fetchCompanyName()`을 호출하여 `companyname`을 자동으로 채움  
+2. `<f:ajax event="keyup" listener="#{userBean.fetchCompanyName}" render="companyname" />`  
+   - 사용자가 `groupcode` 입력할 때마다 `companyname`을 업데이트  
+3. `companyname` 입력 필드는 **읽기 전용 (`readonly="true"`)**  
+4. `검색 버튼`을 눌러야 유저 데이터가 표시됨  
+
+---
+
+## **✅ 4️⃣ 실행 흐름**
+1. 사용자가 `groupcode`를 입력하면 자동으로 `companyname`이 채워짐  
+2. `검색 버튼`을 눌러야 `user` 테이블에서 검색된 데이터가 표시됨  
+3. 검색 결과가 있으면 "선택" 버튼 활성화  
+
+이제 `groupcode`를 입력하면 `companyname`이 자동으로 채워지고, 검색 후 유저 리스트를 조회할 수 있어!  
+추가 수정이 필요하면 알려줘!
