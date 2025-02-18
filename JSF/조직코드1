@@ -1,0 +1,118 @@
+### **📌 검색 조건에 `groupcode` 사용 + `companyname`을 풀다운으로 표시하는 방법**  
+✅ **구현할 기능**  
+1. **검색 조건에 `groupcode` 입력 필드 추가**  
+2. **`company` 테이블의 `groupcode`를 기준으로 `companyname`을 `selectOneMenu`(드롭다운)으로 표시**  
+3. **검색 버튼 클릭 시 `user` 테이블에서 조건에 맞는 유저 데이터를 표시**  
+
+---
+
+## **✅ 1️⃣ JSF + MyBatis 설정 (`UserBean.java`)**  
+📌 **데이터를 가져오는 `UserBean` 설정**  
+
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String groupcode;
+    private String selectedCompany;
+    private List<User> pagedList;
+    private List<Company> companyList;
+
+    @EJB
+    private UserService userService;
+    
+    @PostConstruct
+    public void init() {
+        companyList = userService.getCompanyList(); // Company 테이블에서 groupcode, companyname 가져오기
+    }
+
+    public void search() {
+        pagedList = userService.searchUsersByGroupcode(groupcode);
+    }
+
+    // Getter & Setter
+}
+```
+✔ **설명:**  
+- `companyList` → `Company` 테이블의 `groupcode`, `companyname`을 가져옴  
+- `search()` → `groupcode`를 기준으로 `user` 테이블에서 검색  
+
+---
+
+## **✅ 2️⃣ MyBatis 설정 (`UserMapper.xml`)**  
+📌 **유저 검색 쿼리 (`groupcode` 기준)**  
+```xml
+<select id="searchUsersByGroupcode" resultType="User">
+    SELECT * FROM user WHERE groupcode = #{groupcode}
+</select>
+```
+
+📌 **`Company` 테이블에서 `groupcode`와 `companyname` 가져오기**  
+```xml
+<select id="getCompanyList" resultType="Company">
+    SELECT DISTINCT groupcode, companyname FROM company
+</select>
+```
+
+---
+
+## **✅ 3️⃣ 검색 조건 UI (JSF XHTML 파일)**  
+📌 **JSF에서 `groupcode` 입력 + `companyname` 드롭다운 추가**  
+
+```xml
+<h:form id="userForm">
+    <!-- 🔍 검색 조건 -->
+    <h:panelGrid columns="2">
+        <h:outputLabel for="groupcode" value="그룹 코드:" />
+        <h:inputText id="groupcode" value="#{userBean.groupcode}" />
+
+        <h:outputLabel for="companyname" value="회사명:" />
+        <h:selectOneMenu id="companyname" value="#{userBean.selectedCompany}">
+            <f:selectItem itemLabel="선택하세요" itemValue="" />
+            <f:selectItems value="#{userBean.companyList}" var="company" 
+                           itemLabel="#{company.companyname}" itemValue="#{company.groupcode}" />
+        </h:selectOneMenu>
+
+        <h:commandButton value="검색" action="#{userBean.search}" update="userTable selectButton" />
+    </h:panelGrid>
+
+    <!-- 📋 유저 목록 테이블 -->
+    <h:dataTable id="userTable" value="#{userBean.pagedList}" var="user">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">그룹 코드</f:facet>
+            #{user.groupcode}
+        </h:column>
+    </h:dataTable>
+
+    <!-- 📌 "선택" 버튼 (초기 비활성화, 검색 후 활성화) -->
+    <h:commandButton id="selectButton" value="선택" action="#{userBean.selectUser}" disabled="#{empty userBean.pagedList}" />
+</h:form>
+```
+
+✔ **설명:**  
+1. **그룹 코드 입력 필드 (`groupcode`)** → `user` 테이블에서 검색할 조건  
+2. **회사명 선택 드롭다운 (`companyname`)**  
+   - `companyList`에서 `groupcode`와 `companyname`을 가져와 표시  
+   - `groupcode`가 `itemValue`, `companyname`이 `itemLabel`  
+3. **검색 버튼 클릭 시:**  
+   - `groupcode`에 해당하는 `user` 데이터를 가져와 테이블에 표시  
+   - `selectButton`(선택 버튼)이 활성화됨  
+
+---
+
+## **✅ 4️⃣ 실행 흐름**
+1. 페이지 로딩 시 `company` 테이블에서 `companyname`을 드롭다운에 표시  
+2. `groupcode`를 입력하고 검색 버튼 클릭  
+3. `user` 테이블에서 `groupcode`에 해당하는 데이터 목록을 표시  
+4. 검색 결과가 있으면 "선택" 버튼 활성화  
+
+이 방식이면 `groupcode`로 검색하고 `companyname`도 선택 가능!  
+추가 개선이 필요하면 말해줘!
