@@ -1,0 +1,87 @@
+### **📌 `hidden 사용 금지`의 의미와 대체 방법**  
+
+`input type="hidden"`을 사용하여 데이터를 전달하는 방식은 **현재 시스템에서 금지된 방식**입니다. 따라서 **세션 정보나 중요한 데이터를 `hidden` 필드로 보내는 것**은 **피해야 하며**, 이에 대한 대체 방법을 고려해야 합니다.
+
+---
+
+## **✅ `hidden 사용 금지`가 의미하는 것**  
+`hidden` 필드는 **폼에서 사용자에게 보이지 않지만 서버로 값을 전송하는 데 사용**되는 `<input type="hidden">` 요소입니다. 이 방식은 일반적으로 데이터 전송 시 화면에 표시하지 않으려는 데이터를 전달하는 데 사용됩니다.  
+
+**그러나 시스템에서는 `hidden`을 사용하여 세션 데이터나 중요한 정보를 전달하는 것을 피해야 한다는 지침**이 있기 때문에, 이를 대신할 방법을 찾아야 합니다.
+
+### **사용이 금지된 예시:**
+```html
+<input type="hidden" name="userId" value="#{userSession.userId}" />
+```
+➡ **이 방식은 `hidden` 필드를 사용하여 세션 정보를 전달하는 것이므로 금지됨.**
+
+---
+
+## **✅ 대체 방법**  
+
+`hidden` 필드를 사용하지 않고 데이터를 전달하는 방법은 여러 가지가 있으며, 주로 **서버 메모리나 URL 파라미터를 사용**합니다. 
+
+### **1. URL 파라미터 사용 (GET 방식)**
+URL에 데이터를 포함시켜 보내는 방식으로, `f:param` 등을 사용하여 필요한 데이터를 전달할 수 있습니다. 예를 들어, 검색 조건이나 다른 중요한 데이터를 URL에 포함시킬 수 있습니다.
+
+```html
+<h:form>
+    <h:commandButton value="검색" action="#{bean.search}">
+        <f:param name="userId" value="#{userSession.userId}" />
+    </h:commandButton>
+</h:form>
+```
+➡ **이 방식은 `userId` 값을 URL에 포함하여 서버로 전달합니다.**  
+URL은 사용자가 쉽게 볼 수 있지만, 작은 데이터를 전달하는 데 적합합니다.
+
+---
+
+### **2. JSF Bean (서버 메모리에서 관리) 사용**
+JSF에서는 **`@SessionScoped` Bean**을 사용하여 사용자 데이터를 서버 메모리에서 관리할 수 있습니다. **세션 데이터나 사용자 정보를 서버에서 관리하고, 필요할 때 메서드를 통해 데이터를 사용**합니다.
+
+```java
+@SessionScoped
+@Named("userSession")
+public class UserSession {
+    private String userId;
+    private String userName;
+
+    // Getter, Setter
+}
+```
+➡ **이 방법은 `hidden`을 사용하지 않고 서버 메모리에서 세션 정보를 안전하게 관리합니다.**  
+
+---
+
+### **3. JavaScript를 이용한 데이터 전송 (AJAX)**
+AJAX를 사용하여 데이터를 서버로 전달할 수 있습니다. 이 방법은 **`hidden` 필드를 사용할 필요 없이 JavaScript에서 직접 값을 서버에 보낼 수 있습니다**.
+
+```html
+<h:form id="searchForm">
+    <h:inputText id="searchQuery" value="#{searchBean.query}" />
+    <h:commandButton value="검색" action="#{searchBean.search}">
+        <f:ajax execute="searchForm" render="searchResults" />
+    </h:commandButton>
+</h:form>
+```
+➡ **JavaScript에서 데이터를 관리하고, 필요할 때 AJAX를 통해 서버로 전달할 수 있습니다.**
+
+---
+
+## **✅ 조건 검색 시 `input` 태그 사용에 대한 주의 사항**  
+조건 검색을 위한 입력 값에 대해 `input` 태그를 사용할 수 있습니다. 그러나 중요한 세션 정보나 보안이 필요한 데이터를 **`hidden` 필드로 전달하는 것**은 피해야 합니다.
+
+**조건 검색 시에 사용 가능한 방법**:
+- **입력 값은 `input` 태그를 사용**할 수 있습니다. 예를 들어:
+    ```html
+    <h:inputText value="#{searchBean.query}" />
+    ```
+    이 입력 값은 **사용자에게 표시되고 입력을 받는 값**이므로 `hidden` 필드가 아니어도 괜찮습니다.
+
+---
+
+## **✅ 결론**  
+
+1. **`input type="hidden"`은 사용하지 말고**, 서버 메모리나 URL 파라미터 등을 통해 데이터를 전달하세요.
+2. **검색 조건**과 같은 **사용자 입력은 `input` 태그를 사용해도 문제없음**.  
+3. **세션 정보나 중요한 데이터를 `hidden` 필드로 전달하는 것**은 피해야 하며, **서버에서 `@SessionScoped`로 데이터를 관리하거나, URL 파라미터를 사용**하세요.
