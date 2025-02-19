@@ -1,0 +1,130 @@
+자식 페이지(JavaScript 팝업)에서 부모 페이지의 `hidden` 태그에 값을 설정했지만, JSF의 서버 상태에서 `null`이 넘어가는 이유는 **JavaScript에서 설정한 값이 JSF의 서버 상태와 자동으로 동기화되지 않기 때문**입니다.  
+
+---
+
+## **문제의 원인**
+1. **JavaScript에서 부모 페이지의 `hidden` 값 변경 → JSF 상태와 동기화되지 않음**
+   - `document.getElementById('hiddenId').value = 'someValue';`
+   - 위 방식으로 변경해도 **JSF의 서버 상태에는 반영되지 않음**
+   
+2. **JSF의 `h:inputHidden` 값은 서버 렌더링 시 설정됨**
+   - JSF는 **서버 상태를 기반으로 UI를 그리기 때문에** 클라이언트(JavaScript)에서 변경한 값은 서버로 전달되지 않음
+
+---
+
+## **해결 방법**
+**부모 페이지에서 JavaScript로 값을 설정한 후, JSF의 서버 상태와 동기화시키는 방법이 필요함.**  
+이때 **Ajax를 활용하여 동기화하면 해결 가능**합니다.
+
+---
+
+### **1. 자식 창에서 부모 창의 값 설정 & 함수 실행**
+**(자식 창 - popup.xhtml)**
+```javascript
+function sendDataToParent(userId, userName) {
+    // 부모 창의 function 실행
+    window.opener.receiveDataFromPopup(userId, userName);
+    window.close(); // 팝업 닫기
+}
+```
+---
+### **2. 부모 창에서 값 설정 및 동기화**
+**(부모 창 - parent.xhtml)**
+```xhtml
+<h:form id="form">
+    <h:outputLabel value="선택된 유저: " />
+    <h:outputText id="selectedUserLabel" value="#{userBean.selectedUser}" />
+
+    <!-- Hidden Input -->
+    <h:inputHidden id="selectedUserHidden" value="#{userBean.selectedUser}">
+        <f:ajax event="change" render="selectedUserLabel selectedUserHidden" />
+    </h:inputHidden>
+
+    <!-- 등록 버튼 -->
+    <h:commandButton value="등록" action="#{userBean.register}" />
+</h:form>
+
+<script>
+    function receiveDataFromPopup(userId, userName) {
+        // 1. 부모 창의 Hidden Input 및 Label 업데이트
+        document.getElementById('form:selectedUserHidden').value = userId;
+        document.getElementById('form:selectedUserLabel').innerText = userId + " " + userName;
+
+        // 2. Hidden Input 값 동기화 (JSF 서버와 연결)
+        let hiddenInput = document.getElementById('form:selectedUserHidden');
+        let event = new Event('change', { bubbles: true });
+        hiddenInput.dispatchEvent(event);
+    }
+</script>
+```
+
+---
+
+### **3. Managed Bean (UserBean.java)**
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import java.io.Serializable;
+
+@ManagedBean
+@ViewScoped
+public class UserBean implements Serializable {
+    private String selectedUser;
+
+    public String getSelectedUser() {
+        return selectedUser;
+    }
+
+    public void setSelectedUser(String selectedUser) {
+        this.selectedUser = selectedUser;
+    }
+
+    public void register() {
+        if (selectedUser == null || selectedUser.isEmpty()) {
+            System.out.println("선택된 유저가 없습니다.");
+            return;
+        }
+        System.out.println("등록된 유저: " + selectedUser);
+        // MyBatis로 DB 저장 처리
+    }
+}
+```
+
+---
+
+## **설명 및 해결 방법**
+1. **자식 창에서 `sendDataToParent(userId, userName);` 실행**  
+   → 부모 창의 `receiveDataFromPopup(userId, userName);` 함수 실행  
+
+2. **부모 창에서 Hidden Input 및 Label 값 변경**  
+   ```javascript
+   document.getElementById('form:selectedUserHidden').value = userId;
+   ```
+
+3. **JSF의 `h:inputHidden` 값 변경 후 `change` 이벤트 발생**  
+   ```javascript
+   let event = new Event('change', { bubbles: true });
+   hiddenInput.dispatchEvent(event);
+   ```
+   → 이 이벤트를 통해 **JSF 서버 상태에도 값이 반영됨**
+
+4. **JSF의 `f:ajax event="change"`를 통해 서버와 동기화**  
+   ```xhtml
+   <h:inputHidden id="selectedUserHidden" value="#{userBean.selectedUser}">
+       <f:ajax event="change" render="selectedUserLabel selectedUserHidden" />
+   </h:inputHidden>
+   ```
+   → Ajax를 사용해 **서버의 `userBean.selectedUser` 값이 업데이트됨**
+
+5. **등록 버튼 클릭 시, JSF Bean에서 정상적으로 값이 처리됨**  
+   - `register()` 메서드 실행 시, **JS에서 설정한 값이 `null`이 아닌 정상 값으로 넘어감**
+
+---
+
+## **결론**
+### ✅ **JSF는 서버 중심이므로, 단순 JavaScript로 Hidden Input을 변경하면 반영되지 않음**
+### ✅ **JavaScript에서 값 변경 후 `change` 이벤트를 발생시켜 동기화 필요**
+### ✅ **JSF에서 `f:ajax event="change"`를 활용하여 서버와 동기화 가능**
+### ✅ **이 방식으로 자식 창에서 부모 창으로 값 전달 후, 정상적으로 등록 처리 가능**
+
+이제 **JSF에서 Hidden Input이 `null`로 넘어가는 문제는 해결될 것입니다!**
