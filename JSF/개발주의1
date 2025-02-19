@@ -1,0 +1,130 @@
+### **📌 현재 조건에서 JSF + MyBatis + 기존 커스텀 태그를 사용하는 경우, 세션 관리 및 주의점**  
+
+✅ **조건 요약:**  
+1. **JSF + MyBatis를 사용하여 신규 개발**  
+2. **기존 커스텀 태그를 그대로 재활용해야 함**  
+3. **세션 관리 시 `URL Query Object`와 `Session Object`만 사용 가능**  
+4. **`Cookie`, `DB`, `hidden`을 이용한 세션 유지 불가**  
+5. **XHTML 기반이지만 기존 HTML 구조에 맞춰 커스텀 태그 사용 중**  
+
+---
+
+## **✅ 1️⃣ 세션 관리 시 주의할 점**  
+
+🚨 **(1) 사용 가능한 세션 관리 방식**  
+✔ **`SessionScoped`를 이용한 세션 유지 (서버 메모리 활용)**  
+✔ **URL 파라미터(Query Parameter)로 데이터 전달**  
+
+❌ **(2) 사용할 수 없는 방식**  
+❌ `Cookie`를 통한 세션 유지 → 불가능  
+❌ `DB`에 세션 정보를 저장 → 불가능  
+❌ `hidden` 필드를 통한 세션 데이터 유지 → 불가능  
+
+➡ **즉, 세션 유지가 필요한 데이터는 `@SessionScoped` 또는 URL을 통해 전달해야 함**  
+
+---
+
+## **✅ 2️⃣ JSF + MyBatis 환경에서 세션을 유지하는 방법**  
+
+### **(1) `@SessionScoped` Bean을 활용한 방법**  
+📌 **서버 메모리를 활용하는 방식으로, 가장 일반적인 JSF 세션 관리 방식**  
+
+```java
+@Named("userSession")
+@SessionScoped
+public class UserSessionBean implements Serializable {
+    private String userId;
+    private String userName;
+    private String groupCode;
+
+    // Getter & Setter
+}
+```
+➡ **이렇게 하면 JSF 페이지에서 `#{userSession.userId}`로 접근 가능**  
+➡ **페이지 이동 간에도 데이터가 유지됨**  
+
+---
+
+### **(2) URL Query Parameter를 통한 데이터 전달**  
+📌 **페이지 이동 시 데이터를 URL을 통해 전달하는 방식**  
+
+✅ **XHTML에서 파라미터 전달**  
+```xhtml
+<h:outputLink value="nextPage.xhtml">
+    <f:param name="userId" value="#{userSession.userId}" />
+    <f:param name="userName" value="#{userSession.userName}" />
+    이동하기
+</h:outputLink>
+```
+
+✅ **Backing Bean에서 파라미터 수신**  
+```java
+@Named
+@RequestScoped
+public class NextPageBean {
+    private String userId;
+    private String userName;
+
+    @PostConstruct
+    public void init() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        Map<String, String> params = facesContext.getExternalContext().getRequestParameterMap();
+        userId = params.get("userId");
+        userName = params.get("userName");
+    }
+
+    // Getter & Setter
+}
+```
+➡ **이 방식은 `SessionScoped`보다 가벼워서 성능적으로 유리하지만, URL에 데이터가 노출됨**  
+➡ **보안이 중요한 데이터(예: 비밀번호)는 URL 전달 방식보다 `SessionScoped`를 활용하는 것이 바람직함**  
+
+---
+
+## **✅ 3️⃣ 기존 커스텀 태그 재활용 시 고려할 점**  
+
+🚨 **(1) 커스텀 태그의 구조 분석 필요**  
+✔ 기존 커스텀 태그가 JSF 2.x 환경과 호환되는지 확인  
+✔ 기존 커스텀 태그가 데이터 바인딩을 JSF EL(`#{}`) 방식으로 지원하는지 확인  
+
+---
+
+🚨 **(2) 커스텀 태그 내에서 세션 값을 직접 활용하는 방법**  
+➡ 커스텀 태그 내부에서 `SessionScoped` Bean을 활용할 수 있는지 확인  
+➡ JSF `EL` 표현식을 사용하여 세션 데이터를 커스텀 태그에 전달  
+
+✅ **예제: 커스텀 태그에서 세션 데이터 활용**  
+```xhtml
+<my:customTag userId="#{userSession.userId}" userName="#{userSession.userName}" />
+```
+➡ **이렇게 하면 커스텀 태그 내부에서 `userId`와 `userName`을 직접 활용 가능**  
+
+---
+
+🚨 **(3) MyBatis와 연동할 때 커스텀 태그가 영향을 주는지 확인**  
+➡ 커스텀 태그 내부에서 MyBatis를 호출하는 방식이 있는지 확인  
+➡ 기존 커스텀 태그가 **데이터 조회 및 바인딩 역할을 하는지**, 아니면 단순한 UI 역할을 하는지 분석 필요  
+➡ **커스텀 태그가 데이터를 조회하는 경우, MyBatis와의 연동 방식이 충돌하지 않도록 조정 필요**  
+
+---
+
+## **✅ 4️⃣ 결론 및 정리**  
+📌 **세션 관리 시 주의할 점**  
+✔ **`@SessionScoped`를 이용하여 서버 메모리에 데이터를 유지**  
+✔ **페이지 이동 시 필요한 데이터는 `f:param`을 사용하여 URL Query Parameter로 전달 가능**  
+❌ **`Cookie`, `DB`, `hidden`을 사용한 세션 유지 불가**  
+
+📌 **기존 커스텀 태그 재활용 시 주의할 점**  
+✔ **JSF 2.x 환경과 호환되는지 확인**  
+✔ **세션 데이터를 커스텀 태그에 전달할 필요가 있다면 EL(`#{}`)을 활용**  
+✔ **커스텀 태그가 MyBatis와 충돌하지 않는지 확인**  
+
+---
+
+## **✅ 추가 확인할 점**  
+- **현행 커스텀 태그가 데이터 바인딩을 지원하는 방식 (EL 활용 가능 여부)**
+- **커스텀 태그가 단순 UI 역할인지, 데이터 조회 기능을 포함하는지**
+- **JSF 2.x에서 사용 가능한지 확인 (구 버전 JSF의 맞춤형 기능이 포함되어 있을 가능성)**  
+
+💡 **현행 시스템의 커스텀 태그 구조를 조금 더 자세히 알면, 구체적인 대응 방안을 정리할 수 있음!**  
+필요하면 **기존 커스텀 태그 코드 일부**를 보여주면 더 정확한 분석이 가능해!
