@@ -1,0 +1,189 @@
+초기 화면에서 검색 조건 (입력 필드와 버튼)만 표시되고, 검색 결과는 검색 버튼을 눌렀을 때만 나타나도록 하려면 `searchUsers()`를 `@PostConstruct`에 넣지 않아야 합니다.  
+
+그런데, **조직 목록 (`organizationList`)을 초기화해야 한다면** `searchUsers()`와 별개로 `initOrganizationList()` 같은 메서드를 만들어야 합니다.  
+
+---
+
+## **1. `searchUsers()`를 `@PostConstruct`에서 제거**
+기존 `@PostConstruct`에서 `searchUsers()` 호출을 삭제하고, `organizationList` 초기화만 실행하도록 변경합니다.
+
+### **수정된 `UserBean.java`**
+```java
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.enterprise.context.SessionScoped;
+import java.io.Serializable;
+import java.util.List;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    @Inject
+    private UserMapper userMapper;
+
+    private List<User> userList;
+    private List<String> organizationList;  // 조직 목록
+    private String organization = "";
+    private String userName = "";
+    private String userCode = "";
+    private String userEmail = "";
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+
+    @PostConstruct
+    public void init() {
+        loadOrganizationList();  // 조직 목록만 초기화
+    }
+
+    public void loadOrganizationList() {
+        organizationList = userMapper.getOrganizationList();
+    }
+
+    public void searchUsers() {
+        int offset = (currentPage - 1) * pageSize;
+        userList = userMapper.searchUsers(organization, userName, userCode, userEmail, offset, pageSize);
+        int totalRecords = userMapper.countUsers(organization, userName, userCode, userEmail);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+    }
+
+    public void clearSearch() {
+        organization = "";
+        userName = "";
+        userCode = "";
+        userEmail = "";
+        userList = null; // 검색 결과 초기화
+    }
+
+    public void goToFirstPage() { currentPage = 1; searchUsers(); }
+    public void previousPage() { if (currentPage > 1) { currentPage--; searchUsers(); } }
+    public void nextPage() { if (currentPage < totalPages) { currentPage++; searchUsers(); } }
+    public void goToLastPage() { currentPage = totalPages; searchUsers(); }
+
+    // Getter & Setter
+    public List<User> getUserList() { return userList; }
+    public List<String> getOrganizationList() { return organizationList; }
+    public int getCurrentPage() { return currentPage; }
+    public int getTotalPages() { return totalPages; }
+    public void setOrganization(String organization) { this.organization = organization; }
+    public void setUserName(String userName) { this.userName = userName; }
+    public void setUserCode(String userCode) { this.userCode = userCode; }
+    public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
+}
+```
+
+---
+
+## **2. MyBatis에서 조직 목록 조회**
+조직 목록을 가져오는 `getOrganizationList()` 쿼리를 추가해야 합니다.
+
+### **UserMapper.xml**
+```xml
+<select id="getOrganizationList" resultType="string">
+    SELECT DISTINCT organization FROM users ORDER BY organization
+</select>
+```
+
+### **UserMapper 인터페이스**
+```java
+import java.util.List;
+
+public interface UserMapper {
+    List<String> getOrganizationList();
+    List<User> searchUsers(String organization, String userName, String userCode, String userEmail, int offset, int pageSize);
+    int countUsers(String organization, String userName, String userCode, String userEmail);
+}
+```
+
+---
+
+## **3. JSF 페이지 수정**
+검색 버튼을 눌렀을 때만 결과가 나타나도록 `userList`가 `null`인지 확인하는 로직을 추가합니다.
+
+```xml
+<h:form id="searchForm">
+    <table>
+        <tr>
+            <td>조직:</td>
+            <td>
+                <h:selectOneMenu id="organization" value="#{userBean.organization}">
+                    <f:selectItem itemLabel="전체" itemValue="" />
+                    <f:selectItems value="#{userBean.organizationList}" />
+                </h:selectOneMenu>
+            </td>
+            <td>이름:</td>
+            <td><h:inputText id="userName" value="#{userBean.userName}" /></td>
+        </tr>
+        <tr>
+            <td>코드:</td>
+            <td><h:inputText id="userCode" value="#{userBean.userCode}" /></td>
+            <td>이메일:</td>
+            <td><h:inputText id="userEmail" value="#{userBean.userEmail}" /></td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <h:commandButton value="검색" action="#{userBean.searchUsers}" update="searchForm" />
+                <h:commandButton value="초기화" action="#{userBean.clearSearch}" update="searchForm" />
+            </td>
+        </tr>
+    </table>
+
+    <h:panelGroup rendered="#{not empty userBean.userList}">
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>이름</th>
+                    <th>코드</th>
+                    <th>이메일</th>
+                </tr>
+            </thead>
+            <tbody>
+                <ui:repeat value="#{userBean.userList}" var="user">
+                    <tr>
+                        <td>#{user.name}</td>
+                        <td>#{user.code}</td>
+                        <td>#{user.email}</td>
+                    </tr>
+                </ui:repeat>
+            </tbody>
+        </table>
+
+        <div id="paginationPanel" style="text-align: center; margin-top: 10px;">
+            <h:commandButton value="<<" action="#{userBean.goToFirstPage}" disabled="#{userBean.currentPage == 1}" update="searchForm" />
+            <h:commandButton value="<" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" update="searchForm" />
+            <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+            <h:commandButton value=">" action="#{userBean.nextPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="searchForm" />
+            <h:commandButton value=">>" action="#{userBean.goToLastPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="searchForm" />
+        </div>
+    </h:panelGroup>
+</h:form>
+```
+
+---
+
+## **4. 변경된 동작**
+1. **초기화면:**  
+   - 검색 조건 입력 필드 (`조직`, `이름`, `코드`, `이메일`)과 버튼 (`검색`, `초기화`)만 보임  
+   - 데이터 리스트는 표시되지 않음  
+   - 조직 목록만 초기화됨 (`loadOrganizationList()`)  
+
+2. **검색 버튼 클릭 시:**  
+   - 조건에 맞는 데이터가 표시됨  
+   - 페이징 기능 활성화  
+
+3. **초기화 버튼 클릭 시:**  
+   - 검색 조건이 초기화됨  
+   - 데이터 리스트가 사라짐  
+
+---
+
+## **결론**
+✅ `searchUsers()`를 `init()`에서 제거해도 조직 목록만 별도로 초기화할 수 있음  
+✅ `loadOrganizationList()`를 사용하여 조직 목록을 유지  
+✅ 검색 버튼을 눌렀을 때만 데이터 표시되도록 수정  
+✅ 초기화 버튼 추가하여 검색 조건과 결과를 리셋 가능  
+
+이제 **검색 버튼을 누르기 전까지는 검색 결과가 보이지 않고, 조직 목록은 정상적으로 표시되는 구조**가 완성되었습니다!
