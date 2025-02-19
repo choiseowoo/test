@@ -1,0 +1,156 @@
+### **문제 해결 방향**
+
+부모 페이지에서 자식 페이지로 값을 받았을 때, 그 값을 **사용자가 눈으로 확인할 수 있도록 라벨에 표시**하고, 이후 **등록 버튼을 눌러야** 데이터를 처리하도록 해야 합니다. 이 과정에서 **`hidden` 필드를 사용하지 않고**, 자바스크립트와 JSF를 결합하여 **등록 버튼을 눌렀을 때 값이 처리되도록** 구현할 수 있습니다.
+
+---
+
+### **1. 자식 페이지에서 부모 페이지로 값 전달**
+
+자식 페이지에서 선택한 유저 ID를 **자바스크립트**를 사용해 부모 페이지로 전달하고, 부모 페이지에서 그 값을 **라벨에 표시**합니다.
+
+#### **자식 페이지 (UserSelection.html)**
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>자식 페이지</title>
+    <script type="text/javascript">
+        // 부모 페이지로 유저 ID를 전달하는 함수
+        function sendUserIdToParent(userId) {
+            if (window.opener && !window.opener.closed) {
+                // 부모 페이지의 함수 호출, 유저 ID를 인자로 전달
+                window.opener.receiveUserId(userId);
+                window.close();  // 자식 페이지 닫기
+            }
+        }
+    </script>
+</head>
+<body>
+    <h3>자식 페이지</h3>
+    <label for="userId">유저 ID:</label>
+    <input type="text" id="userId" value="12345">  <!-- 예시로 유저 ID -->
+    <button onclick="sendUserIdToParent(document.getElementById('userId').value)">선택</button>
+</body>
+</html>
+```
+
+---
+
+### **2. 부모 페이지에서 값 받기 및 라벨에 표시**
+
+부모 페이지에서 **`window.opener.receiveUserId()`** 함수로 자식 페이지에서 전달된 유저 ID를 받습니다. 그리고 **`<h:outputText>`** 또는 **`<h:outputLabel>`** 태그로 해당 값을 **눈으로 확인**할 수 있도록 표시합니다.
+
+#### **부모 페이지 (ParentPage.xhtml)**
+
+```html
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html">
+
+<head>
+    <title>부모 페이지</title>
+    <script type="text/javascript">
+        // 자식 페이지에서 전달된 유저 ID를 받아서 처리하는 함수
+        function receiveUserId(userId) {
+            // 유저 ID를 받아서 라벨에 표시
+            document.getElementById("userIdLabel").innerText = "선택된 유저 ID: " + userId;
+            
+            // 자바스크립트로 값을 서버로 보내는 대신, 등록 버튼을 눌러야만 서버로 전송
+            document.getElementById("userIdInput").value = userId;
+        }
+    </script>
+</head>
+<body>
+    <h3>부모 페이지</h3>
+    
+    <button onclick="window.open('자식페이지.html')">자식 페이지 열기</button>
+    
+    <h:form>
+        <!-- 유저 ID를 보여주는 라벨 -->
+        <h:outputText id="userIdLabel" value="선택된 유저 ID: " />
+        
+        <!-- 유저 ID 값을 저장하는 Input (hidden을 사용하지 않음) -->
+        <h:inputText id="userIdInput" value="#{userBean.selectedUserId}" readonly="true" style="display:none;"/>
+
+        <!-- 등록 버튼, 사용자가 값을 확인하고 눌러야만 데이터가 처리됨 -->
+        <h:commandButton value="등록" action="#{userBean.registerUser}" />
+    </h:form>
+</body>
+</html>
+```
+
+---
+
+### **3. 서버 측 처리 (JSF + Managed Bean)**
+
+부모 페이지에서 **등록 버튼**을 클릭하면, 해당 값은 **JSF Managed Bean**의 속성으로 전달됩니다. 이 값을 **MyBatis**를 사용하여 **데이터베이스에 저장**하는 작업을 할 수 있습니다.
+
+#### **Managed Bean (UserBean.java)**
+
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.RequestScoped;
+
+@ManagedBean
+@RequestScoped
+public class UserBean {
+    
+    private String selectedUserId;  // 유저 ID를 저장할 필드
+
+    // 유저 ID getter, setter
+    public String getSelectedUserId() {
+        return selectedUserId;
+    }
+
+    public void setSelectedUserId(String selectedUserId) {
+        this.selectedUserId = selectedUserId;
+    }
+
+    // 등록 버튼 클릭 시 호출되는 메서드
+    public void registerUser() {
+        // selectedUserId 값이 MyBatis 등을 통해 DB에 저장되도록 처리
+        System.out.println("등록된 유저 ID: " + selectedUserId);
+        
+        // MyBatis 등을 이용한 DB 저장 로직을 여기에 추가
+        // 예: userMapper.saveUser(selectedUserId);
+    }
+}
+```
+
+#### **MyBatis Mapper (UserMapper.xml)**
+
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <insert id="saveUser">
+        INSERT INTO users (user_id)
+        VALUES (#{userId})
+    </insert>
+
+</mapper>
+```
+
+#### **MyBatis Mapper 인터페이스 (UserMapper.java)**
+
+```java
+public interface UserMapper {
+    void saveUser(String userId);
+}
+```
+
+---
+
+### **4. 최종 흐름**
+
+1. **자식 페이지에서 유저 ID를 선택**하고, **자바스크립트로 부모 페이지로 전달**.
+2. 부모 페이지에서 **`window.opener.receiveUserId()`** 함수로 유저 ID를 **받고, 라벨에 표시**.
+3. **등록 버튼 클릭** 시, **JSF Managed Bean**의 `registerUser()` 메서드가 호출되어 **유저 ID를 데이터베이스에 저장**.
+
+---
+
+### **결론**
+
+- `hidden` 필드는 사용하지 않으며, **`<h:inputText>`** 태그를 사용하여 **유저 ID를 표시**하고, 이를 **서버 측에서 처리**할 수 있도록 합니다.
+- **등록 버튼**은 사용자가 값을 **눈으로 확인한 후**, 클릭해야만 **서버에서 처리**하도록 구현합니다.
+- **JSF Managed Bean**에서 유저 ID를 받아 처리하고, **MyBatis**를 사용하여 **데이터베이스에 저장**합니다.
