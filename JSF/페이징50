@@ -1,0 +1,145 @@
+네, JSF에서 페이징 기능을 구현할 때 "맨앞 이동", "앞 이동", "이전 이동", "맨뒤 이동"을 깃(Git) 기준으로 구현할 수 있습니다.  
+
+**방법:**  
+1. **`currentPage` (현재 페이지) 변수 사용**  
+2. **`totalPages` (총 페이지 수) 계산**  
+3. **데이터 리스트를 서브리스트로 분할**  
+4. **첫 페이지, 이전 페이지, 다음 페이지, 마지막 페이지 버튼 구현**  
+
+---
+
+### **1. Java 코드 (페이징 로직)**
+```java
+import java.util.List;
+
+public class UserBean {
+    private List<User> userList;  // 전체 데이터 리스트
+    private List<User> paginatedList; // 페이징된 리스트
+    private int currentPage = 1;  // 현재 페이지
+    private int pageSize = 10;  // 한 페이지당 데이터 개수
+    private int totalPages; // 총 페이지 수
+
+    // 전체 데이터 설정 (예제)
+    public void setUserList(List<User> users) {
+        this.userList = users;
+        this.totalPages = (int) Math.ceil((double) users.size() / pageSize);
+        updatePaginatedList();
+    }
+
+    // 현재 페이지에 해당하는 데이터만 가져오기
+    private void updatePaginatedList() {
+        int fromIndex = (currentPage - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, userList.size());
+        paginatedList = userList.subList(fromIndex, toIndex);
+    }
+
+    // 첫 페이지로 이동
+    public void goToFirstPage() {
+        currentPage = 1;
+        updatePaginatedList();
+    }
+
+    // 이전 페이지로 이동
+    public void previousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            updatePaginatedList();
+        }
+    }
+
+    // 다음 페이지로 이동
+    public void nextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            updatePaginatedList();
+        }
+    }
+
+    // 마지막 페이지로 이동
+    public void goToLastPage() {
+        currentPage = totalPages;
+        updatePaginatedList();
+    }
+
+    // Getter
+    public List<User> getPaginatedList() {
+        return paginatedList;
+    }
+
+    public int getCurrentPage() {
+        return currentPage;
+    }
+
+    public int getTotalPages() {
+        return totalPages;
+    }
+}
+```
+
+---
+
+### **2. JSF 페이지 (페이징 UI)**
+```xml
+<h:form id="paginationForm">
+    <table border="1">
+        <thead>
+            <tr>
+                <th>이름</th>
+                <th>코드</th>
+                <th>이메일</th>
+            </tr>
+        </thead>
+        <tbody>
+            <ui:repeat value="#{userBean.paginatedList}" var="user">
+                <tr>
+                    <td>#{user.name}</td>
+                    <td>#{user.code}</td>
+                    <td>#{user.email}</td>
+                </tr>
+            </ui:repeat>
+        </tbody>
+    </table>
+
+    <!-- 페이징 버튼 -->
+    <div id="paginationPanel" style="text-align: center; margin-top: 10px;">
+        <h:commandButton value="<<"
+                         action="#{userBean.goToFirstPage}"
+                         disabled="#{userBean.currentPage == 1}"
+                         update="paginationForm" />
+
+        <h:commandButton value="<"
+                         action="#{userBean.previousPage}"
+                         disabled="#{userBean.currentPage == 1}"
+                         update="paginationForm" />
+
+        <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+
+        <h:commandButton value=">"
+                         action="#{userBean.nextPage}"
+                         disabled="#{userBean.currentPage == userBean.totalPages}"
+                         update="paginationForm" />
+
+        <h:commandButton value=">>"
+                         action="#{userBean.goToLastPage}"
+                         disabled="#{userBean.currentPage == userBean.totalPages}"
+                         update="paginationForm" />
+    </div>
+</h:form>
+```
+
+---
+
+### **3. 동작 방식**
+1. **페이지 이동 버튼 클릭** → `UserBean`의 해당 메서드 호출
+2. **`updatePaginatedList()` 실행** → 현재 페이지에 해당하는 데이터만 필터링
+3. **JSF 데이터 테이블 갱신** → `update="paginationForm"`을 사용하여 UI 업데이트
+
+---
+
+### **4. 예제 실행 방법**
+1. **Maven 프로젝트 실행**
+2. **데이터 리스트 (`userList`) 설정**
+3. **페이지 버튼 클릭 시 동작 확인**
+
+이렇게 하면 Git 저장소에서 가져온 데이터를 JSF 페이징 구조로 구현할 수 있습니다.  
+**이 방식으로 구현하면 문제없이 동작할 것입니다!**
