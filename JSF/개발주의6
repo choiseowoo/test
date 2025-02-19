@@ -1,0 +1,163 @@
+현재 상황에서 검색조건을 입력받을 때 **getter, setter에서 설정하는 것과 검색 기능에서 받아온 값을 다시 세션에 설정하는 것** 중 어떤 방법을 사용해야 하는지 고민하는 것 같네요.  
+
+### **1. 어떤 방법을 사용해야 할까?**  
+#### **(1) 검색조건을 getter/setter에서 직접 관리하는 방법**  
+- **일반적인 JSF+MyBatis 검색 처리 방식**  
+- JSF에서 `<h:inputText>` 또는 `<h:selectOneMenu>` 같은 입력 필드에서 값을 입력하고,  
+  해당 값을 `@ManagedBean`이나 `@SessionScoped` Bean에서 관리  
+- 검색 버튼을 누르면 **MyBatis에서 쿼리를 실행**하여 결과를 반환  
+- **세션에 따로 저장할 필요 없이**, 검색 결과를 바로 화면에 표시  
+
+#### **(2) 검색 기능에서 받아온 값을 다시 세션에 저장하는 방법**  
+- 만약 검색한 조건을 유지해야 한다면(예: 다른 화면으로 이동했다가 돌아왔을 때 같은 검색 조건 유지)  
+- 검색 실행 후 **검색 조건을 세션에 저장하고** 다시 가져오는 방식 사용 가능  
+- 하지만 **필요하지 않다면 세션에 저장하지 않고 getter/setter에서만 관리**하는 것이 일반적  
+
+---
+
+### **2. 방법별 코드 예제**  
+#### **(1) Getter/Setter에서 검색조건 관리하는 방식 (일반적인 방법)**
+이 방법에서는 `@ViewScoped`나 `@SessionScoped` Bean에서 검색 조건을 관리하고, 검색 버튼을 누르면 MyBatis에서 데이터를 가져옵니다.  
+
+```java
+@ManagedBean
+@ViewScoped  // View 범위에서 유지됨
+public class UserBean {
+    private String userId;
+    private String userName;
+    private String groupCode;
+    private List<User> userList;
+
+    @Inject
+    private UserService userService;  // MyBatis와 연결된 서비스
+
+    // 검색 실행
+    public void searchUsers() {
+        this.userList = userService.findUsers(userId, userName, groupCode);
+    }
+
+    // Getter & Setter
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
+
+    public String getGroupCode() { return groupCode; }
+    public void setGroupCode(String groupCode) { this.groupCode = groupCode; }
+
+    public List<User> getUserList() { return userList; }
+    public void setUserList(List<User> userList) { this.userList = userList; }
+}
+```
+
+#### **(2) 검색 조건을 세션에 저장하는 방식 (검색 조건 유지 필요 시)**
+만약 사용자가 **검색 후 다른 페이지로 이동했다가 돌아왔을 때 같은 검색 조건을 유지해야 한다면**, 세션을 사용할 수 있습니다.  
+
+```java
+@ManagedBean
+@SessionScoped  // 세션 범위에서 유지됨
+public class UserBean {
+    private String userId;
+    private String userName;
+    private String groupCode;
+    private List<User> userList;
+
+    @Inject
+    private UserService userService;  // MyBatis와 연결된 서비스
+
+    // 세션에서 검색 조건 가져오기
+    public void loadSearchConditionsFromSession() {
+        FacesContext context = FacesContext.getCurrentInstance();
+        ExternalContext externalContext = context.getExternalContext();
+        Map<String, Object> sessionMap = externalContext.getSessionMap();
+
+        this.userId = (String) sessionMap.get("searchUserId");
+        this.userName = (String) sessionMap.get("searchUserName");
+        this.groupCode = (String) sessionMap.get("searchGroupCode");
+    }
+
+    // 검색 실행 & 검색 조건을 세션에 저장
+    public void searchUsers() {
+        this.userList = userService.findUsers(userId, userName, groupCode);
+
+        FacesContext context = FacesContext.getCurrentInstance();
+        ExternalContext externalContext = context.getExternalContext();
+        Map<String, Object> sessionMap = externalContext.getSessionMap();
+
+        sessionMap.put("searchUserId", userId);
+        sessionMap.put("searchUserName", userName);
+        sessionMap.put("searchGroupCode", groupCode);
+    }
+
+    // Getter & Setter
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
+
+    public String getGroupCode() { return groupCode; }
+    public void setGroupCode(String groupCode) { this.groupCode = groupCode; }
+
+    public List<User> getUserList() { return userList; }
+    public void setUserList(List<User> userList) { this.userList = userList; }
+}
+```
+
+---
+
+### **3. JSF 페이지 예제**
+#### **검색 조건 입력 & 결과 표시**
+```xhtml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="userId" value="User ID:" />
+        <h:inputText id="userId" value="#{userBean.userId}" />
+
+        <h:outputLabel for="userName" value="User Name:" />
+        <h:inputText id="userName" value="#{userBean.userName}" />
+
+        <h:outputLabel for="groupCode" value="Group Code:" />
+        <h:inputText id="groupCode" value="#{userBean.groupCode}" />
+    </h:panelGrid>
+
+    <h:commandButton value="Search" action="#{userBean.searchUsers}" />
+</h:form>
+
+<h:dataTable value="#{userBean.userList}" var="user">
+    <h:column>
+        <f:facet name="header">User ID</f:facet>
+        #{user.userId}
+    </h:column>
+    <h:column>
+        <f:facet name="header">User Name</f:facet>
+        #{user.userName}
+    </h:column>
+    <h:column>
+        <f:facet name="header">Group Code</f:facet>
+        #{user.groupCode}
+    </h:column>
+</h:dataTable>
+```
+
+---
+
+### **4. 어떤 방식이 더 좋은가?**
+| 방식 | 특징 | 사용 예 |
+|------|------|--------|
+| **getter/setter에서만 검색조건 관리** | - 일반적인 JSF 검색 처리 방식<br>- 페이지 이동하면 검색 조건 초기화됨 | - 검색 조건을 유지할 필요가 없을 때 |
+| **세션에 검색조건 저장** | - 페이지 이동 후 돌아와도 검색 조건 유지<br>- 세션 사용 시 메모리 관리 필요 | - 검색 조건을 유지해야 할 때 |
+
+#### **추천하는 방법**
+- **검색 조건이 유지될 필요가 없다면** getter/setter 방식으로 관리하는 것이 가장 간단하고, 불필요한 세션 사용을 줄일 수 있음.
+- **검색 조건을 유지해야 한다면** 검색 실행 후 세션에 값을 저장하고, 다시 검색 페이지로 돌아왔을 때 세션에서 값을 불러오는 방식이 적절함.
+
+---
+
+### **결론**
+**검색 조건을 어디에 저장할지**는 사용자의 요구사항과 시스템 설계에 따라 다릅니다.  
+- **단순한 검색이면 getter/setter로 처리**하고,  
+- **검색 조건을 유지해야 한다면 세션을 활용**하는 것이 좋습니다.  
+
+어떤 방식이든, **세션 사용 시 불필요한 데이터가 계속 저장되지 않도록 주의하는 것이 중요합니다.**
