@@ -1,0 +1,119 @@
+JSF에서 **부모 페이지**에서 `input hidden` 태그를 이용하여 `userid` 값을 넘기고, **등록 버튼 클릭 시** `userid`가 존재하는지 확인 후 **존재하지 않으면 등록**하는 방법을 구현해 보겠습니다.  
+
+---
+
+## **🔹 구현 순서**
+1️⃣ **부모 페이지에서 `input hidden` 태그에 `userid`를 설정**  
+2️⃣ **등록 버튼 클릭 시 서버에서 `userid` 존재 여부를 확인**  
+3️⃣ **존재하면 메시지 출력, 존재하지 않으면 등록 처리**  
+
+---
+
+## **1️⃣ 부모 페이지 (`parent.xhtml`)**
+```xhtml
+<h:form id="parentForm">
+    <h:outputLabel value="선택한 User ID: " />
+    <h:inputText id="selectedUser" value="#{userBean.selectedUserId}" readonly="true" />
+    
+    <!-- Hidden input -->
+    <h:inputHidden id="hiddenUserId" value="#{userBean.selectedUserId}" />
+
+    <!-- 등록 버튼 -->
+    <h:commandButton value="등록" action="#{userBean.registerUser}">
+        <f:ajax execute="@form" render="messagePanel"/>
+    </h:commandButton>
+
+    <h:panelGroup id="messagePanel">
+        <h:outputText value="#{userBean.message}" style="color: red;" rendered="#{not empty userBean.message}"/>
+    </h:panelGroup>
+</h:form>
+```
+✅ `h:inputHidden` 태그를 사용하여 `userid`를 숨겨서 넘김  
+✅ 등록 버튼 클릭 시 `userBean.registerUser()` 호출  
+
+---
+
+## **2️⃣ Java Bean (`UserBean.java`)**
+```java
+@ViewScoped
+@Named("userBean")
+public class UserBean {
+    private String selectedUserId;
+    private String message;
+
+    @Inject
+    private UserService userService; // DB 조회 및 등록 처리
+
+    public void registerUser() {
+        if (selectedUserId == null || selectedUserId.isEmpty()) {
+            message = "User ID를 선택하세요.";
+            return;
+        }
+
+        boolean exists = userService.checkUserExists(selectedUserId);
+        if (exists) {
+            message = "이미 등록된 사용자입니다.";
+        } else {
+            userService.registerNewUser(selectedUserId);
+            message = "사용자가 등록되었습니다.";
+        }
+    }
+
+    // Getter & Setter
+    public String getSelectedUserId() {
+        return selectedUserId;
+    }
+
+    public void setSelectedUserId(String selectedUserId) {
+        this.selectedUserId = selectedUserId;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+}
+```
+✅ `checkUserExists(selectedUserId)`를 호출하여 **사용자 존재 여부 확인**  
+✅ `registerNewUser(selectedUserId)`를 호출하여 **존재하지 않으면 등록 처리**  
+✅ `message` 값을 사용하여 **등록 결과 메시지 표시**  
+
+---
+
+## **3️⃣ UserService (DB 처리)**
+```java
+@ApplicationScoped
+public class UserService {
+    @Inject
+    private EntityManager em;
+
+    public boolean checkUserExists(String userId) {
+        Long count = em.createQuery("SELECT COUNT(u) FROM User u WHERE u.userid = :userId", Long.class)
+                       .setParameter("userId", userId)
+                       .getSingleResult();
+        return count > 0;
+    }
+
+    public void registerNewUser(String userId) {
+        User newUser = new User();
+        newUser.setUserid(userId);
+        em.persist(newUser);
+    }
+}
+```
+✅ **DB에서 `userid`가 존재하는지 확인** (`checkUserExists`)  
+✅ **존재하지 않으면 새 사용자 등록** (`registerNewUser`)  
+
+---
+
+## **📌 실행 흐름**
+1️⃣ 검색 페이지에서 **사용자를 선택**하고 **부모 페이지의 `input hidden` 태그에 `userid`가 저장됨**  
+2️⃣ `등록 버튼` 클릭 시 **JSF가 `userid`를 서버로 전송**  
+3️⃣ **서버에서 `userid` 존재 여부 확인**  
+   - 존재하면 `"이미 등록된 사용자입니다."` 메시지 출력  
+   - 존재하지 않으면 사용자 등록 후 `"사용자가 등록되었습니다."` 출력  
+
+✅ 이렇게 하면 부모 페이지에서 `input hidden` 태그를 이용하여 **유저 권한을 등록하는 기능이 정상 동작**합니다! 🚀
