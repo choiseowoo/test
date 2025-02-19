@@ -1,0 +1,114 @@
+JavaScript에서 `h:inputHidden` 태그에 값을 설정할 때, JSF가 관리하는 값과 동기화되지 않아 등록 시 `null`이 넘어갈 수 있습니다. **JSF에서는 서버에서 관리하는 값이 우선**되기 때문에, 단순히 JavaScript로 값을 변경하면 **JSF의 서버 상태에는 반영되지 않습니다.**  
+
+### 해결 방법  
+**JavaScript에서 hidden input 값을 설정하고, JSF의 Managed Bean과 동기화하는 방법**은 다음과 같습니다.  
+
+---
+
+### 1. **JSF & JavaScript 코드 (Hidden Input 값 설정 방법)**  
+
+```xhtml
+<h:form id="form">
+    <!-- 라디오 버튼 선택 -->
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <h:selectOneRadio id="userRadio" onclick="setSelectedUser('#{user.userid}', '#{user.username}');">
+                <f:selectItem itemValue="#{user.userid}" itemLabel="#{user.username}" />
+            </h:selectOneRadio>
+        </h:column>
+    </h:dataTable>
+
+    <!-- 라벨 태그에 선택된 값 표시 -->
+    <h:outputLabel value="선택된 유저 ID: " />
+    <h:outputText id="selectedUserLabel" value="#{userBean.selectedUserId}" />
+
+    <!-- JavaScript에서 값 설정 (Hidden Input) -->
+    <h:inputHidden id="selectedUserHidden" value="#{userBean.selectedUserId}" />
+
+    <!-- 등록 버튼 -->
+    <h:commandButton value="등록" action="#{userBean.register}" />
+</h:form>
+
+<script>
+    function setSelectedUser(userId, userName) {
+        // 선택된 사용자 정보를 Hidden Input과 Label에 반영
+        document.getElementById('form:selectedUserHidden').value = userId;
+        document.getElementById('form:selectedUserLabel').innerText = userId + " " + userName;
+
+        // JSF에서 값 동기화 (Ajax 호출)
+        let hiddenInput = document.getElementById('form:selectedUserHidden');
+        let event = new Event('change', { bubbles: true });
+        hiddenInput.dispatchEvent(event);
+    }
+</script>
+```
+
+---
+
+### 2. **UserBean.java (Managed Bean)**
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import java.io.Serializable;
+
+@ManagedBean
+@ViewScoped
+public class UserBean implements Serializable {
+    private String selectedUserId;
+
+    public String getSelectedUserId() {
+        return selectedUserId;
+    }
+
+    public void setSelectedUserId(String selectedUserId) {
+        this.selectedUserId = selectedUserId;
+    }
+
+    public void register() {
+        if (selectedUserId == null || selectedUserId.isEmpty()) {
+            System.out.println("선택된 유저가 없습니다.");
+            return;
+        }
+        System.out.println("등록된 유저 ID: " + selectedUserId);
+        // MyBatis 또는 JDBC를 이용하여 등록 로직 구현
+    }
+}
+```
+
+---
+
+### **설명 및 해결 방법**
+1. **JavaScript에서 `document.getElementById`로 `h:inputHidden` 값 설정**
+   - `document.getElementById('form:selectedUserHidden').value = userId;`
+   - 하지만 **JSF에서는 JavaScript로 변경한 값이 자동 반영되지 않음**
+
+2. **JavaScript에서 값 변경 후 이벤트 발생**
+   - `hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));`
+   - **JSF의 서버 값과 동기화**시키기 위해 input 변경 이벤트를 발생시킴
+
+3. **`h:commandButton`을 눌렀을 때 Hidden Input 값을 `userBean.selectedUserId`로 반영**
+   - 값이 동기화되므로, 등록 버튼을 눌러도 **`null`이 아니라 정상적인 값**이 넘어감
+
+---
+
+### **추가 해결책 (Ajax 사용)**
+**만약 JavaScript로 값을 설정하는 것만으로 값이 넘어가지 않는다면, `f:ajax`를 이용하여 강제 동기화**할 수도 있습니다.
+
+```xhtml
+<h:inputHidden id="selectedUserHidden" value="#{userBean.selectedUserId}">
+    <f:ajax event="change" render="selectedUserHidden" />
+</h:inputHidden>
+```
+
+이렇게 하면, **JavaScript에서 값 변경 후 `change` 이벤트 발생 시 자동으로 JSF 상태값도 업데이트**됩니다.
+
+---
+
+### **결론**
+- 단순히 JavaScript로 `h:inputHidden` 값을 변경하면, **JSF 서버 상태와 동기화되지 않아서 null이 넘어갈 수 있음**  
+- 해결 방법:
+  1. **JavaScript에서 값 변경 후 `change` 이벤트 발생**
+  2. **JSF `f:ajax`를 사용하여 값 반영**
+  3. **등록 버튼 클릭 시 JSF Bean에서 정상적으로 값 처리**
+
+이 방법을 적용하면 `null` 값이 넘어가는 문제를 해결할 수 있습니다!
