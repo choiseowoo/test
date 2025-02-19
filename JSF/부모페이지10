@@ -1,0 +1,109 @@
+`index.xhtml`에서 **유저 아이디**를 **라벨** 태그에 표시하고, 이를 **hidden input**으로 등록할 때 값을 사용하는 방법을 설명드리겠습니다. 
+
+이 경우, **라벨 태그**는 사용자에게 표시되는 값이고, **hidden input**은 **서버로 전달할 값**을 포함합니다. 사용자가 라디오 버튼에서 선택한 유저 아이디를 `hidden` 필드에 저장하고, 이를 통해 서버로 전달하여 **등록 작업**을 진행할 수 있습니다.
+
+### 구현 방법
+
+1. **라벨 태그에 유저 아이디 표시**
+2. **hidden 필드에 유저 아이디 값 전달**
+3. **등록 버튼을 클릭하면 해당 값이 서버로 전달되어 등록 처리**
+
+### 예제 구현
+
+#### 1. `index.xhtml` (JSF 페이지)
+
+```xhtml
+<h:form id="form">
+    <h:outputText value="사용자 정보를 입력하세요:" />
+
+    <!-- 유저 선택 라디오버튼 -->
+    <h:dataTable value="#{userBean.users}" var="user">
+        <h:column>
+            <h:selectOneRadio value="#{userBean.selectedUserId}">
+                <f:selectItem itemValue="#{user.userid}" itemLabel="#{user.username}" />
+            </h:selectOneRadio>
+        </h:column>
+    </h:dataTable>
+
+    <!-- 라벨 태그로 유저 아이디 표시 -->
+    <h:outputLabel value="선택된 유저 ID:" for="selectedUserId" />
+    <h:outputText id="selectedUserId" value="#{userBean.selectedUserId}" />
+
+    <!-- hidden input에 유저 아이디 설정 -->
+    <h:inputHidden id="selectedUserIdHidden" value="#{userBean.selectedUserId}" />
+
+    <!-- 등록 버튼 -->
+    <h:commandButton value="등록" action="#{userBean.register}" />
+</h:form>
+```
+
+#### 2. `UserBean.java` (JSF Bean)
+
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import java.util.List;
+
+@ManagedBean
+@ViewScoped
+public class UserBean {
+
+    private List<User> users;  // 유저 리스트
+    private String selectedUserId;  // 선택된 유저 아이디
+    
+    // getter, setter
+
+    // 유저 목록 초기화 (예시로 DB에서 가져옴)
+    public void init() {
+        users = userService.getAllUsers();  // 유저 리스트 가져오기
+    }
+
+    public void register() {
+        // selectedUserId로 유저 정보 등록 로직 처리
+        if (selectedUserId != null) {
+            userService.registerUser(selectedUserId);  // 유저 등록
+        }
+    }
+}
+```
+
+#### 3. `UserService.java` (유저 등록 처리)
+
+```java
+public class UserService {
+
+    public List<User> getAllUsers() {
+        // DB에서 유저 목록을 가져오는 로직
+        // 예시로 DB에서 유저 데이터를 가져오는 코드 작성
+        return new ArrayList<>();  // 실제 데이터 반환
+    }
+
+    public void registerUser(String userId) {
+        // 유저 등록 로직 (예: MyBatis, JDBC 사용)
+        System.out.println("User " + userId + " 등록됨");
+    }
+}
+```
+
+### 동작 설명
+
+1. **유저 리스트 표시**:
+   - `h:dataTable`을 사용하여 **유저 목록**을 테이블 형식으로 출력합니다.
+   - 각 행에서 **라디오 버튼**을 사용해 유저를 선택할 수 있습니다.
+   
+2. **라벨 태그로 유저 아이디 표시**:
+   - 선택된 유저 아이디는 **`userBean.selectedUserId`**에 바인딩되어, **라벨 태그**에 표시됩니다.
+
+3. **Hidden input에 유저 아이디 값 설정**:
+   - `h:inputHidden`을 사용하여 선택된 유저 아이디 값을 서버로 전달할 수 있도록 설정합니다.
+   - 사용자가 라디오 버튼을 선택하면, `selectedUserId` 값이 **hidden input**에 자동으로 설정되고, **등록 버튼** 클릭 시 해당 값이 서버로 전달됩니다.
+
+4. **유저 등록**:
+   - `h:commandButton`을 클릭하면, **`register`** 메소드가 실행되고, **`selectedUserId`** 값이 **userService.registerUser(selectedUserId)** 메소드로 전달됩니다.
+   - **MyBatis**나 **JDBC** 등을 사용하여 유저 정보를 등록하는 로직을 처리할 수 있습니다.
+
+### 추가 사항
+
+- **라디오 버튼**에서 선택된 값은 `selectedUserId`에 저장됩니다.
+- `h:inputHidden`을 사용하여 `selectedUserId` 값을 서버로 전달하며, 사용자가 선택한 유저 정보를 등록할 수 있습니다.
+- 등록 버튼을 누르면 **JSF Bean**에서 처리한 값을 바탕으로 실제 데이터베이스나 저장소에 유저 정보를 등록할 수 있습니다.
