@@ -1,0 +1,140 @@
+JSF에서 데이터를 **세션**을 사용하여 저장하고 **MyBatis**를 통해 SQL 데이터를 조회하거나 저장하는 방법에 대한 예제를 제공하겠습니다. 이 예제는 **JSF 페이지에서 받은 사용자 정보를 세션에 저장하고**, 이후 **MyBatis**를 사용하여 그 값을 기반으로 SQL 쿼리를 실행하는 방식입니다.
+
+### 1. **세션에 데이터 저장하기 (JSF)**
+
+우선, 사용자가 입력한 데이터를 세션에 저장하는 방법입니다. `FacesContext`를 통해 세션에 접근할 수 있습니다.
+
+#### **1.1. JSF에서 세션에 값 저장하기**
+```java
+// JSF에서 세션에 사용자 ID를 저장하는 예
+public void saveUserIdToSession() {
+    String userId = "user123";  // 예시로 하드코딩된 userId
+    FacesContext.getCurrentInstance().getExternalContext().getSessionMap().put("userId", userId);
+}
+```
+
+#### **1.2. JSF 페이지에서 값 받기**
+세션에 저장된 값을 `FacesContext`를 사용해 JSF 페이지에서 받을 수 있습니다.
+
+```java
+// JSF 페이지에서 세션 값 가져오기
+public String getUserIdFromSession() {
+    String userId = (String) FacesContext.getCurrentInstance().getExternalContext().getSessionMap().get("userId");
+    return userId;
+}
+```
+
+### 2. **MyBatis와 연동하여 DB에서 데이터 조회하기**
+
+`MyBatis`를 사용하여 SQL 쿼리를 실행하려면, 먼저 **MyBatis 매퍼**와 **SQL 세션**을 설정해야 합니다.
+
+#### **2.1. MyBatis 매퍼 XML 설정**
+`UserMapper.xml` 파일에서 **SQL 쿼리**를 정의합니다.
+
+```xml
+<mapper namespace="com.example.UserMapper">
+
+    <!-- 사용자 ID로 사용자 정보 조회 -->
+    <select id="getUserById" resultType="com.example.User">
+        SELECT user_id, user_name, user_email
+        FROM users
+        WHERE user_id = #{userId}
+    </select>
+
+</mapper>
+```
+
+#### **2.2. MyBatis 매퍼 Java 코드**
+MyBatis 매퍼를 통해 SQL 쿼리를 호출할 수 있도록 Java 코드를 작성합니다.
+
+```java
+public class UserService {
+
+    private SqlSession sqlSession;
+
+    public UserService(SqlSession sqlSession) {
+        this.sqlSession = sqlSession;
+    }
+
+    // 세션에서 userId를 가져와서 DB에서 사용자 정보 조회
+    public User getUserFromDatabase() {
+        // 세션에서 userId를 가져오기
+        String userId = (String) FacesContext.getCurrentInstance().getExternalContext().getSessionMap().get("userId");
+
+        // MyBatis 매퍼를 사용하여 DB에서 사용자 정보 조회
+        User user = sqlSession.selectOne("com.example.UserMapper.getUserById", userId);
+        return user;
+    }
+}
+```
+
+#### **2.3. User 클래스 (DTO)**
+
+사용자 정보를 담을 `User` 클래스를 정의합니다.
+
+```java
+public class User {
+    private String userId;
+    private String userName;
+    private String userEmail;
+
+    // Getters and Setters
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
+    }
+}
+```
+
+### 3. **JSF 페이지에서 사용하기**
+
+#### **3.1. 사용자 정보를 세션에 저장한 후 조회하기**
+JSF 페이지에서 버튼 클릭 시 `saveUserIdToSession()`을 호출하여 세션에 사용자 정보를 저장하고, 이후 `getUserFromDatabase()`를 통해 MyBatis를 사용하여 DB에서 해당 사용자 정보를 조회합니다.
+
+```xhtml
+<h:form>
+    <h:commandButton value="저장" action="#{userBean.saveUserIdToSession}" />
+</h:form>
+
+<h:form>
+    <h:commandButton value="조회" action="#{userBean.getUserFromDatabase}" />
+</h:form>
+
+<h:outputText value="User ID: #{userBean.userId}" />
+<h:outputText value="User Name: #{userBean.userName}" />
+<h:outputText value="User Email: #{userBean.userEmail}" />
+```
+
+### 4. **전체 흐름**
+
+1. **사용자 입력 후 세션에 저장**: 사용자가 값을 입력한 후 버튼을 클릭하여 `saveUserIdToSession()` 메서드를 통해 세션에 `userId`를 저장합니다.
+2. **DB에서 데이터 조회**: 이후 `getUserFromDatabase()` 메서드를 호출하여 MyBatis를 사용해 DB에서 해당 `userId`를 기반으로 사용자의 정보를 조회합니다.
+3. **JSF 페이지에서 데이터 표시**: 조회한 데이터를 JSF 페이지에서 `<h:outputText>` 태그를 사용하여 출력합니다.
+
+### 5. **주의사항**
+
+- 세션에 민감한 정보를 저장할 때는 보안에 신경 써야 합니다. 민감한 데이터는 서버 측에서 처리하고, 세션에는 필요한 최소한의 정보만 저장하는 것이 좋습니다.
+- `FacesContext`와 같은 JSF 객체는 **request, session, application scope**를 사용할 때 적절히 활용해야 하며, 잘못된 범위 사용으로 인한 메모리 누수나 성능 문제를 피해야 합니다.
+
+### 결론
+
+이 예제에서는 **JSF에서 세션을 사용**하고, **MyBatis**를 이용해 DB에서 값을 조회하는 방법을 다뤘습니다. 세션을 통해 클라이언트 상태를 서버 측에서 관리하고, MyBatis를 통해 데이터베이스와 상호작용할 수 있습니다.
