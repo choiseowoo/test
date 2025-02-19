@@ -1,0 +1,93 @@
+아니요, **Mapper.xml, Mapper.java, DAO**는 역할이 다릅니다. 하지만 같은 기능을 수행하는 경우도 있습니다.  
+
+---
+
+### **✅ 차이점 정리**  
+
+| 구분           | 설명 | 역할 |
+|---------------|--------------------------------|------------------|
+| **Mapper.xml** | MyBatis SQL 매핑 파일 | SQL을 직접 작성 |
+| **Mapper.java (인터페이스)** | MyBatis에서 XML과 연결되는 인터페이스 | XML의 SQL을 호출 |
+| **DAO (Data Access Object)** | 비즈니스 로직과 데이터 접근을 분리하는 클래스 | MyBatis 인터페이스 호출 |
+
+---
+
+### **✅ 예제 코드 (Mapper.xml + Mapper.java 사용)**
+
+#### **1. `UserMapper.xml` (SQL 작성)**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <select id="getUserById" parameterType="int" resultType="User">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+</mapper>
+```
+
+#### **2. `UserMapper.java` (인터페이스)**
+```java
+package com.example.mapper;
+
+import com.example.model.User;
+import org.apache.ibatis.annotations.Param;
+
+public interface UserMapper {
+    User getUserById(@Param("id") int id);
+}
+```
+
+#### **3. `UserDao.java` (DAO 클래스)**
+```java
+package com.example.dao;
+
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+
+public class UserDao {
+    private final SqlSessionFactory sqlSessionFactory;
+
+    public UserDao(SqlSessionFactory sqlSessionFactory) {
+        this.sqlSessionFactory = sqlSessionFactory;
+    }
+
+    public User getUserById(int id) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            return mapper.getUserById(id);
+        }
+    }
+}
+```
+
+---
+
+### **✅ DAO 없이 Mapper.java에서 직접 SQL 실행 (XML 없이 사용 가능)**  
+DAO 없이 인터페이스에서 **MyBatis 어노테이션**을 활용하면 XML 없이도 SQL 실행이 가능합니다.
+
+#### **1. `UserMapper.java` (어노테이션 활용)**
+```java
+package com.example.mapper;
+
+import com.example.model.User;
+import org.apache.ibatis.annotations.*;
+
+public interface UserMapper {
+    @Select("SELECT * FROM users WHERE id = #{id}")
+    User getUserById(@Param("id") int id);
+}
+```
+
+---
+
+### **✅ 결론**
+- **Mapper.xml**: SQL을 작성하는 MyBatis 매퍼 파일  
+- **Mapper.java**: `Mapper.xml`과 연결되는 **인터페이스**  
+- **DAO**: `Mapper.java`를 사용하여 데이터를 가져오고 **비즈니스 로직을 담당**  
+
+📌 **DAO 없이 Mapper.java만 사용할 수도 있지만, 유지보수성과 확장성을 고려하면 DAO를 따로 두는 것이 좋습니다.**
