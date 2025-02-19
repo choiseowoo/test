@@ -1,0 +1,225 @@
+부모 페이지에서 **단순 HTML 태그 (`label`, `input`, `button`)**을 사용하여 **자식 페이지에서 선택한 값을 받아 등록 처리**하는 MyBatis 기반 코드 작성해줄게요.  
+
+---
+
+## ✅ **1. 부모 페이지 (`parent.html` 또는 `parent.xhtml`)**  
+- `label` 태그로 선택한 사용자 정보를 표시  
+- `input hidden`을 사용해 `userid` 저장  
+- `등록` 버튼 클릭 시 MyBatis를 통해 DB에 저장  
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>부모 페이지</title>
+    <script>
+        function openChildPage() {
+            window.open("child.html", "childPage", "width=600,height=400");
+        }
+
+        function receiveUserData(userData) {
+            // userData = "userid username"
+            let userInfo = userData.split(" ");
+            document.getElementById("selectedUserLabel").innerText = userData;
+            document.getElementById("userid").value = userInfo[0]; // hidden input에 userid 저장
+        }
+
+        function registerUser() {
+            let userid = document.getElementById("userid").value;
+            if (!userid) {
+                alert("사용자를 선택하세요.");
+                return;
+            }
+
+            fetch('/registerUser', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userid: userid })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            });
+        }
+    </script>
+</head>
+<body>
+
+    <h2>부모 페이지</h2>
+    
+    <button onclick="openChildPage()">사용자 선택</button>
+    <label id="selectedUserLabel">선택된 사용자 없음</label>
+    
+    <input type="hidden" id="userid" />
+    
+    <button onclick="registerUser()">등록</button>
+
+</body>
+</html>
+```
+
+---
+
+## ✅ **2. 자식 페이지 (`child.html`)**
+- `radio` 버튼으로 사용자 선택  
+- `선택` 버튼 클릭 시 부모 페이지로 값 전달  
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>자식 페이지</title>
+    <script>
+        function sendUserData() {
+            let selectedRadio = document.querySelector('input[name="user"]:checked');
+            if (!selectedRadio) {
+                alert("사용자를 선택하세요.");
+                return;
+            }
+
+            let userData = selectedRadio.value; // "userid username"
+            window.opener.receiveUserData(userData);
+            window.close();
+        }
+    </script>
+</head>
+<body>
+
+    <h2>사용자 선택</h2>
+
+    <form>
+        <input type="radio" name="user" value="101 홍길동"> 홍길동 (ID: 101)<br>
+        <input type="radio" name="user" value="102 이순신"> 이순신 (ID: 102)<br>
+        <input type="radio" name="user" value="103 강감찬"> 강감찬 (ID: 103)<br>
+        <button type="button" onclick="sendUserData()">선택</button>
+    </form>
+
+</body>
+</html>
+```
+
+---
+
+## ✅ **3. MyBatis Mapper (`UserMapper.xml`)**
+- `userauth` 테이블에 `userid`가 존재하면 등록하지 않음  
+- 존재하지 않으면 `INSERT` 수행  
+
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <!-- userauth 테이블에서 userid 존재 여부 확인 -->
+    <select id="checkUserExists" parameterType="string" resultType="int">
+        SELECT COUNT(*) FROM userauth WHERE userid = #{userid}
+    </select>
+
+    <!-- 존재하지 않을 경우 새로 등록 -->
+    <insert id="registerUser" parameterType="string">
+        INSERT INTO userauth (userid) VALUES (#{userid})
+    </insert>
+
+</mapper>
+```
+
+---
+
+## ✅ **4. MyBatis 인터페이스 (`UserMapper.java`)**
+```java
+package com.example.mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Insert;
+
+public interface UserMapper {
+
+    @Select("SELECT COUNT(*) FROM userauth WHERE userid = #{userid}")
+    int checkUserExists(@Param("userid") String userid);
+
+    @Insert("INSERT INTO userauth (userid) VALUES (#{userid})")
+    void registerUser(@Param("userid") String userid);
+}
+```
+
+---
+
+## ✅ **5. 서비스 로직 (`UserService.java`)**
+```java
+package com.example.service;
+import com.example.mapper.UserMapper;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+
+public class UserService {
+    private final SqlSessionFactory sqlSessionFactory;
+
+    public UserService(SqlSessionFactory sqlSessionFactory) {
+        this.sqlSessionFactory = sqlSessionFactory;
+    }
+
+    public String registerUser(String userid) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            int count = mapper.checkUserExists(userid);
+
+            if (count > 0) {
+                return "이미 존재하는 사용자입니다.";
+            }
+
+            mapper.registerUser(userid);
+            session.commit();
+            return "사용자가 등록되었습니다.";
+        }
+    }
+}
+```
+
+---
+
+## ✅ **6. 컨트롤러 (`UserController.java`, Spring Boot 사용 시)**
+```java
+package com.example.controller;
+import com.example.service.UserService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+public class UserController {
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @PostMapping("/registerUser")
+    public Map<String, String> registerUser(@RequestBody Map<String, String> request) {
+        String userid = request.get("userid");
+        String message = userService.registerUser(userid);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", message);
+        return response;
+    }
+}
+```
+
+---
+
+## ✅ **결과 (작동 방식)**  
+1️⃣ **부모 페이지에서 "사용자 선택" 버튼 클릭 → 자식 페이지 열림**  
+2️⃣ **자식 페이지에서 사용자 선택 후 "선택" 버튼 클릭 → 부모 페이지로 값 전달 (`userid username`)**  
+3️⃣ **부모 페이지의 `<label>`이 선택한 사용자 정보로 업데이트됨**  
+4️⃣ **"등록" 버튼 클릭 → `userauth` 테이블에 userid 존재 여부 확인**  
+   - 존재하면 **"이미 존재하는 사용자입니다."**  
+   - 없으면 **새로운 userid 등록 후 "사용자가 등록되었습니다."**  
+
+---
+
+## ✅ **결론**
+- `h:outputText`, `h:commandButton`을 사용하지 않고, **일반 HTML 태그 (`label`, `input`, `button`)만 사용**
+- **JavaScript로 부모-자식 페이지 간 데이터 전달**
+- **MyBatis를 이용해 `userauth` 테이블에 `userid` 존재 여부 확인 후 등록 처리**
+
+이제 **JSF 없이도 동작하는 MyBatis 기반 사용자 선택 및 등록 기능이 구현되었습니다!**
