@@ -1,0 +1,207 @@
+JSF + MyBatis 조합으로도 검색과 페이징을 구현할 수 있습니다.   
+위의 코드는 Java 코드에서 리스트를 필터링하여 페이징을 적용했지만, MyBatis를 활용하면 **쿼리에서 직접 페이징을 처리**할 수 있습니다.  
+
+---
+
+## **1. MyBatis XML Mapper (검색 + 페이징 쿼리)**
+MyBatis에서 검색 조건과 페이징을 처리하는 SQL 쿼리를 작성합니다.
+
+### **UserMapper.xml**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <!-- 검색과 페이징을 적용한 쿼리 -->
+    <select id="searchUsers" resultType="com.example.model.User">
+        SELECT * FROM users
+        WHERE 1=1
+        <if test="organization != null and organization != ''">
+            AND organization = #{organization}
+        </if>
+        <if test="userName != null and userName != ''">
+            AND LOWER(name) LIKE CONCAT('%', LOWER(#{userName}), '%')
+        </if>
+        <if test="userCode != null and userCode != ''">
+            AND code = #{userCode}
+        </if>
+        <if test="userEmail != null and userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{userEmail}), '%')
+        </if>
+        ORDER BY id
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 총 데이터 개수 조회 -->
+    <select id="countUsers" resultType="int">
+        SELECT COUNT(*) FROM users
+        WHERE 1=1
+        <if test="organization != null and organization != ''">
+            AND organization = #{organization}
+        </if>
+        <if test="userName != null and userName != ''">
+            AND LOWER(name) LIKE CONCAT('%', LOWER(#{userName}), '%')
+        </if>
+        <if test="userCode != null and userCode != ''">
+            AND code = #{userCode}
+        </if>
+        <if test="userEmail != null and userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{userEmail}), '%')
+        </if>
+    </select>
+
+</mapper>
+```
+**✔ 핵심 기능:**  
+- `LIMIT #{offset}, #{pageSize}`: MySQL, PostgreSQL에서 페이징을 처리  
+- 검색 조건이 없으면 전체 데이터를 반환  
+- 검색 조건이 있을 경우 해당 조건을 적용  
+
+---
+
+## **2. UserMapper 인터페이스**
+```java
+import com.example.model.User;
+import org.apache.ibatis.annotations.Param;
+import java.util.List;
+
+public interface UserMapper {
+    List<User> searchUsers(@Param("organization") String organization,
+                           @Param("userName") String userName,
+                           @Param("userCode") String userCode,
+                           @Param("userEmail") String userEmail,
+                           @Param("offset") int offset,
+                           @Param("pageSize") int pageSize);
+
+    int countUsers(@Param("organization") String organization,
+                   @Param("userName") String userName,
+                   @Param("userCode") String userCode,
+                   @Param("userEmail") String userEmail);
+}
+```
+
+---
+
+## **3. Java 코드 (JSF + MyBatis 연동)**
+```java
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.enterprise.context.SessionScoped;
+import java.io.Serializable;
+import java.util.List;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    @Inject
+    private UserMapper userMapper;
+
+    private List<User> userList;
+    private String organization = "";
+    private String userName = "";
+    private String userCode = "";
+    private String userEmail = "";
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+
+    @PostConstruct
+    public void init() {
+        searchUsers(); // 초기 데이터 로드
+    }
+
+    public void searchUsers() {
+        int offset = (currentPage - 1) * pageSize;
+        userList = userMapper.searchUsers(organization, userName, userCode, userEmail, offset, pageSize);
+        int totalRecords = userMapper.countUsers(organization, userName, userCode, userEmail);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+    }
+
+    public void goToFirstPage() { currentPage = 1; searchUsers(); }
+    public void previousPage() { if (currentPage > 1) { currentPage--; searchUsers(); } }
+    public void nextPage() { if (currentPage < totalPages) { currentPage++; searchUsers(); } }
+    public void goToLastPage() { currentPage = totalPages; searchUsers(); }
+
+    // Getter & Setter
+    public List<User> getUserList() { return userList; }
+    public int getCurrentPage() { return currentPage; }
+    public int getTotalPages() { return totalPages; }
+    public void setOrganization(String organization) { this.organization = organization; }
+    public void setUserName(String userName) { this.userName = userName; }
+    public void setUserCode(String userCode) { this.userCode = userCode; }
+    public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
+}
+```
+
+---
+
+## **4. JSF 페이지 (JSF + MyBatis)**
+```xml
+<h:form id="searchForm">
+    <table>
+        <tr>
+            <td>조직:</td>
+            <td>
+                <h:selectOneMenu id="organization" value="#{userBean.organization}">
+                    <f:selectItem itemLabel="전체" itemValue="" />
+                    <f:selectItems value="#{userBean.organizationList}" />
+                </h:selectOneMenu>
+            </td>
+            <td>이름:</td>
+            <td><h:inputText id="userName" value="#{userBean.userName}" /></td>
+        </tr>
+        <tr>
+            <td>코드:</td>
+            <td><h:inputText id="userCode" value="#{userBean.userCode}" /></td>
+            <td>이메일:</td>
+            <td><h:inputText id="userEmail" value="#{userBean.userEmail}" /></td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <h:commandButton value="검색" action="#{userBean.searchUsers}" update="searchForm" />
+            </td>
+        </tr>
+    </table>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>이름</th>
+                <th>코드</th>
+                <th>이메일</th>
+            </tr>
+        </thead>
+        <tbody>
+            <ui:repeat value="#{userBean.userList}" var="user">
+                <tr>
+                    <td>#{user.name}</td>
+                    <td>#{user.code}</td>
+                    <td>#{user.email}</td>
+                </tr>
+            </ui:repeat>
+        </tbody>
+    </table>
+
+    <div id="paginationPanel" style="text-align: center; margin-top: 10px;">
+        <h:commandButton value="<<" action="#{userBean.goToFirstPage}" disabled="#{userBean.currentPage == 1}" update="searchForm" />
+        <h:commandButton value="<" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" update="searchForm" />
+        <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+        <h:commandButton value=">" action="#{userBean.nextPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="searchForm" />
+        <h:commandButton value=">>" action="#{userBean.goToLastPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="searchForm" />
+    </div>
+</h:form>
+```
+
+---
+
+## **5. 정리**
+✅ **검색 조건 (조직, 이름, 코드, 이메일) 적용**  
+✅ **MyBatis에서 페이징 처리 (`LIMIT offset, pageSize`)**  
+✅ **검색 결과에 맞는 페이징 적용 (MyBatis에서 개수 조회)**  
+✅ **JSF UI에서 검색 + 페이징 가능**  
+
+이제 **JSF + MyBatis** 조합으로 동작하는 검색 + 페이징 시스템을 완성할 수 있습니다!
