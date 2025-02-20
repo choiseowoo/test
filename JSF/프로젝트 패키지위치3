@@ -1,0 +1,60 @@
+Eclipse에서 소스 폴더(`src/main/java`)와 `bin`(빌드 폴더)의 위치를 조정하면 자동으로 올바른 패키지 구조가 반영될 가능성이 큽니다.  
+
+---
+
+## **방법 1: Java Build Path에서 `Source` 폴더 조정**
+소스 폴더 설정이 잘못되어 있어서 패키지 경로가 `main.systemname.jo.co.test.common.Stringutil;`로 나오고 있는 것 같습니다.  
+이 경우, **Eclipse의 `Java Build Path`에서 소스 폴더를 올바르게 설정하면 자동으로 패키지가 맞춰집니다.**  
+
+### **설정 방법**
+1. Eclipse에서 해당 프로젝트를 선택하고  
+   **`마우스 오른쪽 클릭` → `Properties`** 선택  
+2. **왼쪽 메뉴에서 `Java Build Path` → `Source` 탭 클릭**  
+3. **기존 `src` 폴더가 잘못된 경우 수정**  
+   - 현재 `src`가 **`main/systemname/src`** 등으로 잘못 설정되어 있다면,  
+     → `Remove` 버튼을 눌러 제거  
+   - **정확한 소스 폴더 (`src` 또는 `src/main/java`) 추가**
+     - `Add Folder...` 버튼 클릭
+     - `src` 또는 `src/main/java` 폴더 선택 후 `OK`  
+4. **Apply and Close** 버튼 클릭 후 프로젝트 `Refresh (F5)`
+
+✅ 이렇게 하면 **`main.systemname.jo.co.test.common`** 같은 잘못된 패키지가 자동으로 `jo.co.test.common`으로 맞춰질 가능성이 높습니다.
+
+---
+
+## **방법 2: 직접 패키지 경로 이동 (Refactor 기능)**
+위 방법으로 해결되지 않는다면, Eclipse에서 **패키지를 올바른 위치로 이동**할 수도 있습니다.  
+
+### **수정 방법**
+1. **Eclipse `Package Explorer`에서 잘못된 패키지 선택 (`main.systemname.jo.co.test.common`)**  
+2. `마우스 오른쪽 클릭` → **`Refactor` > `Move...`** 선택  
+3. **`jo.co.test.common` 위치로 이동**
+4. `Finish` 버튼 클릭  
+✅ Eclipse가 자동으로 올바른 패키지로 이동하며, `import` 구문도 자동 정리됨.
+
+---
+
+## **방법 3: `.classpath` 직접 수정 (고급 방법)**
+소스 폴더를 직접 지정해도 해결되지 않는다면, **`.classpath` 파일을 직접 수정하는 방법**도 있습니다.
+
+### **수정 방법**
+1. **프로젝트 루트에 `.classpath` 파일 열기**  
+2. `<classpathentry kind="src" path="main/systemname/src"/>`  
+   → **이 부분을 `src` 또는 `src/main/java`로 변경**
+   ```xml
+   <classpathentry kind="src" path="src"/>
+   ```
+3. **프로젝트 `Refresh (F5)` 후 Eclipse 재시작**
+
+✅ 이렇게 하면, Eclipse가 `src`를 소스 루트로 인식하고 패키지 경로가 `jo.co.test.common`으로 정리됨.
+
+---
+
+## **결론**
+- **가장 쉬운 방법**: `Java Build Path`에서 `src` 폴더를 올바르게 설정하면 자동 수정됨 ✅  
+- **패키지가 여전히 잘못된 경우**: `Refactor > Move` 기능 사용 ✅  
+- **모든 방법이 안 되면**: `.classpath` 파일을 직접 수정 ✅  
+
+위 방법을 적용하면 **`package main.systemname.jo.co.test.common.Stringutil;`**  
+→ **`package jo.co.test.common.Stringutil;`**  
+이렇게 자동으로 변경될 것입니다!
