@@ -1,0 +1,95 @@
+### 🔎 **`getform`이 하는 역할 예상 & 구현 방법**  
+
+`getform`이 `Display()` 메서드의 반환값인 걸로 보아, **JSF에서 화면을 갱신하는 역할**을 하고 있을 가능성이 큽니다.  
+또한, `getform`이 **검색 결과를 초기화**하는 기능도 포함하고 있을 수 있습니다.  
+
+#### **📌 `getform` 예상 기능**
+1. **XHTML의 특정 폼을 갱신 (`update="searchForm"`)**
+2. **검색 결과 테이블을 초기화**
+3. **검색 조건 (`userName`, `userCode`) 검증 후 메시지 표시**
+
+---
+
+## ✅ **비슷하게 구현하는 방법**  
+### **🔹 1. `getform` 역할을 JSF로 구현**
+```java
+public String display() {
+    // 이름과 코드가 없으면 메시지 출력 후 초기화
+    if (userName == null || userName.isEmpty() && userCode == null || userCode.isEmpty()) {
+        showMessage("이름 또는 코드 중 하나를 입력하세요.", screenId);
+        return "getform";  // 검색 폼을 다시 로드 (JSF 네비게이션)
+    }
+    
+    // 검색 실행
+    searchUsers();
+    
+    return "getform";  // 화면 갱신
+}
+```
+📌 **핵심**
+- **이름과 코드가 없으면 메시지 출력**
+- **검색 실행 후 `getform` 반환** → `faces-config.xml`에서 `getform`을 `searchForm.xhtml`로 매핑 가능  
+
+---
+
+### **🔹 2. JavaScript로 비슷하게 구현**
+만약 `getform`의 역할이 **JavaScript에서 검색 테이블을 초기화하는 것**이라면, 다음처럼 `document.getElementById()`를 활용해 구현할 수 있습니다.
+
+```xml
+<h:form id="searchForm">
+    <h:inputText id="userName" value="#{userBean.userName}" />
+    <h:inputText id="userCode" value="#{userBean.userCode}" />
+
+    <h:commandButton value="검색" style="display:none;" id="searchButton"
+                     action="#{userBean.display}" update="searchForm" />
+
+    <script>
+        function search() {
+            let userName = document.getElementById('searchForm:userName').value.trim();
+            let userCode = document.getElementById('searchForm:userCode').value.trim();
+            let errorMessageDiv = document.getElementById('errorMessages');
+
+            // 입력값 검증
+            if (!userName && !userCode) {
+                errorMessageDiv.innerHTML = "이름 또는 코드 중 하나를 입력하세요.";
+                errorMessageDiv.style.display = "block";
+                return;
+            }
+
+            // 검색 실행
+            document.getElementById("searchButton").click();
+        }
+
+        // 초기화 함수
+        function resetTable() {
+            document.getElementById("searchResults").innerHTML = "";
+        }
+    </script>
+
+    <button type="button" onclick="search()">🔍 검색 (JS 실행)</button>
+    <button type="button" onclick="resetTable()">🗑️ 초기화</button>
+
+    <div id="errorMessages" style="color: red; display: none;"></div>
+    
+    <h:dataTable id="searchResults" value="#{userBean.searchResults}" var="user">
+        <h:column>#{user.name}</h:column>
+        <h:column>#{user.code}</h:column>
+    </h:dataTable>
+</h:form>
+```
+
+📌 **동작 원리**
+1. **검색 버튼 클릭** 시 `search()` 실행  
+2. `userName`과 `userCode`가 모두 비어 있으면 **에러 메시지 출력**
+3. **JS에서 강제로 `h:commandButton` 클릭 이벤트 발생** → `userBean.display()` 실행  
+4. 검색 데이터가 있으면 **JSF에서 `searchResults` 갱신**  
+5. **초기화 버튼**을 누르면 **검색 결과 테이블을 지움**  
+
+---
+
+## **🚀 결론**
+- **JSF 방식**: `getform`이 검색 폼을 다시 로드하는 역할이면 **JSF 네비게이션** 활용  
+- **JavaScript 방식**: `document.getElementById()`를 이용해 **에러 메시지 & 테이블 초기화** 가능  
+- **혼합 방식**: JS에서 `h:commandButton`을 강제로 클릭해 **JSF 메서드 호출** 가능  
+
+`getform`이 정확히 어떤 역할을 하는지 확인하면 더 최적화된 방법을 찾을 수 있을 것 같네요! 🔥
