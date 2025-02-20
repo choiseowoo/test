@@ -1,0 +1,117 @@
+페이징 방식에는 여러 가지 접근법이 있어. 지금처럼 **offset/limit을 사용한 SQL 페이징** 외에도 다른 방법이 있어:  
+
+1. **Offset/Limit 방식 (현재 방식)**  
+   - 장점: SQL에서 간단히 처리 가능  
+   - 단점: 데이터가 많을 경우 성능 저하 (특히 후반 페이지)  
+
+2. **Keyset Pagination (카서 페이징, 효율적)**  
+   - 장점: 대용량 데이터에서도 빠름  
+   - 단점: `ORDER BY`가 필수, 특정 컬럼을 기반으로 페이징  
+
+3. **배치 조회 방식 (In-memory 처리)**  
+   - 장점: 메모리에서 리스트를 조작 가능  
+   - 단점: 처음에 모든 데이터를 불러와야 함  
+
+네가 선택할 수 있는 다른 방법들을 자세히 설명해 줄게.  
+
+---
+
+## **🔹 방법 1: Keyset Pagination (카서 페이징)**
+- **🚀 속도가 빠름** → OFFSET 없이 `WHERE id > lastId` 조건으로 데이터 검색  
+- **🎯 `ORDER BY id ASC` 필수**  
+
+**🔹 SQL 변경 (`searchUsers` 메서드)**
+```xml
+<select id="searchUsers" resultType="com.example.model.User">
+    SELECT * FROM users
+    WHERE 1=1
+    <if test="lastId != null">
+        AND id > #{lastId}
+    </if>
+    ORDER BY id ASC
+    LIMIT #{pageSize}
+</select>
+```
+
+**🔹 Java 변경 (UserBean)**
+```java
+private Integer lastId = null; // 마지막으로 가져온 ID
+
+public void searchUsers() {
+    lastId = null; // 검색 시 초기화
+    userList = userMapper.searchUsers(organization, userName, userCode, userEmail, lastId, pageSize);
+    if (!userList.isEmpty()) {
+        lastId = userList.get(userList.size() - 1).getId(); // 마지막 ID 저장
+    }
+}
+
+public void nextPage() {
+    if (lastId != null) {
+        userList = userMapper.searchUsers(organization, userName, userCode, userEmail, lastId, pageSize);
+        if (!userList.isEmpty()) {
+            lastId = userList.get(userList.size() - 1).getId();
+        }
+    }
+}
+```
+
+✅ **장점:** `OFFSET` 없이 빠름, 페이지가 뒤로 갈수록 속도 저하 없음  
+⛔ **단점:** ID가 연속적이어야 함  
+
+---
+
+## **🔹 방법 2: 배치 조회 방식 (In-memory)**
+- **전체 데이터를 가져와서 페이징 처리**
+- 검색 결과가 많지 않다면 **이 방법이 편리**  
+
+**🔹 Java 변경**
+```java
+private List<User> allUsers; // 전체 데이터 저장
+private int totalRecords;
+
+public void searchUsers() {
+    allUsers = userMapper.searchAllUsers(organization, userName, userCode, userEmail);
+    totalRecords = allUsers.size();
+    updatePage();
+}
+
+public void updatePage() {
+    int fromIndex = (currentPage - 1) * pageSize;
+    int toIndex = Math.min(fromIndex + pageSize, totalRecords);
+    userList = allUsers.subList(fromIndex, toIndex);
+}
+```
+
+✅ **장점:** 빠르고 DB 부하 적음 (데이터가 많지 않으면 추천)  
+⛔ **단점:** 데이터가 많으면 메모리 부담  
+
+---
+
+## **🔹 방법 3: 동적 SQL + 무한 스크롤 (Ajax)**
+- **JSF에서 Ajax를 활용하여 페이지 로드 방식 변경**
+- 페이지 버튼 없이 **스크롤할 때마다 추가 로드**  
+
+```xml
+<h:commandButton value="더 보기" action="#{userBean.loadMore}" update="userTable" rendered="#{not userBean.isLastPage}" />
+```
+
+```java
+public void loadMore() {
+    int offset = currentPage * pageSize;
+    List<User> newUsers = userMapper.searchUsers(organization, userName, userCode, userEmail, offset, pageSize);
+    userList.addAll(newUsers);
+    currentPage++;
+}
+```
+
+✅ **장점:** 유저 경험 좋음 (더 보기 방식)  
+⛔ **단점:** 구현 복잡  
+
+---
+
+## **🔥 어떤 방식이 가장 좋을까?**
+1. **데이터가 많다면** → **Keyset Pagination (방법 1)**
+2. **데이터가 적다면** → **배치 조회 (방법 2)**
+3. **UX가 중요하면** → **무한 스크롤 (방법 3)**  
+
+어떤 방식이 네 프로젝트에 적합할까? 🚀
