@@ -1,0 +1,52 @@
+네, 패키지 구조와 실제 파일 경로가 맞지 않는 경우, Eclipse에서 **`Build Path` 설정을 수정하면 자동으로 해결**될 가능성이 큽니다.  
+
+### **1. 프로젝트의 `Java Build Path` 설정 수정**
+패키지 구조가 맞지 않는 이유는 **소스 폴더(SRC Root)가 잘못 설정되었기 때문**일 가능성이 높습니다.  
+이를 수정하면, 기존 클래스들의 패키지 선언이 자동으로 원래 위치로 맞춰질 수 있습니다.
+
+#### **설정 방법**
+1. Eclipse에서 프로젝트 선택 → `마우스 오른쪽 클릭` → `Properties`  
+2. 왼쪽 메뉴에서 **`Java Build Path` → `Source` 탭** 선택  
+3. 현재 **소스 폴더(`src` 또는 `main/systemname`)가 어디로 설정되어 있는지 확인**  
+4. **올바른 위치로 수정**  
+   - 예를 들어, `main/systemname`을 `src` 대신 소스 폴더로 잘못 설정했다면, **올바른 위치(`src/main/java` 등)**로 변경  
+
+5. `Apply and Close` 버튼을 누른 후 **Eclipse 프로젝트를 리프레시 (`F5`)**
+
+---
+
+### **2. 패키지 선언 자동 수정 (`Refactor > Move`)**
+위 방법이 안 되면 Eclipse의 `Refactor` 기능을 사용하여 패키지를 원래 위치로 자동 이동시킬 수 있습니다.
+
+#### **수정 방법**
+1. Eclipse의 **`Package Explorer`**에서 패키지가 잘못된 클래스들 선택  
+2. `마우스 오른쪽 클릭` → **`Refactor` > `Move...`** 선택  
+3. **원래 패키지(`jo.co.test.common` 등)로 이동**  
+4. `Finish` 버튼 클릭
+
+---
+
+### **3. Eclipse `Organize Imports` 활용**
+소스 폴더를 수정한 후, **자동으로 import 정리**를 수행하면 패키지가 자동으로 맞춰질 수 있습니다.
+
+#### **방법**
+1. 프로젝트 또는 패키지 선택  
+2. `Ctrl + Shift + O` (Windows) 또는 `Cmd + Shift + O` (Mac) 실행  
+3. **잘못된 import가 자동 정리되면서 패키지 구조가 맞춰질 수 있음**
+
+---
+
+### **4. 수동 패키지 변경을 자동화 (Eclipse Quick Fix)**
+1. `Package Explorer`에서 잘못된 클래스 열기  
+2. 패키지 명(`package main.systemname.jo.co.test.common;`)이 빨간색 에러 표시된 상태에서 `Ctrl + 1` (Quick Fix) 실행  
+3. `Move file to correct package` 선택하면 자동으로 올바른 패키지로 이동됨  
+
+---
+
+### **결론**
+1. **`Java Build Path`에서 소스 폴더 위치 수정 (`src/main/java` 등으로 변경)**  
+2. **Eclipse `Refactor > Move` 기능으로 패키지를 올바른 위치로 정리**  
+3. **`Ctrl + Shift + O`를 사용해 자동으로 import 정리**  
+4. **Quick Fix (`Ctrl + 1`)를 사용해 Eclipse가 패키지 문제를 자동 수정**  
+
+이 방법들을 적용하면 20개 이상의 클래스를 일일이 수정하지 않고 자동으로 해결할 수 있습니다!
