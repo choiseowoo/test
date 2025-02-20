@@ -1,0 +1,69 @@
+`@Name("UserBean")` 대신 `@ManagedBean`과 `@ViewScoped`를 사용해야 합니다. `@Name`은 **CDI (Contexts and Dependency Injection)**에서 사용되는 어노테이션으로, JSF에서는 `@ManagedBean`을 사용해야 합니다. 
+
+따라서, `UserBean` 클래스에서 어노테이션을 `@ManagedBean`으로 수정해야 합니다. 또한 `@ViewScoped`는 JSF에서 뷰의 생명 주기를 관리하는데 사용되므로 이 부분은 그대로 유지합니다.
+
+### 수정된 코드
+
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String userName;
+    private String userCode;
+    private List<User> searchResults = new ArrayList<>();
+    private int totalRecords;
+    private int currentPage = 1;
+    private final int PAGE_SIZE = 10; // 한 페이지당 표시할 개수
+
+    // Getter, Setter 생략
+
+    public String display() {
+        // 🔥 기존 검색 결과 초기화
+        searchResults.clear();
+        currentPage = 1;
+
+        // 🔥 입력값 검증
+        if ((userName == null || userName.trim().isEmpty()) && 
+            (userCode == null || userCode.trim().isEmpty())) {
+            FacesContext.getCurrentInstance().addMessage(null, 
+                new FacesMessage(FacesMessage.SEVERITY_ERROR, "이름 또는 코드 중 하나를 입력하세요.", null));
+            return null;
+        }
+
+        // 🔥 검색 실행
+        searchUsers();
+
+        // 🔥 검색 결과 검증
+        if (totalRecords == 0) {
+            FacesContext.getCurrentInstance().addMessage(null, 
+                new FacesMessage(FacesMessage.SEVERITY_ERROR, "검색 결과가 없습니다.", null));
+        } else if (totalRecords > 100) {
+            FacesContext.getCurrentInstance().addMessage(null, 
+                new FacesMessage(FacesMessage.SEVERITY_WARN, "검색 건수가 100건을 초과합니다.", null));
+        }
+
+        return null;
+    }
+
+    public void searchUsers() {
+        // 🔹 DB에서 검색 수행 (실제 로직 필요)
+        searchResults = UserDAO.getUsers(userName, userCode);
+
+        // 🔹 전체 검색 결과 개수 설정
+        totalRecords = searchResults.size();
+    }
+}
+```
+
+### 핵심 수정 사항
+1. **`@ManagedBean`**을 사용하여 JSF에서 관리되는 빈을 정의.
+2. `@ViewScoped`는 그대로 사용하여 JSF 페이지에서 뷰의 생명주기를 관리합니다.
+
+### `@ManagedBean` 어노테이션과 `@ViewScoped` 어노테이션 설명
+- `@ManagedBean`: JSF에서 관리하는 빈을 정의하는 데 사용됩니다. JSF 페이지에서 이 빈을 참조할 수 있도록 해줍니다.
+- `@ViewScoped`: 뷰의 생명 주기를 관리합니다. 페이지를 새로 로드하거나 리프레시할 때에도 상태를 유지할 수 있습니다.
+
+이제 `@ManagedBean`을 사용하면 검색 기능이 정상적으로 동작할 것입니다.
