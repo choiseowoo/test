@@ -1,0 +1,182 @@
+그렇습니다. `@RequestScoped`에서는 페이지 이동 시마다 새로운 Bean이 생성되므로, **검색 결과(`userList`)가 유지되지 않습니다.**  
+그래서 검색 버튼을 눌러도 **페이징 버튼(`>`, `>>`)을 누르면 데이터가 사라지는 문제**가 발생하는 겁니다.  
+
+---
+
+### **🔥 해결 방법 3가지**
+1️⃣ **`@ViewScoped` 사용 (권장) → AJAX로 검색 유지 가능**  
+2️⃣ **`@RequestScoped` 유지 + Hidden Field로 검색 조건 유지**  
+3️⃣ **`@RequestScoped` 유지 + `flash` 스코프 사용**  
+
+---
+
+### **✅ 1. `@ViewScoped` 사용 (권장)**  
+페이징 버튼을 눌러도 `userList`가 유지되도록 **`@ViewScoped`로 변경**하면 해결됩니다.  
+
+#### **🔹 `UserBean.java`**
+```java
+import javax.faces.view.ViewScoped;
+import javax.inject.Named;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+@Named
+@ViewScoped  // 🔥 ViewScoped 사용 → AJAX 요청으로 데이터 유지 가능
+public class UserBean implements Serializable {
+    private List<User> userList = new ArrayList<>();
+    private int currentPage = 1;
+    private int pageSize = 10;
+
+    public void searchUsers() {
+        int offset = (currentPage - 1) * pageSize;
+        userList = userMapper.searchUsers(offset, pageSize);
+    }
+
+    public void nextPage() {
+        currentPage++;
+        searchUsers();
+    }
+
+    public void previousPage() {
+        currentPage--;
+        searchUsers();
+    }
+
+    public List<User> getUserList() { return userList; }
+    public int getCurrentPage() { return currentPage; }
+}
+```
+- `@ViewScoped` 덕분에 **검색 결과가 유지되고, 페이징 버튼(`>`, `>>`)도 정상 동작**합니다.
+
+---
+
+### **✅ 2. `@RequestScoped` 유지 + Hidden Field로 검색 조건 유지**  
+`@RequestScoped`를 유지하려면, **검색 조건을 `h:inputHidden`에 저장**해서  
+페이지 이동 시에도 검색 조건을 유지하도록 처리해야 합니다.  
+
+#### **🔹 `UserBean.java`**
+```java
+@Named
+@RequestScoped  // 🔥 RequestScoped 유지
+public class UserBean {
+    private String userName;
+    private List<User> userList = new ArrayList<>();
+    private int currentPage = 1;
+    private int pageSize = 10;
+
+    public void searchUsers() {
+        int offset = (currentPage - 1) * pageSize;
+        userList = userMapper.searchUsers(userName, offset, pageSize);
+    }
+
+    public void nextPage() {
+        currentPage++;
+        searchUsers();
+    }
+
+    public void previousPage() {
+        currentPage--;
+        searchUsers();
+    }
+
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
+}
+```
+
+#### **🔹 `search.xhtml`**
+```xml
+<h:form>
+    <h:inputText value="#{userBean.userName}" />
+    <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+
+    <!-- 🔥 검색 조건을 유지하기 위해 Hidden Field 사용 -->
+    <h:inputHidden value="#{userBean.userName}" />
+
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>#{user.name}</h:column>
+    </h:dataTable>
+
+    <h:commandButton value="이전" action="#{userBean.previousPage}" rendered="#{userBean.currentPage > 1}" />
+    <h:commandButton value="다음" action="#{userBean.nextPage}" rendered="#{not empty userBean.userList}" />
+</h:form>
+```
+- **검색 후에도 `userName` 값을 유지**하므로 페이징 이동이 가능합니다.
+
+---
+
+### **✅ 3. `flash` 스코프 사용**
+검색 조건을 **Flash Scope**에 저장하면, **페이징 이동 시 검색 결과가 유지**됩니다.  
+하지만 **새로고침(F5)하면 데이터가 사라지는 단점**이 있습니다.
+
+#### **🔹 `UserBean.java`**
+```java
+import javax.faces.context.FacesContext;
+import javax.faces.context.Flash;
+import javax.inject.Named;
+import javax.enterprise.context.RequestScoped;
+import java.util.List;
+
+@Named
+@RequestScoped
+public class UserBean {
+    private String userName;
+    private List<User> userList;
+    private int currentPage = 1;
+    private int pageSize = 10;
+
+    public void searchUsers() {
+        int offset = (currentPage - 1) * pageSize;
+        userList = userMapper.searchUsers(userName, offset, pageSize);
+
+        Flash flash = FacesContext.getCurrentInstance().getExternalContext().getFlash();
+        flash.put("userList", userList);
+        flash.put("currentPage", currentPage);
+        flash.put("userName", userName);
+    }
+
+    public void loadFromFlash() {
+        Flash flash = FacesContext.getCurrentInstance().getExternalContext().getFlash();
+        userList = (List<User>) flash.get("userList");
+        currentPage = (Integer) flash.getOrDefault("currentPage", 1);
+        userName = (String) flash.get("userName");
+    }
+
+    public List<User> getUserList() { return userList; }
+    public int getCurrentPage() { return currentPage; }
+    public String getUserName() { return userName; }
+}
+```
+#### **🔹 `search.xhtml`**
+```xml
+<h:body onload="#{userBean.loadFromFlash()}">
+    <h:form>
+        <h:inputText value="#{userBean.userName}" />
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+
+        <h:dataTable value="#{userBean.userList}" var="user">
+            <h:column>#{user.name}</h:column>
+        </h:dataTable>
+
+        <h:commandButton value="이전" action="#{userBean.previousPage}" rendered="#{userBean.currentPage > 1}" />
+        <h:commandButton value="다음" action="#{userBean.nextPage}" rendered="#{not empty userBean.userList}" />
+    </h:form>
+</h:body>
+```
+- **페이징 이동 시 `flash`에서 검색 조건을 유지**하여 데이터를 계속 표시합니다.  
+- 하지만 **새로고침(F5)하면 데이터가 날아가는 단점**이 있습니다.
+
+---
+
+### **🚀 결론**
+| 해결 방법 | 유지됨 | 단점 |
+|--------|------|------|
+| **`@ViewScoped` (권장)** | ✅ 검색 & 페이징 | ❌ 새로고침 시 데이터 유지 안됨 |
+| **Hidden Field (`@RequestScoped`)** | ✅ 검색 & 페이징 | ❌ 새로고침 시 데이터 사라짐 |
+| **Flash Scope (`@RequestScoped`)** | ✅ 검색 & 페이징 | ❌ 새로고침 시 데이터 초기화 |
+
+🔹 **가장 좋은 방법**: **`@ViewScoped`로 변경**  
+🔹 `@RequestScoped`를 꼭 유지해야 하면: **Hidden Field 활용**  
+
+💡 **지금 문제는 `@RequestScoped` 때문에 발생하므로 `@ViewScoped`로 변경하는 것이 가장 좋은 해결 방법입니다.**
