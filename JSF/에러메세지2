@@ -1,0 +1,50 @@
+네, `totalRecords` 값은 `UserBean.java`의 `searchUsers` 메서드에서 설정해야 합니다.  
+
+### **✔ `UserBean.java` 수정 예시**  
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String userName;
+    private String userCode;
+    private List<User> userList;
+    private int totalRecords; // 검색된 전체 레코드 수
+    private boolean searchExecuted = false; // 검색 실행 여부
+
+    @EJB
+    private UserService userService; // 데이터 조회 서비스
+
+    public void searchUsers() {
+        userList = userService.findUsers(userName, userCode);
+        totalRecords = userList.size(); // 전체 검색된 데이터 수 저장
+        searchExecuted = true; // 검색 실행됨
+    }
+
+    // ✅ GETTER & SETTER
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
+    
+    public String getUserCode() { return userCode; }
+    public void setUserCode(String userCode) { this.userCode = userCode; }
+
+    public List<User> getUserList() { return userList; }
+    public int getTotalRecords() { return totalRecords; }
+    
+    public boolean isSearchExecuted() { return searchExecuted; }
+}
+```
+
+---
+
+### **📌 동작 흐름**
+1. **검색 실행 (`searchUsers()` 호출)**
+   - `userService.findUsers(userName, userCode)` 를 통해 데이터 조회
+   - 검색된 데이터 리스트 (`userList`) 저장  
+   - `totalRecords = userList.size();` → 총 검색된 데이터 개수 저장
+   - `searchExecuted = true;` → 검색 실행 여부 `true`로 설정
+
+2. **JSF에서 `totalRecords` 값 사용**
+   - `#{userBean.totalRecords}` 로 총 검색된 데이터 개수 출력  
+   - JavaScript에서 `#{userBean.totalRecords}` 값을 가져와 검색 결과 검증  
+
+이제 JavaScript에서 `#{userBean.totalRecords}` 값을 활용해 **검색 결과 검증 및 메시지 출력**이 가능합니다! 🚀
