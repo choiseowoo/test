@@ -1,0 +1,92 @@
+### **✔ 해결 방법 (JavaScript로 버튼 활성화/비활성화)**
+✅ **검색 실행 전에는 선택 버튼을 비활성화 (`disabled` 처리)**  
+✅ **검색 버튼 클릭 시 `searchExecuted` 상태에 따라 선택 버튼 활성화**  
+✅ **검색 결과가 없으면 다시 비활성화**
+
+---
+
+### **📌 1. `userSearch.xhtml` 수정**
+```xml
+<h:form id="searchForm">
+    <table>
+        <tr>
+            <td>조직:</td>
+            <td>
+                <h:selectOneMenu id="organization" value="#{userBean.organization}">
+                    <f:selectItem itemLabel="전체" itemValue="" />
+                    <f:selectItems value="#{userBean.organizationList}" />
+                </h:selectOneMenu>
+            </td>
+            <td>이름:</td>
+            <td><h:inputText id="userName" value="#{userBean.userName}" /></td>
+        </tr>
+        <tr>
+            <td>코드:</td>
+            <td><h:inputText id="userCode" value="#{userBean.userCode}" /></td>
+            <td>이메일:</td>
+            <td><h:inputText id="userEmail" value="#{userBean.userEmail}" /></td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <!-- 검색 버튼 클릭 시 JavaScript로 선택 버튼 활성화 -->
+                <h:commandButton value="검색" action="#{userBean.searchUsers}" onclick="enableSelectButton()" update="searchForm" />
+            </td>
+        </tr>
+    </table>
+
+    <h:panelGroup rendered="#{userBean.searchExecuted}">
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>이름</th>
+                    <th>코드</th>
+                    <th>이메일</th>
+                </tr>
+            </thead>
+            <tbody>
+                <ui:repeat value="#{userBean.userList}" var="user">
+                    <tr>
+                        <td>#{user.name}</td>
+                        <td>#{user.code}</td>
+                        <td>#{user.email}</td>
+                    </tr>
+                </ui:repeat>
+            </tbody>
+        </table>
+
+        <div style="text-align: center; margin-top: 10px;">
+            <h:commandButton value="<<" action="#{userBean.goToFirstPage}" disabled="#{userBean.currentPage == 1}" update="searchForm" />
+            <h:commandButton value="<" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" update="searchForm" />
+            <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+            <h:commandButton value=">" action="#{userBean.nextPage}" disabled="#{userBean.currentPage >= userBean.totalPages}" update="searchForm" />
+            <h:commandButton value=">>" action="#{userBean.goToLastPage}" disabled="#{userBean.currentPage >= userBean.totalPages}" update="searchForm" />
+        </div>
+    </h:panelGroup>
+
+    <!-- 🚀 선택 버튼 (초기 비활성화 상태) -->
+    <div style="text-align: center; margin-top: 10px;">
+        <h:commandButton id="selectButton" value="선택" disabled="true" />
+    </div>
+</h:form>
+
+<!-- ✅ JavaScript 추가 -->
+<script>
+    function enableSelectButton() {
+        setTimeout(() => {
+            let button = document.getElementById("searchForm:selectButton");
+            if (button) {
+                button.disabled = #{userBean.searchExecuted ? 'false' : 'true'};
+            }
+        }, 500); // JSF가 처리된 후 실행되도록 딜레이 추가
+    }
+</script>
+```
+
+---
+
+### **📌 2. 동작 방식**
+✅ **초기에는 선택 버튼 비활성화 (`disabled="true"`)**  
+✅ **검색 버튼 클릭하면 JavaScript 실행 → `searchExecuted` 상태 확인 후 버튼 활성화**  
+✅ **검색 결과가 없으면 다시 비활성화 (`disabled=true`)**  
+
+이제 검색을 해야 **선택 버튼이 활성화되고**, 검색 결과가 없으면 자동으로 비활성화돼! 🚀
