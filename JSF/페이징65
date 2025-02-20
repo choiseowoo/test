@@ -1,0 +1,70 @@
+`searchExecuted` 변수가 검색 실행 여부를 기준으로 테이블을 표시하는 역할을 하고 있기 때문에, 이전 검색 결과가 남아 있어서 **데이터가 비어도 테이블이 표시되는 문제가 발생**할 수 있어.  
+
+이걸 해결하려면 **검색을 실행했지만 데이터가 없는 경우에도 `searchExecuted`를 `false`로 설정해야 해**.  
+즉, **검색 결과가 0건이면 테이블을 숨기는 로직을 추가하면 돼.**  
+
+---
+
+### **✔ 해결 방법**
+#### **1. `UserBean.java` 수정**
+```java
+public void searchUsers() {
+    int offset = (currentPage - 1) * pageSize;
+    userList = userMapper.searchUsers(organization, userName, userCode, userEmail, offset, pageSize);
+    
+    // 전체 개수 조회 및 페이징 계산
+    int totalRecords = userMapper.countUsers(organization, userName, userCode, userEmail);
+    totalPages = (totalRecords + pageSize - 1) / pageSize;
+
+    // 🚀 **검색 결과가 없으면 `searchExecuted = false` 처리**
+    searchExecuted = !userList.isEmpty();
+
+    // 페이지 초과 방지
+    if (currentPage > totalPages) {
+        currentPage = totalPages > 0 ? totalPages : 1; // 최소 1 유지
+    }
+}
+```
+
+---
+
+#### **2. `userSearch.xhtml` 수정**
+```xml
+<h:panelGroup rendered="#{userBean.searchExecuted}">
+    <table border="1">
+        <thead>
+            <tr>
+                <th>이름</th>
+                <th>코드</th>
+                <th>이메일</th>
+            </tr>
+        </thead>
+        <tbody>
+            <ui:repeat value="#{userBean.userList}" var="user">
+                <tr>
+                    <td>#{user.name}</td>
+                    <td>#{user.code}</td>
+                    <td>#{user.email}</td>
+                </tr>
+            </ui:repeat>
+        </tbody>
+    </table>
+
+    <div style="text-align: center; margin-top: 10px;">
+        <h:commandButton value="<<" action="#{userBean.goToFirstPage}" disabled="#{userBean.currentPage == 1}" update="searchForm" />
+        <h:commandButton value="<" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" update="searchForm" />
+        <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+        <h:commandButton value=">" action="#{userBean.nextPage}" disabled="#{userBean.currentPage >= userBean.totalPages}" update="searchForm" />
+        <h:commandButton value=">>" action="#{userBean.goToLastPage}" disabled="#{userBean.currentPage >= userBean.totalPages}" update="searchForm" />
+    </div>
+</h:panelGroup>
+```
+
+---
+
+### **🔥 해결 결과**
+✅ **검색 실행 후 데이터가 없으면 테이블이 보이지 않음**  
+✅ **검색 후 데이터가 있으면 테이블 표시됨**  
+✅ **페이징 이동 후 검색 시 페이지 수가 줄어들면 정상 출력됨**  
+
+이제 다시 검색했을 때 **이전 검색 상태가 남아 있지 않고, 새 검색 기준으로 제대로 동작할 거야.** 🚀
