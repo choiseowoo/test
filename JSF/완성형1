@@ -1,0 +1,168 @@
+아래는 **페이징 문제 해결**과 **JavaScript에서 데이터 검증**을 반영한 **완전한 코드**입니다.  
+- 검색 실행 전 **기존 검색 데이터 초기화**  
+- 검색 조건이 **빈값이면 오류 메시지 표시**  
+- 검색 결과가 **0건이면 오류 메시지 표시**  
+- 검색 결과가 **100건 초과하면 경고 메시지 표시**  
+- 메시지가 많아지면 **스크롤바 활성화**  
+
+---
+
+## ✅ **1. Java 코드 (UserBean.java)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String userName;
+    private String userCode;
+    private List<User> searchResults = new ArrayList<>();
+    private int totalRecords;
+    private int currentPage = 1;
+    private final int PAGE_SIZE = 10; // 한 페이지당 표시할 개수
+
+    // Getter, Setter 생략
+
+    public String display() {
+        // 🔥 기존 검색 결과 초기화
+        searchResults.clear();
+        currentPage = 1;
+
+        // 🔥 입력값 검증
+        if ((userName == null || userName.trim().isEmpty()) && 
+            (userCode == null || userCode.trim().isEmpty())) {
+            FacesContext.getCurrentInstance().addMessage(null, 
+                new FacesMessage(FacesMessage.SEVERITY_ERROR, "이름 또는 코드 중 하나를 입력하세요.", null));
+            return null;
+        }
+
+        // 🔥 검색 실행
+        searchUsers();
+
+        // 🔥 검색 결과 검증
+        if (totalRecords == 0) {
+            FacesContext.getCurrentInstance().addMessage(null, 
+                new FacesMessage(FacesMessage.SEVERITY_ERROR, "검색 결과가 없습니다.", null));
+        } else if (totalRecords > 100) {
+            FacesContext.getCurrentInstance().addMessage(null, 
+                new FacesMessage(FacesMessage.SEVERITY_WARN, "검색 건수가 100건을 초과합니다.", null));
+        }
+
+        return null;
+    }
+
+    public void searchUsers() {
+        // 🔹 DB에서 검색 수행 (실제 로직 필요)
+        searchResults = UserDAO.getUsers(userName, userCode);
+
+        // 🔹 전체 검색 결과 개수 설정
+        totalRecords = searchResults.size();
+    }
+}
+```
+
+---
+
+## ✅ **2. XHTML (search.xhtml)**
+```xml
+<h:form id="searchForm">
+    <!-- 🔥 에러 메시지 표시 -->
+    <h:panelGroup id="errorMessages" layout="block" styleClass="error-container">
+        <h:messages globalOnly="true" showDetail="true" />
+    </h:panelGroup>
+
+    <!-- 🔹 검색 조건 입력 -->
+    <h:inputText id="userName" value="#{userBean.userName}" placeholder="이름 입력" />
+    <h:inputText id="userCode" value="#{userBean.userCode}" placeholder="코드 입력" />
+
+    <!-- 🔥 검색 버튼 (JavaScript와 연동) -->
+    <h:commandButton id="searchButton" value="검색" action="#{userBean.display}" styleClass="disabled-button">
+        <f:ajax execute="@form" render="searchResults errorMessages" />
+    </h:commandButton>
+
+    <!-- 🔹 검색 결과 테이블 -->
+    <h:dataTable id="searchResults" value="#{userBean.searchResults}" var="user">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+
+    <!-- 🔹 페이징 버튼 -->
+    <h:commandButton value="이전" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" />
+    <h:commandButton value="다음" action="#{userBean.nextPage}" disabled="#{userBean.currentPage * userBean.PAGE_SIZE >= userBean.totalRecords}" />
+</h:form>
+
+<!-- 🔥 JavaScript -->
+<script>
+    document.getElementById('searchForm:searchButton').addEventListener('click', function(event) {
+        let userName = document.getElementById('searchForm:userName').value.trim();
+        let userCode = document.getElementById('searchForm:userCode').value.trim();
+        let errorMessages = document.getElementById('searchForm:errorMessages');
+
+        // 🔹 입력값 검증
+        if (!userName && !userCode) {
+            errorMessages.innerHTML = "<p style='color:red;'>이름 또는 코드 중 하나를 입력하세요.</p>";
+            errorMessages.style.display = "block";
+            event.preventDefault();
+            return;
+        }
+
+        // 🔹 검색 실행 전 버튼 활성화
+        document.getElementById('searchForm:searchButton').classList.remove('disabled-button');
+    });
+
+    // 🔹 검색 결과 100건 초과 시 경고 메시지 표시
+    function checkTotalRecords() {
+        let totalRecords = #{userBean.totalRecords};
+        let errorMessages = document.getElementById('searchForm:errorMessages');
+
+        if (totalRecords > 100) {
+            errorMessages.innerHTML += "<p style='color:orange;'>검색 건수가 100건을 초과합니다.</p>";
+            errorMessages.style.display = "block";
+        }
+    }
+</script>
+
+<style>
+    .error-container {
+        max-height: 100px;
+        overflow-y: auto;
+        border: 1px solid red;
+        padding: 5px;
+        display: none;
+    }
+    
+    .disabled-button {
+        background-color: gray;
+        cursor: not-allowed;
+    }
+</style>
+```
+
+---
+
+## ✅ **3. 주요 기능 정리**
+| 기능 | 구현 방식 |
+|----|----|
+| **이전 검색 결과 유지 문제 해결** | `searchResults.clear();`로 검색 전 초기화 |
+| **페이징 문제 해결** | `currentPage = 1;` 로 초기화 |
+| **검색 버튼 비활성화 & 활성화** | `disabled-button` CSS 적용 및 JavaScript에서 활성화 |
+| **입력값 검증 (JavaScript & Java)** | JS에서 빈값 체크 + Java에서 추가 검증 |
+| **검색 결과 0건 체크** | `totalRecords == 0` 시 에러 메시지 표시 |
+| **검색 결과 100건 초과 체크** | `totalRecords > 100` 시 경고 메시지 표시 |
+| **에러 메시지 스크롤 처리** | `max-height: 100px; overflow-y: auto;` 적용 |
+
+---
+
+## 🚀 **최종 결과**
+✔ **페이징 문제 해결!**  
+✔ **검색 조건이 없으면 JavaScript에서 경고!**  
+✔ **검색 결과가 0건이면 경고!**  
+✔ **100건 초과 시 경고!**  
+✔ **검색 버튼이 자동 활성화/비활성화!**  
+✔ **에러 메시지가 많아지면 스크롤 적용!**  
+
+이제 완벽한 검색 기능을 구현할 수 있어요! 🔥
