@@ -1,0 +1,116 @@
+### **✔ 해결 방법 (JavaScript로 입력 검증 및 에러 메시지 출력)**  
+✅ **이름과 코드 입력 필드가 비어 있으면 에러 메시지 표시**  
+✅ **검색 결과가 0건이면 에러 메시지 표시**  
+✅ **검색 데이터가 100건을 초과하면 에러 메시지 표시**  
+✅ **에러 메시지가 많아지면 스크롤바를 표시하여 가독성을 높임**  
+
+---
+
+### **📌 1. `userSearch.xhtml` 수정**  
+```xml
+<h:form id="searchForm">
+    <!-- 🚀 에러 메시지 영역 -->
+    <div id="errorContainer" style="max-height: 100px; overflow-y: auto; border: 1px solid red; padding: 5px; display: none; background-color: #ffe6e6;">
+        <ul id="errorMessages" style="list-style: none; padding: 0; margin: 0;"></ul>
+    </div>
+
+    <table>
+        <tr>
+            <td>이름:</td>
+            <td><h:inputText id="userName" value="#{userBean.userName}" /></td>
+            <td>코드:</td>
+            <td><h:inputText id="userCode" value="#{userBean.userCode}" /></td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <!-- 🚀 검색 버튼 (검증 후 실행) -->
+                <h:commandButton value="검색" action="#{userBean.searchUsers}" onclick="return validateAndSearch();" update="searchForm" />
+            </td>
+        </tr>
+    </table>
+
+    <h:panelGroup rendered="#{userBean.searchExecuted}">
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>이름</th>
+                    <th>코드</th>
+                </tr>
+            </thead>
+            <tbody>
+                <ui:repeat value="#{userBean.userList}" var="user">
+                    <tr>
+                        <td>#{user.name}</td>
+                        <td>#{user.code}</td>
+                    </tr>
+                </ui:repeat>
+            </tbody>
+        </table>
+
+        <div style="text-align: center; margin-top: 10px;">
+            <h:outputText value="총 검색 결과: #{userBean.totalRecords} 건" />
+        </div>
+
+        <div style="text-align: center; margin-top: 10px;">
+            <h:commandButton id="selectButton" value="선택" disabled="true" />
+        </div>
+    </h:panelGroup>
+</h:form>
+
+<!-- ✅ JavaScript 추가 -->
+<script>
+    function validateAndSearch() {
+        let errors = [];
+        let userName = document.getElementById("searchForm:userName").value.trim();
+        let userCode = document.getElementById("searchForm:userCode").value.trim();
+        let totalRecords = #{userBean.totalRecords};
+
+        // 🚨 입력값 검증: 이름과 코드 중 하나라도 입력해야 함
+        if (userName === "" && userCode === "") {
+            errors.push("이름 또는 코드를 입력하세요.");
+        }
+
+        // 🚨 검색 결과 검증
+        setTimeout(() => {
+            let newTotalRecords = #{userBean.totalRecords};
+            if (newTotalRecords === 0) {
+                errors.push("검색 결과가 없습니다.");
+            }
+            if (newTotalRecords > 100) {
+                errors.push("검색 결과가 100건을 초과하였습니다.");
+            }
+            displayErrors(errors);
+        }, 500); // JSF 업데이트 후 검증 실행
+
+        return errors.length === 0;
+    }
+
+    function displayErrors(errors) {
+        let errorContainer = document.getElementById("errorContainer");
+        let errorMessages = document.getElementById("errorMessages");
+        errorMessages.innerHTML = "";
+
+        if (errors.length > 0) {
+            errorContainer.style.display = "block";
+            errors.forEach(error => {
+                let li = document.createElement("li");
+                li.textContent = error;
+                errorMessages.appendChild(li);
+            });
+        } else {
+            errorContainer.style.display = "none";
+        }
+    }
+</script>
+```
+
+---
+
+### **📌 2. 동작 방식**  
+✅ **검색 버튼 클릭 시** `validateAndSearch()` 실행  
+✅ **입력값이 없으면 "이름 또는 코드를 입력하세요." 에러 메시지 표시**  
+✅ **검색 후 결과가 없으면 "검색 결과가 없습니다." 에러 메시지 표시**  
+✅ **검색 결과가 100건 초과하면 "검색 결과가 100건을 초과하였습니다." 에러 메시지 표시**  
+✅ **에러 메시지가 많아지면 스크롤바가 자동 생성됨 (`max-height: 100px; overflow-y: auto;`)**  
+
+이제 **입력 검증부터 검색 결과 검증까지 JavaScript에서 처리**할 수 있어! 🚀
