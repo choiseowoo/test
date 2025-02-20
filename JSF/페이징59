@@ -1,0 +1,83 @@
+네, **`@RequestScoped`을 사용하면 검색 후에도 데이터가 초기화**되는 문제가 발생할 수 있습니다.  
+
+---
+
+### **🚀 차이점 정리**  
+| 스코프 | 설명 | 검색 후 데이터 유지 여부 |
+|--------|------|------------------|
+| **`@RequestScoped`** | 요청(페이지 로드)마다 새로운 Bean 생성 | ❌ (유지 안됨) |
+| **`@ViewScoped`** | 같은 페이지에서 유지됨 (AJAX 사용 가능) | ✅ (유지됨) |
+| **`@SessionScoped`** | 사용자 세션 동안 유지됨 | ✅ (유지됨) |
+
+---
+
+### **🔥 `@RequestScoped`의 문제점**
+- 검색 버튼 클릭 시 `searchUsers()`가 실행되지만,  
+  **검색 결과가 페이지 리로드되면 사라짐.**
+- `userList`가 항상 빈 리스트로 초기화됨 → 데이터 테이블이 안 보일 수도 있음.
+
+---
+
+### **✅ 해결 방법**
+**1) `@ViewScoped`로 변경 (권장)**  
+   → 검색 후에도 데이터 유지됨  
+
+```java
+import javax.faces.view.ViewScoped;
+import javax.inject.Named;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+@Named
+@ViewScoped // ✅ RequestScoped → ViewScoped로 변경
+public class UserBean implements Serializable {
+    private List<User> userList;
+    private boolean searchExecuted = false;
+
+    @PostConstruct
+    public void init() {
+        userList = new ArrayList<>(); // 초기에는 빈 리스트
+    }
+
+    public void searchUsers() {
+        userList = userMapper.searchUsers(); // DB에서 검색
+        searchExecuted = !userList.isEmpty(); // 검색 실행 여부 저장
+    }
+
+    public List<User> getUserList() { return userList; }
+    public boolean isSearchExecuted() { return searchExecuted; }
+}
+```
+
+---
+
+**2) `@RequestScoped`를 유지하면서 검색 실행 시 데이터 유지**
+- **검색 버튼을 누를 때만 데이터 테이블을 표시**하는 로직 추가  
+
+```xml
+<h:panelGroup rendered="#{not empty userBean.userList}">
+    <table border="1">
+        <tr>
+            <th>이름</th>
+            <th>코드</th>
+        </tr>
+        <ui:repeat value="#{userBean.userList}" var="user">
+            <tr>
+                <td>#{user.name}</td>
+                <td>#{user.code}</td>
+            </tr>
+        </ui:repeat>
+    </table>
+</h:panelGroup>
+```
+---
+
+### **📌 결론**
+✔ **`@RequestScoped` 그대로 사용하면 검색 후 데이터가 사라짐**  
+✔ 해결 방법:  
+  ✅ **`@ViewScoped` 변경 → 검색 후에도 데이터 유지됨 (권장)**  
+  ✅ **`@RequestScoped` 유지**하려면 `rendered="#{not empty userBean.userList}"` 추가  
+
+`@RequestScoped`를 유지할 경우, 검색 후 새로고침하면 데이터가 사라지므로  
+**가능하면 `@ViewScoped`로 변경하는 것이 좋습니다!** 🚀
