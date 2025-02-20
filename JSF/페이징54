@@ -1,0 +1,45 @@
+`@PostConstruct`에서 `searchUsers()`를 실행하지 않으면 페이징이 동작하지 않는 이유는 **초기 데이터 로드가 없기 때문**입니다.  
+
+### **이유**
+1. `UserBean`이 처음 생성될 때, `userList`가 `null` 상태임.
+2. 검색 버튼을 누르기 전까지 `userList`가 초기화되지 않음.
+3. 따라서 `currentPage`를 변경해도 `searchUsers()`가 호출되지 않으면 새로운 데이터를 가져오지 못함.
+4. `ui:repeat`이 빈 리스트를 받아서 테이블이 비어있거나 정상적으로 렌더링되지 않음.
+
+### **해결 방법**
+`@PostConstruct`를 그대로 유지하거나, 아래 방법을 고려해볼 수 있습니다.
+
+#### **① 기본 데이터를 유지하고, 검색 후 데이터 변경**
+- 초기에는 `전체 데이터`를 불러오고, 검색 시 `조건에 맞는 데이터`를 불러오는 방식.
+
+#### **② 검색 실행 여부를 체크하는 플래그 사용**
+```java
+private boolean isFirstLoad = true;
+
+public void searchUsers() {
+    if (isFirstLoad) {
+        isFirstLoad = false;
+        return;
+    }
+    int offset = (currentPage - 1) * pageSize;
+    userList = userMapper.searchUsers(organization, userName, userCode, userEmail, offset, pageSize);
+    int totalRecords = userMapper.countUsers(organization, userName, userCode, userEmail);
+    totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+}
+```
+- `isFirstLoad`가 `true`일 때는 `searchUsers()` 실행을 막고, 이후 검색이 실행될 때만 데이터 조회.
+
+#### **③ 초기 데이터 없이 화면을 로드하고 검색 시에만 실행**
+```java
+@PostConstruct
+public void init() {
+    userList = new ArrayList<>(); // 빈 리스트로 초기화
+}
+```
+- 빈 리스트로 초기화해서 `ui:repeat`이 에러 없이 작동하도록 하고, 검색 후 `searchUsers()`를 호출하면 데이터가 채워짐.
+
+이 방식 중 어떤 걸 선택할지는 **초기 화면에서 데이터를 보여줄 필요가 있는지 여부**에 따라 다릅니다.  
+- **초기 화면에서 데이터가 필요하다면**: `@PostConstruct`에서 `searchUsers()` 실행 유지  
+- **초기 화면에서 빈 상태를 유지하고 싶다면**: `isFirstLoad` 플래그 활용 or 빈 리스트 초기화  
+
+어떤 방식이 더 적합할까요?
