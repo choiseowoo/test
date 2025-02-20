@@ -1,0 +1,32 @@
+네, **초기화할 때 `userList`를 빈 리스트로 설정하면** 데이터 테이블이 렌더링될 때 오류 없이 빈 화면이 유지됩니다.  
+
+### **해결 방법**
+```java
+@PostConstruct
+public void init() {
+    userList = new ArrayList<>(); // 초기에는 빈 리스트 유지
+}
+```
+이렇게 하면:
+- 처음 화면 로드 시 `userList`가 `null`이 아니라 **빈 리스트**이므로 데이터 테이블이 표시되지 않음.
+- 검색을 실행하면 `searchUsers()`가 실행되어 `userList`가 업데이트됨.
+- 페이징 기능도 정상 동작함.
+
+### **JSF에서 빈 리스트일 때 테이블 감추기 (선택 사항)**
+만약 JSF에서 **데이터가 없을 때 테이블 자체를 안 보이게** 하고 싶다면 다음처럼 `<h:dataTable>`을 감싸는 조건을 추가할 수도 있습니다.
+
+```xml
+<h:panelGroup rendered="#{not empty userBean.userList}">
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>#{user.name}</h:column>
+        <h:column>#{user.code}</h:column>
+        <h:column>#{user.email}</h:column>
+    </h:dataTable>
+</h:panelGroup>
+```
+- `rendered="#{not empty userBean.userList}"`  
+  → `userList`에 데이터가 있을 때만 테이블을 표시.  
+- 검색 전에는 테이블이 보이지 않음.
+
+이렇게 하면 **초기 화면에는 검색 조건(풀다운)만 보이고, 검색 버튼을 누르면 데이터가 나타나는 형태**가 됩니다.  
+한번 적용해보고 원하는 동작이 되는지 확인해보세요!
