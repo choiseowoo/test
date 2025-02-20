@@ -1,0 +1,238 @@
+업데이트된 전체 코드를 다시 정리해서 제공할게요.  
+이 코드에서는 **새로운 검색 실행 시 `currentPage = 1`로 초기화**하여 **이전 검색의 페이지 정보가 남아 있지 않도록** 했습니다.  
+
+---
+
+## **🔥 전체 코드 (JSF + MyBatis 검색 + 페이징)**
+- **🔹 초기 화면**: 검색 조건만 표시, 데이터 테이블은 안 보임  
+- **🔹 검색 후**: 결과가 있으면 테이블 표시  
+- **🔹 검색 시 `currentPage = 1`로 초기화**  
+- **🔹 페이징 오류 해결**: 검색 후 데이터가 적어도 정상 출력  
+
+---
+
+## **📌 1. MyBatis XML Mapper (검색 + 페이징)**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <!-- 검색 + 페이징 -->
+    <select id="searchUsers" resultType="com.example.model.User">
+        SELECT * FROM users
+        WHERE 1=1
+        <if test="organization != null and organization != ''">
+            AND organization = #{organization}
+        </if>
+        <if test="userName != null and userName != ''">
+            AND LOWER(name) LIKE CONCAT('%', LOWER(#{userName}), '%')
+        </if>
+        <if test="userCode != null and userCode != ''">
+            AND code = #{userCode}
+        </if>
+        <if test="userEmail != null and userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{userEmail}), '%')
+        </if>
+        ORDER BY id
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 검색 결과 개수 -->
+    <select id="countUsers" resultType="int">
+        SELECT COUNT(*) FROM users
+        WHERE 1=1
+        <if test="organization != null and organization != ''">
+            AND organization = #{organization}
+        </if>
+        <if test="userName != null and userName != ''">
+            AND LOWER(name) LIKE CONCAT('%', LOWER(#{userName}), '%')
+        </if>
+        <if test="userCode != null and userCode != ''">
+            AND code = #{userCode}
+        </if>
+        <if test="userEmail != null and userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{userEmail}), '%')
+        </if>
+    </select>
+
+</mapper>
+```
+
+---
+
+## **📌 2. UserMapper 인터페이스**
+```java
+import com.example.model.User;
+import org.apache.ibatis.annotations.Param;
+import java.util.List;
+
+public interface UserMapper {
+    List<User> searchUsers(@Param("organization") String organization,
+                           @Param("userName") String userName,
+                           @Param("userCode") String userCode,
+                           @Param("userEmail") String userEmail,
+                           @Param("offset") int offset,
+                           @Param("pageSize") int pageSize);
+
+    int countUsers(@Param("organization") String organization,
+                   @Param("userName") String userName,
+                   @Param("userCode") String userCode,
+                   @Param("userEmail") String userEmail);
+}
+```
+
+---
+
+## **📌 3. Java 코드 (JSF + MyBatis 연동)**
+#### **UserBean.java**
+```java
+import com.example.mapper.UserMapper;
+import com.example.model.User;
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.enterprise.context.SessionScoped;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    @Inject
+    private UserMapper userMapper;
+
+    private List<User> userList;
+    private String organization = "";
+    private String userName = "";
+    private String userCode = "";
+    private String userEmail = "";
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+    private boolean searchExecuted = false; // 검색 실행 여부
+
+    @PostConstruct
+    public void init() {
+        userList = new ArrayList<>(); // 초기에는 빈 리스트 유지
+    }
+
+    public void searchUsers() {
+        // 🔹 새로운 검색 실행 시 항상 1페이지부터 시작
+        currentPage = 1; 
+
+        int offset = (currentPage - 1) * pageSize;
+        userList = userMapper.searchUsers(organization, userName, userCode, userEmail, offset, pageSize);
+
+        // 🔹 전체 개수 갱신
+        int totalRecords = userMapper.countUsers(organization, userName, userCode, userEmail);
+        totalPages = (totalRecords + pageSize - 1) / pageSize;  // 반올림 처리
+
+        // 🔹 검색 실행 여부 업데이트
+        searchExecuted = !userList.isEmpty();
+    }
+
+    public void goToFirstPage() { 
+        currentPage = 1; 
+        searchUsers(); 
+    }
+
+    public void previousPage() { 
+        if (currentPage > 1) { 
+            currentPage--; 
+            searchUsers(); 
+        } 
+    }
+
+    public void nextPage() { 
+        if (currentPage < totalPages) { 
+            currentPage++; 
+            searchUsers(); 
+        } 
+    }
+
+    public void goToLastPage() { 
+        currentPage = totalPages; 
+        searchUsers(); 
+    }
+
+    // Getter & Setter
+    public List<User> getUserList() { return userList; }
+    public int getCurrentPage() { return currentPage; }
+    public int getTotalPages() { return totalPages; }
+    public boolean isSearchExecuted() { return searchExecuted; }
+}
+```
+
+---
+
+## **📌 4. JSF 페이지 (검색 + 페이징 UI)**
+#### **userSearch.xhtml**
+```xml
+<h:form id="searchForm">
+    <table>
+        <tr>
+            <td>조직:</td>
+            <td>
+                <h:selectOneMenu id="organization" value="#{userBean.organization}">
+                    <f:selectItem itemLabel="전체" itemValue="" />
+                    <f:selectItems value="#{userBean.organizationList}" />
+                </h:selectOneMenu>
+            </td>
+            <td>이름:</td>
+            <td><h:inputText id="userName" value="#{userBean.userName}" /></td>
+        </tr>
+        <tr>
+            <td>코드:</td>
+            <td><h:inputText id="userCode" value="#{userBean.userCode}" /></td>
+            <td>이메일:</td>
+            <td><h:inputText id="userEmail" value="#{userBean.userEmail}" /></td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <h:commandButton value="검색" action="#{userBean.searchUsers}" update="searchForm" />
+            </td>
+        </tr>
+    </table>
+
+    <!-- 🔹 검색 실행 후에만 테이블 표시 -->
+    <h:panelGroup rendered="#{userBean.searchExecuted}">
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>이름</th>
+                    <th>코드</th>
+                    <th>이메일</th>
+                </tr>
+            </thead>
+            <tbody>
+                <ui:repeat value="#{userBean.userList}" var="user">
+                    <tr>
+                        <td>#{user.name}</td>
+                        <td>#{user.code}</td>
+                        <td>#{user.email}</td>
+                    </tr>
+                </ui:repeat>
+            </tbody>
+        </table>
+
+        <div>
+            <h:commandButton value="<<" action="#{userBean.goToFirstPage}" update="searchForm" />
+            <h:commandButton value="<" action="#{userBean.previousPage}" update="searchForm" />
+            <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+            <h:commandButton value=">" action="#{userBean.nextPage}" update="searchForm" />
+            <h:commandButton value=">>" action="#{userBean.goToLastPage}" update="searchForm" />
+        </div>
+    </h:panelGroup>
+</h:form>
+```
+
+---
+
+## **🚀 최종 정리**
+✅ **검색 시 `currentPage = 1`로 초기화 → 데이터가 줄어도 정상 출력**  
+✅ **페이징 이동 후 검색하면 정상적으로 1페이지부터 표시됨**  
+✅ **검색 전에는 테이블 안 보임**  
+
+이제 정상적으로 동작할 거야! 🚀
