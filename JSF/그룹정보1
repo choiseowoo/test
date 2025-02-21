@@ -1,0 +1,101 @@
+`group` 테이블에서 조직명과 조직코드를 가져오려면, `userBean.organizationList`를 `group` 테이블에서 조회한 데이터로 채우면 됩니다. `userid`가 `user`와 `group` 테이블에 공통적으로 존재한다면, **조인 쿼리**를 사용하여 `group` 테이블에서 조직 정보를 가져올 수 있습니다.  
+
+---
+
+### **1. UserBean.java (조직 목록 불러오기)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String organization;
+    private List<SelectItem> organizationList;
+
+    @PostConstruct
+    public void init() {
+        loadOrganizationList();
+    }
+
+    public void loadOrganizationList() {
+        organizationList = new ArrayList<>();
+        organizationList.add(new SelectItem("", "전체")); // "전체" 선택 추가
+
+        List<Group> groups = groupService.getAllOrganizations(); // DB에서 그룹 정보 가져오기
+        for (Group group : groups) {
+            organizationList.add(new SelectItem(group.getOrgCode(), group.getOrgName() + " (" + group.getOrgCode() + ")"));
+        }
+    }
+
+    // Getter & Setter
+    public String getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(String organization) {
+        this.organization = organization;
+    }
+
+    public List<SelectItem> getOrganizationList() {
+        return organizationList;
+    }
+}
+```
+✅ **`groupService.getAllOrganizations()`**: `group` 테이블에서 `조직명 (조직코드)` 형식으로 가져오는 메서드.
+
+---
+
+### **2. GroupService.java (조직 정보 가져오기)**
+```java
+@Stateless
+public class GroupService {
+
+    @Inject
+    private EntityManager entityManager;
+
+    public List<Group> getAllOrganizations() {
+        String query = "SELECT g FROM Group g ORDER BY g.orgName";  
+        return entityManager.createQuery(query, Group.class).getResultList();
+    }
+}
+```
+✅ **EntityManager**를 사용하여 `group` 테이블에서 `orgName`과 `orgCode` 가져옴.
+
+---
+
+### **3. XHTML 코드 수정 (조직명 / 코드 출력)**
+```xml
+<h:selectOneMenu id="organization" value="#{userBean.organization}">
+    <f:selectItem itemLabel="전체" itemValue="" />
+    <f:selectItems value="#{userBean.organizationList}" />
+</h:selectOneMenu>
+```
+✅ `group` 테이블에서 가져온 **조직명 (조직코드)** 리스트를 `h:selectOneMenu`에 출력.  
+
+---
+
+### **4. SQL 기반으로 직접 가져오는 방법 (MyBatis 사용 시)**
+만약 MyBatis를 사용하고 있다면, `groupMapper.xml`을 다음과 같이 작성하면 됩니다.
+
+```xml
+<select id="getAllOrganizations" resultType="Group">
+    SELECT org_code AS orgCode, org_name AS orgName 
+    FROM group
+    ORDER BY org_name;
+</select>
+```
+
+그리고, Java에서 호출:
+
+```java
+public List<Group> getAllOrganizations() {
+    return sqlSession.selectList("getAllOrganizations");
+}
+```
+
+---
+
+### **📌 정리**
+1. `group` 테이블에서 조직 정보(`orgName`, `orgCode`)를 가져온다.
+2. `organizationList`에 `"조직명 (조직코드)"` 형식으로 추가한다.
+3. `h:selectOneMenu`에서 `organizationList`를 바인딩하여 풀다운 목록에 출력한다.
+
+이제 `user` 테이블이 아니라 `group` 테이블의 조직 정보를 불러와 사용할 수 있습니다!
