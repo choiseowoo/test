@@ -1,0 +1,149 @@
+풀다운에서 `groupcode - groupname`을 표시하면서 실제로 선택된 값으로 `group` 테이블의 `userid`를 받으려면, **`groupcode` 또는 `groupname`을 선택한 뒤, 해당하는 `userid`를 함께 전송하는 방법**을 구현해야 합니다.
+
+이를 위해서는 **풀다운 선택에서 `groupcode`를 선택할 때, 해당 `groupcode`에 대한 `userid`를 함께 처리**하는 방식으로 구현할 수 있습니다.
+
+---
+
+## **1. GroupDTO 수정**
+`groupcode`와 `groupname` 외에도 `userid`를 포함하여 선택한 항목을 처리할 수 있도록 합니다.
+
+```java
+public class GroupDTO {
+    private String groupcode;
+    private String groupname;
+    private String userid;  // 추가된 필드
+
+    public GroupDTO(String groupcode, String groupname, String userid) {
+        this.groupcode = groupcode;
+        this.groupname = groupname;
+        this.userid = userid;
+    }
+
+    public String getGroupcode() {
+        return groupcode;
+    }
+
+    public String getGroupname() {
+        return groupname;
+    }
+
+    public String getUserid() {
+        return userid;
+    }
+
+    public String getDisplayName() {
+        return groupcode + " - " + groupname;  // "G001 - Sales" 형식으로 반환
+    }
+}
+```
+
+- `userid`를 추가하여 각 그룹 항목에 대한 `userid`를 저장합니다.
+
+---
+
+## **2. Service 수정**
+`groupList`를 반환할 때, 각 그룹에 해당하는 `userid`를 포함시킵니다.
+
+```java
+@ApplicationScoped
+@Named
+public class UserService {
+    public List<GroupDTO> getGroupList() {
+        List<GroupDTO> groupList = new ArrayList<>();
+        groupList.add(new GroupDTO("", "Select Group", ""));  // 기본 선택값
+        groupList.add(new GroupDTO("G001", "Sales", "U001"));
+        groupList.add(new GroupDTO("G002", "IT", "U002"));
+        groupList.add(new GroupDTO("G003", "HR", "U003"));
+        return groupList;
+    }
+}
+```
+
+- 각 그룹에 대해 `userid` 값을 추가하여 풀다운 항목으로 `userid`를 처리할 수 있습니다.
+
+---
+
+## **3. ManagedBean 수정**
+풀다운에서 선택된 `groupcode`에 해당하는 `userid`를 서버로 전달할 수 있도록 합니다.
+
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String selectedGroupCode;
+    private String selectedUserId;  // 선택된 userid
+    private List<GroupDTO> groupList;
+
+    @Inject
+    private UserService userService;
+
+    @PostConstruct
+    public void init() {
+        groupList = userService.getGroupList();
+    }
+
+    public void onGroupCodeChange() {
+        // selectedGroupCode에 해당하는 groupcode를 가진 그룹에서 userid를 찾음
+        for (GroupDTO group : groupList) {
+            if (group.getGroupcode().equals(selectedGroupCode)) {
+                selectedUserId = group.getUserid();  // 선택된 group에 대한 userid 설정
+                break;
+            }
+        }
+    }
+
+    public List<GroupDTO> getGroupList() {
+        return groupList;
+    }
+
+    public String getSelectedGroupCode() {
+        return selectedGroupCode;
+    }
+
+    public void setSelectedGroupCode(String selectedGroupCode) {
+        this.selectedGroupCode = selectedGroupCode;
+    }
+
+    public String getSelectedUserId() {
+        return selectedUserId;
+    }
+
+    public void setSelectedUserId(String selectedUserId) {
+        this.selectedUserId = selectedUserId;
+    }
+}
+```
+
+- `selectedGroupCode`가 변경되면, 해당 `groupcode`에 맞는 `userid`를 찾아 `selectedUserId`에 할당합니다.
+
+---
+
+## **4. XHTML 수정**
+`<h:selectOneMenu>`에서 `groupcode - groupname`을 표시하고, 선택된 `groupcode`에 대한 `userid`를 서버로 전송합니다.
+
+```xml
+<h:form>
+    <h:panelGrid columns="3">
+        <h:outputLabel value="Group:" />
+        <h:selectOneMenu value="#{userBean.selectedGroupCode}" onchange="this.form.submit()">
+            <f:selectItems value="#{userBean.groupList}" var="group"
+                           itemValue="#{group.groupcode}" itemLabel="#{group.displayName}" />
+        </h:selectOneMenu>
+        
+        <h:outputLabel value="User ID:" />
+        <h:inputText value="#{userBean.selectedUserId}" readonly="true" />
+    </h:panelGrid>
+</h:form>
+```
+
+- `onchange="this.form.submit()"`를 사용하여 풀다운에서 선택할 때마다 폼이 제출되어 `selectedGroupCode`에 해당하는 `userid`가 서버로 전송됩니다.
+- `selectedUserId`는 `readonly`로 설정하여 `groupcode`가 변경될 때마다 자동으로 값이 채워지도록 합니다.
+
+---
+
+## **결과**
+- 사용자는 `groupcode - groupname` 형식으로 풀다운에서 그룹을 선택할 수 있습니다.
+- 선택된 그룹에 대해 해당하는 `userid`가 `selectedUserId`로 자동으로 채워집니다.
+- `selectedUserId`는 나중에 다른 검색이나 처리에 사용할 수 있습니다.
+
+이 방식으로 `groupcode - groupname`을 풀다운에 표시하면서, 해당 `group`의 `userid`를 받을 수 있습니다.
