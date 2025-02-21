@@ -1,0 +1,151 @@
+네, 맞습니다. **`UserBean`에서 `group` 정보를 설정하는 이유는**, 풀다운에서 선택한 `group` 정보를 화면에 바인딩하고, 사용자가 선택한 값을 서버로 전송하기 위해 **getter와 setter를 통해 값을 관리하기** 때문입니다.
+
+이제 그 과정을 좀 더 구체적으로 설명드리겠습니다.
+
+---
+
+## **1. `GroupDTO`에서 `groupcode`, `groupname`, `userid`를 다루기**
+우리는 풀다운 메뉴에서 **`groupcode - groupname`** 형식으로 그룹 정보를 표시하고, 실제로 받는 값은 **`userid`**이기 때문에, **`GroupDTO`** 클래스는 그룹의 `groupcode`, `groupname`, 그리고 `userid`를 저장하고 반환하는 역할을 합니다.
+
+### **GroupDTO.java**
+```java
+public class GroupDTO {
+    private String groupcode;
+    private String groupname;
+    private String userid;  // group에 속한 사용자 ID
+
+    // 생성자
+    public GroupDTO(String groupcode, String groupname, String userid) {
+        this.groupcode = groupcode;
+        this.groupname = groupname;
+        this.userid = userid;
+    }
+
+    // Getter/Setter
+    public String getGroupcode() {
+        return groupcode;
+    }
+
+    public void setGroupcode(String groupcode) {
+        this.groupcode = groupcode;
+    }
+
+    public String getGroupname() {
+        return groupname;
+    }
+
+    public void setGroupname(String groupname) {
+        this.groupname = groupname;
+    }
+
+    public String getUserid() {
+        return userid;
+    }
+
+    public void setUserid(String userid) {
+        this.userid = userid;
+    }
+
+    public String getDisplayName() {
+        return groupcode + " - " + groupname;  // 그룹 풀다운에 표시할 내용
+    }
+}
+```
+
+---
+
+## **2. `UserBean`에서 `group` 정보 관리**
+`UserBean`에서 `groupcode`와 `userid` 값을 관리하려면, **`GroupDTO` 목록을 설정**하고, **사용자가 선택한 그룹에 따라 `userid`를 설정**하는 메서드를 구현해야 합니다. 이 과정에서 **getter와 setter**가 중요한 역할을 합니다.
+
+### **UserBean.java**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private String selectedGroupCode;    // 선택된 groupcode (풀다운에서 선택한 값)
+    private String selectedUserId;       // 선택된 groupcode에 대한 userid
+    private List<GroupDTO> groupList;    // 그룹 목록
+
+    @Inject
+    private UserService userService;
+
+    @PostConstruct
+    public void init() {
+        groupList = userService.getGroupList();  // 그룹 목록 초기화
+    }
+
+    // 그룹이 변경될 때마다 호출되어 선택된 groupcode에 해당하는 userid를 설정
+    public void onGroupCodeChange() {
+        for (GroupDTO group : groupList) {
+            if (group.getGroupcode().equals(selectedGroupCode)) {
+                selectedUserId = group.getUserid();  // groupcode에 해당하는 userid 설정
+                break;
+            }
+        }
+    }
+
+    // Getter/Setter
+    public String getSelectedGroupCode() {
+        return selectedGroupCode;
+    }
+
+    public void setSelectedGroupCode(String selectedGroupCode) {
+        this.selectedGroupCode = selectedGroupCode;
+    }
+
+    public String getSelectedUserId() {
+        return selectedUserId;
+    }
+
+    public void setSelectedUserId(String selectedUserId) {
+        this.selectedUserId = selectedUserId;
+    }
+
+    public List<GroupDTO> getGroupList() {
+        return groupList;
+    }
+
+    public void setGroupList(List<GroupDTO> groupList) {
+        this.groupList = groupList;
+    }
+}
+```
+
+- **`selectedGroupCode`**: 사용자가 선택한 그룹 코드(`groupcode`)입니다.
+- **`selectedUserId`**: 선택된 그룹 코드에 매칭되는 `userid` 값입니다.
+- **`onGroupCodeChange`**: 그룹 코드가 변경되었을 때, 해당 `groupcode`에 맞는 `userid`를 찾는 메서드입니다.
+
+---
+
+## **3. `XHTML`에서 그룹 정보를 표시하고 관리**
+풀다운에서 `groupcode - groupname`을 표시하고, 선택된 `groupcode`에 맞는 `userid`를 자동으로 설정할 수 있도록 합니다.
+
+### **userSearch.xhtml**
+```xml
+<h:form>
+    <h:panelGrid columns="3">
+        <!-- Group 풀다운 메뉴 -->
+        <h:outputLabel value="Group:" />
+        <h:selectOneMenu value="#{userBean.selectedGroupCode}" onchange="this.form.submit()">
+            <f:selectItems value="#{userBean.groupList}" var="group"
+                           itemValue="#{group.groupcode}" itemLabel="#{group.displayName}" />
+        </h:selectOneMenu>
+
+        <!-- 선택된 User ID -->
+        <h:outputLabel value="User ID:" />
+        <h:inputText value="#{userBean.selectedUserId}" readonly="true" />
+    </h:panelGrid>
+</h:form>
+```
+
+### **설명**
+- `<h:selectOneMenu>`에서 `groupcode`를 선택하면 **`onchange="this.form.submit()"`**에 의해 폼이 자동으로 제출되고, `selectedGroupCode`가 서버로 전달됩니다.
+- 서버에서 `selectedGroupCode`에 해당하는 `userid`가 자동으로 찾아지고, 이를 **`selectedUserId`**에 설정합니다.
+- **`selectedUserId`**는 `readonly="true"`로 설정되어 사용자가 수정할 수 없으며, `groupcode` 선택에 따라 자동으로 채워집니다.
+
+---
+
+## **결론**
+- **`getter`와 `setter`**는 **`UserBean`에서** `groupcode`, `groupname`, `userid`를 관리하고 바인딩하기 위해 사용됩니다.
+- **`groupcode`**와 **`groupname`**을 풀다운에서 표시하고, **`userid`**는 선택된 `groupcode`에 맞게 자동으로 설정되므로, **`user` 테이블과의 `JOIN`은 필요하지 않**습니다.
+- **`onchange` 이벤트**를 통해 사용자가 선택한 값을 자동으로 처리할 수 있습니다.
