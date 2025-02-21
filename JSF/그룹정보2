@@ -1,0 +1,94 @@
+### ✅ **검색 시 `userId`로 `group` 테이블을 조인하는 방법**
+현재 `user` 테이블에서 검색할 때 `organization` 값을 `userId`를 기준으로 `group` 테이블과 매칭해야 합니다. 따라서, **검색 쿼리에서 `group` 테이블을 조인하여 `organization`을 필터링**하면 됩니다.
+
+---
+
+### **1️⃣ UserBean.java (검색 로직 수정)**
+```java
+public void searchUsers() {
+    userList = userService.searchUsers(userName, userCode, userEmail, organization);
+    searchExecuted = true;  // 검색 실행됨
+    currentPage = 1; // 검색 시 페이지 초기화
+}
+```
+✅ 검색 시 `organization` 값을 `userService.searchUsers()`에 전달.
+
+---
+
+### **2️⃣ UserService.java (검색 쿼리에서 `group` 테이블 조인)**
+```java
+public List<User> searchUsers(String userName, String userCode, String userEmail, String organization) {
+    String query = "SELECT u FROM User u " +
+                   "LEFT JOIN Group g ON u.userId = g.userId " +
+                   "WHERE 1=1 ";
+
+    if (userName != null && !userName.isEmpty()) {
+        query += "AND u.userName LIKE :userName ";
+    }
+    if (userCode != null && !userCode.isEmpty()) {
+        query += "AND u.userCode LIKE :userCode ";
+    }
+    if (userEmail != null && !userEmail.isEmpty()) {
+        query += "AND u.userEmail LIKE :userEmail ";
+    }
+    if (organization != null && !organization.isEmpty()) {
+        query += "AND g.orgCode = :organization ";
+    }
+
+    TypedQuery<User> typedQuery = entityManager.createQuery(query, User.class);
+
+    if (userName != null && !userName.isEmpty()) {
+        typedQuery.setParameter("userName", "%" + userName + "%");
+    }
+    if (userCode != null && !userCode.isEmpty()) {
+        typedQuery.setParameter("userCode", "%" + userCode + "%");
+    }
+    if (userEmail != null && !userEmail.isEmpty()) {
+        typedQuery.setParameter("userEmail", "%" + userEmail + "%");
+    }
+    if (organization != null && !organization.isEmpty()) {
+        typedQuery.setParameter("organization", organization);
+    }
+
+    return typedQuery.getResultList();
+}
+```
+✅ `userId`를 기반으로 `group` 테이블과 `LEFT JOIN` 하여 조직을 필터링.  
+✅ `organization`이 선택된 경우, `orgCode`로 필터링.
+
+---
+
+### **3️⃣ MyBatis를 사용하는 경우 (`userMapper.xml`)**
+만약 **MyBatis**를 사용한다면 아래와 같이 SQL을 작성합니다.
+
+```xml
+<select id="searchUsers" resultType="User">
+    SELECT u.user_id, u.user_name, u.user_code, u.user_email 
+    FROM user u
+    LEFT JOIN group g ON u.user_id = g.user_id
+    WHERE 1=1
+    <if test="userName != null and userName != ''">
+        AND u.user_name LIKE CONCAT('%', #{userName}, '%')
+    </if>
+    <if test="userCode != null and userCode != ''">
+        AND u.user_code LIKE CONCAT('%', #{userCode}, '%')
+    </if>
+    <if test="userEmail != null and userEmail != ''">
+        AND u.user_email LIKE CONCAT('%', #{userEmail}, '%')
+    </if>
+    <if test="organization != null and organization != ''">
+        AND g.org_code = #{organization}
+    </if>
+    ORDER BY u.user_name
+</select>
+```
+✅ **동적 SQL**을 사용하여 필터링 조건을 추가.
+
+---
+
+### **📌 정리**
+1. **조직 선택 목록**은 `group` 테이블에서 `orgName (orgCode)` 형식으로 가져온다.
+2. **검색 시** `userId`를 기준으로 `group` 테이블을 `LEFT JOIN` 한다.
+3. `organization`이 선택되었다면 `g.orgCode = organization` 조건을 추가한다.
+
+이제 검색 시 **조직 선택**이 제대로 반영될 것입니다! 🚀
