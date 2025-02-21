@@ -1,0 +1,154 @@
+`@ViewScoped`에서 `init()`이 실행되지 않거나 화면에 아무것도 표시되지 않는다면, 몇 가지 원인을 점검해봐야 합니다.  
+
+---
+
+## **1. 원인 가능성 체크**  
+### ✅ **1) XHTML 태그 문제인지 확인**
+XHTML에서 `UserBean`이 정상적으로 호출되고 있는지 확인해야 합니다.  
+
+### ✅ **2) `@ViewScoped`가 제대로 적용되었는지 확인**  
+- **JSF 버전이 2.3 이상**인지 확인  
+- JSF 2.2 이하에서는 `@javax.faces.view.ViewScoped` 대신 `org.omnifaces.cdi.ViewScoped` 사용 필요  
+
+### ✅ **3) `@PostConstruct`가 실행되고 있는지 확인**
+- `System.out.println("UserBean init() 실행됨!");`을 넣고 실행되는지 확인  
+
+---
+
+## **2. 해결 방법**  
+
+### **① UserBean 확인**
+#### **JSF 2.3 이상이라면 (`jakarta.faces.view.ViewScoped` 사용)**
+```java
+import jakarta.annotation.PostConstruct;
+import jakarta.faces.view.ViewScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+import java.util.List;
+
+@Named("UserBean")
+@ViewScoped
+public class UserBean implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private List<String> testData;
+
+    @PostConstruct
+    public void init() {
+        System.out.println("UserBean init() 실행됨!");
+        testData = List.of("User1", "User2", "User3");
+    }
+
+    public List<String> getTestData() {
+        return testData;
+    }
+}
+```
+
+---
+
+#### **JSF 2.2 이하라면 (`org.omnifaces.cdi.ViewScoped` 사용)**
+OmniFaces 사용 시, `@javax.faces.view.ViewScoped` 대신 아래처럼 적용해야 합니다.  
+```java
+import jakarta.annotation.PostConstruct;
+import javax.inject.Named;
+import org.omnifaces.cdi.ViewScoped;
+import java.io.Serializable;
+import java.util.List;
+
+@Named("UserBean")
+@ViewScoped
+public class UserBean implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private List<String> testData;
+
+    @PostConstruct
+    public void init() {
+        System.out.println("UserBean init() 실행됨!");
+        testData = List.of("User1", "User2", "User3");
+    }
+
+    public List<String> getTestData() {
+        return testData;
+    }
+}
+```
+
+---
+
+### **② XHTML 확인**
+`UserBean`에서 데이터를 가져오고 있는지 확인하기 위해 아래 코드로 테스트해보세요.  
+
+```xml
+<h:body>
+    <h:form>
+        <h:dataTable value="#{UserBean.testData}" var="user">
+            <h:column>
+                #{user}
+            </h:column>
+        </h:dataTable>
+    </h:form>
+</h:body>
+```
+- 화면에 `"User1", "User2", "User3"` 이 나오면 `@ViewScoped`가 정상 작동  
+- 아무것도 나오지 않으면 **`@ViewScoped` 문제** → **JSF 버전, 로그 확인 필요**
+
+---
+
+### **③ JSF 버전 및 로그 확인**
+#### ✅ **1) JSF 버전 확인**
+WildFly의 `pom.xml`에서 JSF 버전을 확인하세요.  
+```xml
+<dependency>
+    <groupId>org.glassfish</groupId>
+    <artifactId>jakarta.faces</artifactId>
+    <version>4.0.1</version> <!-- JSF 4.x 사용 가능 -->
+</dependency>
+```
+> `javax.faces.ViewScoped` → JSF 2.3 이상  
+> `org.omnifaces.cdi.ViewScoped` → JSF 2.2 이하  
+
+#### ✅ **2) 콘솔 로그 확인**
+WildFly 실행 시 콘솔에 `UserBean init() 실행됨!`이 출력되지 않으면 `@PostConstruct`가 실행되지 않는 것입니다.  
+```bash
+INFO: UserBean init() 실행됨!
+```
+로그가 안 나온다면 **Bean 등록이 안 된 것**이므로, `@Named("UserBean")`이 올바르게 적용되었는지 확인하세요.  
+
+---
+
+### **④ EL 문제 해결 (`xmlns:ui="http://java.sun.com/jsf/facelets" 확인)`**
+`XHTML` 파일에서 **`UserBean`이 정상적으로 호출되고 있는지 확인**하세요.  
+- `xmlns:h="jakarta.faces.html"`  
+- `xmlns:f="jakarta.faces.core"`  
+- `xmlns:ui="jakarta.faces.facelets"`
+
+이게 안 되어 있으면 **EL 표현식이 동작하지 않아서 값이 안 나옴**  
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:ui="jakarta.faces.facelets">
+<h:body>
+    <h:form>
+        <h:dataTable value="#{UserBean.testData}" var="user">
+            <h:column>#{user}</h:column>
+        </h:dataTable>
+    </h:form>
+</h:body>
+</html>
+```
+
+---
+
+## **3. 정리**
+1. **XHTML에서 `UserBean`이 정상 호출되는지 확인**  
+2. **콘솔 로그에서 `UserBean init() 실행됨!` 출력되는지 확인**  
+3. **JSF 버전이 2.3 이상이면 `jakarta.faces.view.ViewScoped` 사용**  
+4. **JSF 2.2 이하라면 `org.omnifaces.cdi.ViewScoped` 사용**  
+5. **XHTML의 EL (`#{UserBean.xxx}`)이 정상 동작하는지 체크**  
+
+이대로 하면 **`@ViewScoped`에서 데이터가 안 보이는 문제** 해결될 거야!
