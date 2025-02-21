@@ -1,0 +1,89 @@
+### **1. 콘솔에 `UserBean init()`이 정상적으로 출력되는데 UserSearch 표가 안 나올 경우**  
+✔ **`UserBean`이 정상적으로 호출되고 있음** → **XHTML 쪽 문제 가능성 큼**  
+
+---
+
+## **2. 해결 방법 체크리스트**  
+
+### ✅ **1) `UserBean`에서 `List`가 초기화되지 않았는지 확인**
+`init()`에서 검색 결과 리스트가 비어 있으면, 화면에 아무것도 표시되지 않음.  
+
+#### **💡 해결 방법**: `init()`에서 `userList`가 null인지 확인하고 더미 데이터 넣어보기  
+```java
+@PostConstruct
+public void init() {
+    System.out.println("UserBean init() 실행됨!");
+
+    if (userList == null) {
+        userList = new ArrayList<>();
+    }
+
+    // 테스트 데이터 추가
+    userList.add(new User("user1", "group1"));
+    userList.add(new User("user2", "group2"));
+
+    System.out.println("userList.size() = " + userList.size()); // 2개 이상이어야 테이블 표시됨
+}
+```
+→ `userList.size()`가 **0이라면 테이블이 빈 상태라 안 나오는 것**이므로 데이터 확인  
+
+---
+
+### ✅ **2) XHTML에서 `value="#{UserBean.userList}"`를 제대로 가져오고 있는지 확인**  
+```xml
+<h:dataTable value="#{UserBean.userList}" var="user">
+    <h:column> #{user.userId} </h:column>
+    <h:column> #{user.groupName} </h:column>
+</h:dataTable>
+```
+✔ `#{UserBean.userList}` → **잘못된 표현식이면 테이블이 안 보임**  
+
+#### **💡 해결 방법**: `#{UserBean.userList}`를 `#{UserBean}`로 바꾸고 `toString()` 체크  
+```xml
+<h:outputText value="#{UserBean}" />
+```
+✔ **출력값이 `com.example.UserBean@xxxx` 이런 식이면, `UserBean`이 잘 호출되고 있는 것**  
+✔ `null`이면 EL(Expression Language)이 `UserBean`을 못 가져오고 있는 것 → `@Named("UserBean")` 확인  
+
+---
+
+### ✅ **3) XHTML `ui:repeat`로 데이터 표시 테스트**
+테이블이 안 보이면 `h:dataTable` 대신 `ui:repeat`로 데이터가 보이는지 확인  
+```xml
+<ui:repeat value="#{UserBean.userList}" var="user">
+    <h:outputText value="#{user.userId}" /><br/>
+</ui:repeat>
+```
+✔ 이게 출력되면 **`h:dataTable`이 문제**  
+✔ 이것도 안 되면 **EL이 문제**  
+
+---
+
+### ✅ **4) JSF의 `<h:dataTable>` 태그 내 `rendered` 조건 체크**
+```xml
+<h:dataTable value="#{UserBean.userList}" var="user" rendered="#{not empty UserBean.userList}">
+```
+✔ `rendered`가 `false`면 테이블이 안 보임 → `#{not empty UserBean.userList}`로 확인  
+
+---
+
+### ✅ **5) XHTML 파일 내 `xmlns` 설정 확인**
+**잘못된 네임스페이스 사용 시 EL이 동작 안 할 수 있음**  
+```xml
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:ui="jakarta.faces.facelets">
+```
+✔ `jakarta.faces.html`과 `jakarta.faces.facelets`가 빠지면 `h:dataTable`이 동작 안 함  
+
+---
+
+## **3. 정리 (우선 체크할 것!)**
+1️⃣ `init()`에서 `userList.size()`가 0이면 데이터가 없어서 안 나오는 것  
+2️⃣ `<h:dataTable>` 대신 `<ui:repeat>`로 값이 나오는지 확인  
+3️⃣ `<h:dataTable rendered="#{not empty UserBean.userList}">`로 조건 체크  
+4️⃣ `#{UserBean}`로 EL 정상 작동 여부 확인  
+5️⃣ `xmlns` 설정에 `jakarta.faces.html`이 빠졌는지 체크  
+
+이걸 하나씩 점검하면 **UserSearch 테이블이 안 보이는 원인을 찾을 수 있음!**
