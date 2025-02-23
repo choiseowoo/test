@@ -1,0 +1,133 @@
+검색 버튼을 누르면 콘솔에 전체 값이 제대로 출력된다면, `searchUsers()` 메서드는 정상적으로 실행되고 있는 것입니다. 하지만 **JSF 화면에 반영되지 않는 이유**는 여러 가지가 있을 수 있습니다. 다음을 하나씩 점검해보세요.  
+
+---
+
+### **✅ 1. 검색 후 화면이 업데이트되지 않는다면? (`update` 속성 확인)**
+JSF에서는 **AJAX를 통해 업데이트할 컴포넌트를 명시적으로 지정해야 합니다.**  
+- 만약 `update="userTable messages"`가 없다면, 데이터가 변경되어도 화면에 반영되지 않습니다.  
+
+✅ **검색 버튼 수정**
+```xml
+<h:commandButton value="검색" action="#{userBean.searchUsers}" update="userTable messages" />
+```
+➡ `update="userTable messages"`를 추가하면, `userTable`(검색 결과 테이블)과 `messages`(오류 메시지)가 자동으로 새로고침됩니다.  
+➡ 만약 `update="userTable"`이 없으면, `userList`가 변경되더라도 화면에 반영되지 않습니다.  
+
+---
+
+### **✅ 2. JSF 데이터 테이블이 정상적으로 바인딩되었는지 확인**
+검색된 데이터가 화면에 표시되지 않는다면, **JSF의 `<h:dataTable>`에서 `userList`를 올바르게 사용하고 있는지 확인해야 합니다.**  
+
+✅ **JSF 테이블 코드 확인**
+```xml
+<h:dataTable id="userTable" value="#{userBean.userList}" var="user">
+    <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+    <h:column><f:facet name="header">코드</f:facet>#{user.code}</h:column>
+    <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+</h:dataTable>
+```
+➡ `value="#{userBean.userList}"`가 정확한지 확인  
+➡ `userList`가 `null`이거나 빈 리스트면 테이블이 출력되지 않음  
+
+✅ **검색 메서드에서 `userList`가 갱신되는지 확인**
+```java
+public void searchUsers() {
+    System.out.println("검색 버튼 클릭됨!");
+    
+    userList = userService.findUsers(userName, userCode);
+    
+    if (userList.isEmpty()) {
+        System.out.println("검색 결과 없음");
+        addErrorMessage("검색 결과가 없습니다.");
+    } else {
+        System.out.println("검색 결과 개수: " + userList.size());
+    }
+}
+```
+➡ `searchUsers()` 실행 후 `userList.size()`가 0이 아닌지 로그 확인  
+➡ 만약 `userList.size() > 0`이면, 데이터가 정상적으로 들어가고 있는 것  
+
+---
+
+### **✅ 3. `@ViewScoped`가 올바르게 적용되었는지 확인**
+검색 후 **데이터가 사라지거나 유지되지 않는다면**, `@ViewScoped`가 정상적으로 적용되지 않았을 가능성이 있습니다.  
+
+✅ **올바른 `@ViewScoped` 임포트 확인**
+```java
+import jakarta.faces.view.ViewScoped;
+```
+⚠ 만약 `javax.faces.bean.ViewScoped`를 사용하고 있다면 JSF 3에서는 동작하지 않습니다!  
+
+✅ **빈 선언 확인**
+```java
+@Named("userBean")  // @Named("userBean")이므로 #{userBean}으로 접근
+@ViewScoped
+public class UserBean implements Serializable {
+```
+➡ `@ViewScoped`가 적용되지 않으면, **검색 후 페이지가 리로드되면서 데이터가 초기화될 수 있음**.  
+
+---
+
+### **✅ 4. `searchUsers()` 실행 후 AJAX 요청 확인**
+검색 후 **AJAX 요청이 정상적으로 발생했는지** 확인하는 것도 중요합니다.  
+1. **F12(개발자 도구) → 네트워크(Network) 탭 → 검색 버튼 클릭 후 요청이 발생하는지 확인**  
+2. **응답(Response) 탭에서 `userList` 데이터가 포함되어 있는지 확인**  
+
+✅ **만약 AJAX 요청이 발생하지 않는다면?**
+- `<h:commandButton>` 대신 `<h:commandLink>` 사용 시 `<f:ajax>`가 빠져 있을 수도 있음.  
+- `<h:commandButton>`이 `immediate="true"`로 설정되어 있으면, 검색 필드 값이 반영되지 않을 수도 있음.  
+
+✅ **AJAX 요청을 강제하려면?**
+```xml
+<h:commandButton value="검색" action="#{userBean.searchUsers}">
+    <f:ajax execute="@form" render="userTable messages" />
+</h:commandButton>
+```
+➡ `<f:ajax>`를 추가하면, 검색 버튼이 AJAX 요청을 강제 실행하도록 변경됨.  
+➡ `execute="@form"`은 **폼 전체를 서버로 전송**, `render="userTable messages"`는 **업데이트할 UI 컴포넌트를 지정**.  
+
+---
+
+### **✅ 5. `<h:messages>`를 사용하여 오류 메시지 확인**
+검색이 되지 않는 원인을 찾기 위해 **오류 메시지가 표시되는지 확인**해야 합니다.  
+
+✅ **메시지 표시 추가**
+```xml
+<h:messages id="messages" globalOnly="true" />
+```
+➡ 검색 후 메시지가 나타나는지 확인  
+➡ 만약 아무 메시지도 표시되지 않는다면, `searchUsers()`가 실행되지 않았을 수도 있음  
+
+✅ **검색 실패 시 메시지 추가**
+```java
+public void searchUsers() {
+    System.out.println("검색 버튼 클릭됨!");
+
+    userList = userService.findUsers(userName, userCode);
+    
+    if (userList.isEmpty()) {
+        System.out.println("검색 결과 없음");
+        FacesContext.getCurrentInstance().addMessage(null, 
+            new FacesMessage(FacesMessage.SEVERITY_WARN, "검색 결과가 없습니다.", null));
+    } else {
+        System.out.println("검색 결과 개수: " + userList.size());
+    }
+}
+```
+➡ **검색 실패 시 경고 메시지를 추가**하여 UI에 표시  
+
+---
+
+### **🚀 최종 점검 리스트**
+| 체크할 항목 | 확인 여부 |
+|------------|---------|
+| `@ViewScoped`가 **정확한 패키지(`jakarta.faces.view.ViewScoped`)**로 임포트되었는가? | ✅ |
+| `@Named("userBean")`을 사용했을 경우, JSF에서 `#{userBean}`으로 올바르게 접근하는가? | ✅ |
+| 검색 버튼 `<h:commandButton>`에 `update="userTable messages"` 또는 `<f:ajax>`가 추가되었는가? | ✅ |
+| `searchUsers()` 실행 후, `userList`에 값이 정상적으로 들어가는가? (`System.out.println()`으로 확인) | ✅ |
+| `<h:dataTable>`의 `value="#{userBean.userList}"`가 올바르게 설정되었는가? | ✅ |
+| `h:messages`를 추가하여 오류 메시지가 정상적으로 표시되는가? | ✅ |
+| 개발자 도구(F12) → 네트워크(Network) 탭에서 AJAX 요청이 발생하는지 확인했는가? | ✅ |
+
+➡ **위 사항을 모두 확인했다면, 화면에 데이터가 정상적으로 표시될 것입니다!**  
+**어느 부분에서 문제가 발생하는지 로그를 확인해 보시고, 추가 질문 있으면 알려주세요.**
