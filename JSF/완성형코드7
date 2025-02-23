@@ -1,0 +1,212 @@
+최종 수정된 전체 코드다. `updateUserList(int page)`를 적용했고, 검색 및 페이징 로직을 이에 맞게 수정했다.  
+
+---
+
+## **🔹 UserBean.java (수정됨)**
+```java
+import jakarta.inject.Named;
+import jakarta.faces.view.ViewScoped;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Named
+@ViewScoped
+public class UserBean implements Serializable {
+    private String organization;
+    private String userName;
+    private String userCode;
+    private String userEmail;
+    private List<Map<String, Object>> userList;
+    private List<String> organizationList;
+
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+    private int totalRecords;
+
+    private final UserDAO userDAO = new UserDAO();
+
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        userList = new ArrayList<>();
+        organizationList = userDAO.getOrganizationList();
+    }
+
+    public void searchUsers() {
+        updateUserList(1); // 검색 시 첫 페이지로 이동
+    }
+
+    private void updateUserList(int page) {
+        totalRecords = userDAO.getTotalUserCount(organization, userName, userCode, userEmail);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+
+        currentPage = page;
+        userList = userDAO.getUsers(organization, userName, userCode, userEmail, (currentPage - 1) * pageSize, pageSize);
+    }
+
+    public void goToFirstPage() {
+        updateUserList(1);
+    }
+
+    public void previousPage() {
+        updateUserList(currentPage - 1);
+    }
+
+    public void nextPage() {
+        updateUserList(currentPage + 1);
+    }
+
+    public void goToLastPage() {
+        updateUserList(totalPages);
+    }
+
+    // Getter / Setter 생략 (필요하면 추가)
+}
+```
+
+---
+
+## **🔹 UserDAO.java (변경 없음)**
+```java
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import org.apache.ibatis.session.SqlSession;
+
+public class UserDAO {
+    public List<Map<String, Object>> getUsers(String organization, String userName, String userCode, String userEmail, int offset, int limit) {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            Map<String, Object> param = new HashMap<>();
+            param.put("organization", organization);
+            param.put("userName", userName);
+            param.put("userCode", userCode);
+            param.put("userEmail", userEmail);
+            param.put("offset", offset);
+            param.put("limit", limit);
+            return mapper.getUsers(param);
+        }
+    }
+
+    public int getTotalUserCount(String organization, String userName, String userCode, String userEmail) {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            Map<String, Object> param = new HashMap<>();
+            param.put("organization", organization);
+            param.put("userName", userName);
+            param.put("userCode", userCode);
+            param.put("userEmail", userEmail);
+            return mapper.getTotalUserCount(param);
+        }
+    }
+
+    public List<String> getOrganizationList() {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            return session.selectList("com.example.mapper.UserMapper.getOrganizationList");
+        }
+    }
+}
+```
+
+---
+
+## **🔹 UserMapper.xml (변경 없음)**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <select id="getUsers" resultType="map">
+        SELECT username AS name, userid AS code, email
+        FROM users
+        WHERE 1=1
+        <if test="param.organization != null and param.organization != ''">
+            AND organization = #{param.organization}
+        </if>
+        <if test="param.userName != null and param.userName != ''">
+            AND LOWER(username) LIKE CONCAT('%', LOWER(#{param.userName}), '%')
+        </if>
+        <if test="param.userCode != null and param.userCode != ''">
+            AND userid = #{param.userCode}
+        </if>
+        <if test="param.userEmail != null and param.userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{param.userEmail}), '%')
+        </if>
+        ORDER BY userid
+        LIMIT #{param.limit} OFFSET #{param.offset}
+    </select>
+
+    <select id="getTotalUserCount" resultType="int">
+        SELECT COUNT(*) FROM users
+        WHERE 1=1
+        <if test="param.organization != null and param.organization != ''">
+            AND organization = #{param.organization}
+        </if>
+        <if test="param.userName != null and param.userName != ''">
+            AND LOWER(username) LIKE CONCAT('%', LOWER(#{param.userName}), '%')
+        </if>
+        <if test="param.userCode != null and param.userCode != ''">
+            AND userid = #{param.userCode}
+        </if>
+        <if test="param.userEmail != null and param.userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{param.userEmail}), '%')
+        </if>
+    </select>
+
+    <select id="getOrganizationList" resultType="string">
+        SELECT DISTINCT organization FROM users ORDER BY organization
+    </select>
+
+</mapper>
+```
+
+---
+
+## **🔹 User.xhtml (변경 없음)**
+```xml
+<h:form id="searchForm">
+    <h:panelGrid columns="4">
+        <h:outputLabel for="organization" value="조직: " />
+        <h:selectOneMenu id="organization" value="#{userBean.organization}">
+            <f:selectItem itemLabel="전체" itemValue="" />
+            <f:selectItems value="#{userBean.organizationList}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="userName" value="이름: " />
+        <h:inputText id="userName" value="#{userBean.userName}" />
+
+        <h:outputLabel for="userCode" value="코드: " />
+        <h:inputText id="userCode" value="#{userBean.userCode}" />
+
+        <h:outputLabel for="userEmail" value="이메일: " />
+        <h:inputText id="userEmail" value="#{userBean.userEmail}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" update="userTable, paginationPanel" />
+    </h:panelGrid>
+
+    <h:panelGroup id="paginationPanel" rendered="#{not empty userBean.userList}">
+        <h:commandButton value="<<" action="#{userBean.goToFirstPage}" disabled="#{userBean.currentPage == 1}" update="userTable, paginationPanel" />
+        <h:commandButton value="<" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" update="userTable, paginationPanel" />
+        <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+        <h:commandButton value=">" action="#{userBean.nextPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="userTable, paginationPanel" />
+        <h:commandButton value=">>" action="#{userBean.goToLastPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="userTable, paginationPanel" />
+
+        <h:dataTable id="userTable" value="#{userBean.userList}" var="user">
+            <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+            <h:column><f:facet name="header">코드</f:facet>#{user.code}</h:column>
+            <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+        </h:dataTable>
+    </h:panelGroup>
+</h:form>
+```
+
+---
+
+이제 검색 및 페이징이 `updateUserList(int page)`를 통해 올바르게 동작할 거야.  
+추가로 수정할 게 있으면 말해줘!
