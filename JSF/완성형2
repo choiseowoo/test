@@ -1,0 +1,227 @@
+코드를 확인해보니 몇 가지 수정이 필요해 보입니다. 주요 문제와 개선점을 정리하면 다음과 같습니다.
+
+---
+
+### **1. `UserBean`의 페이징 및 검색 로직 수정**
+#### **문제점**
+- `searchUsers(int currentPage)`를 호출하는 부분이 잘못되어 있습니다. 
+- `init()` 메서드에서 `organizationList`를 `organization`에 할당하는 코드가 잘못되었습니다.
+- `display()` 메서드에서 `searchUsers(currentPage)`를 호출하지 않고 있습니다.
+
+#### **수정 코드**
+```java
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String organization;
+    private String userName;
+    private String userCode;
+    private String userEmail;
+    private List<User> userList;
+    private List<String> organizationList;  // 조직 목록 추가
+
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+
+    private UserDAO userDAO = new UserDAO();
+
+    @PostConstruct
+    public void init() {
+        userList = new ArrayList<>();
+        organizationList = userDAO.getOrganizationList();  // 조직 목록 초기화
+    }
+
+    public void display() {
+        currentPage = 1;
+        searchUsers();
+    }
+
+    public void searchUsers() {
+        Map<String, Object> params = new HashMap<>();
+        params.put("organization", organization);
+        params.put("userName", userName);
+        params.put("userCode", userCode);
+        params.put("userEmail", userEmail);
+
+        int totalRecords = userDAO.getTotalUserCount(params);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+        userList = userDAO.getUsers(params, (currentPage - 1) * pageSize, pageSize);
+    }
+
+    public void goToFirstPage() {
+        currentPage = 1;
+        searchUsers();
+    }
+
+    public void previousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            searchUsers();
+        }
+    }
+
+    public void nextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            searchUsers();
+        }
+    }
+
+    public void goToLastPage() {
+        currentPage = totalPages;
+        searchUsers();
+    }
+
+    // Getter/Setter 생략
+}
+```
+
+---
+
+### **2. `UserDAO`의 페이징 쿼리 수정**
+#### **문제점**
+- `getUsers()`와 `getTotalUserCount()`의 파라미터가 잘못됨.
+- `getUsers()` 메서드에서 `session.getUsers(param);`을 호출하는 부분이 잘못됨. (Mapper 인터페이스의 `select` 호출 필요)
+- `getTotalUserCount()`의 리턴 타입이 `int`여야 함.
+
+#### **수정 코드**
+```java
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import org.apache.ibatis.session.SqlSession;
+
+public class UserDAO {
+    public List<User> getUsers(Map<String, Object> params, int offset, int limit) {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            params.put("offset", offset);
+            params.put("limit", limit);
+            return session.selectList("com.example.mapper.UserMapper.getUsers", params);
+        }
+    }
+
+    public int getTotalUserCount(Map<String, Object> params) {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            return session.selectOne("com.example.mapper.UserMapper.getTotalUserCount", params);
+        }
+    }
+
+    public List<String> getOrganizationList() {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            return session.selectList("com.example.mapper.UserMapper.getOrganizationList");
+        }
+    }
+}
+```
+
+---
+
+### **3. `UserMapper.xml` 페이징 쿼리 수정**
+#### **문제점**
+- `LIMIT`과 `OFFSET` 순서가 잘못됨. (`LIMIT #{limit} OFFSET #{offset}` 순서여야 함)
+- `LIMIT`과 `OFFSET`을 파라미터에 추가하지 않음.
+- `resultType="com.example.model.User"`에서 `User`가 아닌 `Map<String, Object>`로 변경이 필요함.
+
+#### **수정 코드**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <!-- 검색 + 페이징 -->
+    <select id="getUsers" resultType="map">
+        SELECT username AS name, userid AS code, email
+        FROM users
+        WHERE 1=1
+        <if test="organization != null and organization != ''">
+            AND organization = #{organization}
+        </if>
+        <if test="userName != null and userName != ''">
+            AND LOWER(username) LIKE CONCAT('%', LOWER(#{userName}), '%')
+        </if>
+        <if test="userCode != null and userCode != ''">
+            AND userid = #{userCode}
+        </if>
+        <if test="userEmail != null and userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{userEmail}), '%')
+        </if>
+        ORDER BY userid
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 검색 결과 개수 -->
+    <select id="getTotalUserCount" resultType="int">
+        SELECT COUNT(*) FROM users
+        WHERE 1=1
+        <if test="organization != null and organization != ''">
+            AND organization = #{organization}
+        </if>
+        <if test="userName != null and userName != ''">
+            AND LOWER(username) LIKE CONCAT('%', LOWER(#{userName}), '%')
+        </if>
+        <if test="userCode != null and userCode != ''">
+            AND userid = #{userCode}
+        </if>
+        <if test="userEmail != null and userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{userEmail}), '%')
+        </if>
+    </select>
+
+    <!-- 조직 목록 가져오기 -->
+    <select id="getOrganizationList" resultType="string">
+        SELECT DISTINCT organization FROM users ORDER BY organization
+    </select>
+
+</mapper>
+```
+
+---
+
+### **4. `search.xhtml` 수정**
+#### **문제점**
+- `update="searchForm"`을 사용할 경우 테이블이 갱신되지 않을 수 있음.  
+- `<h:panelGroup>`의 `render` 속성이 `h:panelGroup`에서는 동작하지 않음.
+
+#### **수정 코드**
+```xhtml
+<h:form id="searchForm">
+    <!-- 검색 조건 -->
+    <h:panelGrid columns="4">
+        <h:outputLabel for="organization" value="조직: " />
+        <h:selectOneMenu id="organization" value="#{userBean.organization}">
+            <f:selectItem itemLabel="전체" itemValue="" />
+            <f:selectItems value="#{userBean.organizationList}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="userName" value="이름: " />
+        <h:inputText id="userName" value="#{userBean.userName}" />
+
+        <h:outputLabel for="userCode" value="코드: " />
+        <h:inputText id="userCode" value="#{userBean.userCode}" />
+
+        <h:outputLabel for="userEmail" value="이메일: " />
+        <h:inputText id="userEmail" value="#{userBean.userEmail}" />
+
+        <h:commandButton value="검색" action="#{userBean.display}" update="userTable, paginationPanel" />
+    </h:panelGrid>
+
+    <!-- 페이징 컨트롤 및 결과 -->
+    <h:panelGroup id="paginationPanel" rendered="#{not empty userBean.userList}">
+        <h:commandButton value="<<" action="#{userBean.goToFirstPage}" disabled="#{userBean.currentPage == 1}" update="userTable, paginationPanel" />
+        <h:commandButton value="<" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" update="userTable, paginationPanel" />
+        <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+        <h:commandButton value=">" action="#{userBean.nextPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="userTable, paginationPanel" />
+        <h:commandButton value=">>" action="#{userBean.goToLastPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="userTable, paginationPanel" />
+        
+        <h:dataTable id="userTable" value="#{userBean.userList}" var="user">
+            <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+            <h:column><f:facet name="header">코드</f:facet>#{user.code}</h:column>
+            <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+        </h:dataTable>
+    </h:panelGroup>
+</h:form>
+```
+
+이제 수정된 코드로 검색과 페이징이 정상 동작할 것입니다. 🚀
