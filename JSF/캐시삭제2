@@ -1,0 +1,17 @@
+`wildfly/standalone/deployments/` 디렉토리는 **WildFly 서버**의 실제 설치 디렉토리 내에 위치하는 경로입니다. 이는 **Eclipse**의 워크스페이스 폴더와는 별개입니다.
+
+즉, **Eclipse**에서 프로젝트를 개발하고 WildFly 서버를 실행할 때, WildFly 서버의 실제 파일 시스템 내에 배포되는 위치가 `wildfly/standalone/deployments/`입니다.
+
+### WildFly 서버의 `deployments` 디렉토리 위치:
+- WildFly 서버가 설치된 디렉토리 내에 `standalone` 폴더가 있고, 그 안에 `deployments` 폴더가 있습니다. 예를 들어:
+  - `wildfly/standalone/deployments/`
+  
+### Eclipse에서 WildFly 서버 설정:
+- Eclipse에서 WildFly 서버를 설정했다면, **Eclipse의 서버 탭**에서 해당 서버를 선택하여 실행하게 됩니다. 이때 Eclipse는 WildFly 서버의 `deployments` 폴더에 프로젝트를 자동으로 배포하고 실행합니다.
+- 배포된 프로젝트는 `deployments` 폴더에서 확인할 수 있으며, 이곳에 `.war` 파일이 배치되어 있는지 확인해보세요.
+
+따라서, **WildFly 서버의 실제 설치 디렉토리**와 **Eclipse 워크스페이스**는 다르며, 서버의 `deployments` 디렉토리는 WildFly가 설치된 경로에서 확인해야 합니다.
+
+### WildFly 서버 디렉토리 예시:
+- `C:/wildfly/standalone/deployments/` (윈도우)
+- `/opt/wildfly/standalone/deployments/` (리눅스)
