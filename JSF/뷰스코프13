@@ -1,0 +1,123 @@
+`@SessionScoped`에서는 검색 조건을 유지한 상태에서 검색이 정상적으로 작동하지만, `@ViewScoped`에서는 검색 조건을 입력하고 검색 버튼을 누르면 **조건이 반영되지 않고 전체 값만 출력되는 문제**가 발생한다면, 아래와 같은 원인이 있을 수 있습니다.  
+
+---
+
+## **✅ 1. `@ViewScoped`에서 검색 조건이 사라지는 문제**
+JSF에서 `@ViewScoped`는 **동일한 뷰에서만 데이터를 유지**하지만, AJAX 요청이 처리되는 방식에 따라 **입력한 값이 반영되지 않을 수 있습니다.**  
+
+✅ **검색 버튼의 `execute` 속성 확인**  
+```xml
+<h:commandButton value="검색" action="#{userBean.searchUsers}" update="userTable messages" />
+```
+➡ `execute` 속성을 명시적으로 설정해보세요.  
+```xml
+<h:commandButton value="검색" action="#{userBean.searchUsers}">
+    <f:ajax execute="@form" render="userTable messages" />
+</h:commandButton>
+```
+✔ **`execute="@form"`을 추가하면 검색 조건(input 값)이 서버로 전달됨**  
+✔ `render="userTable messages"`을 설정하면 검색 결과가 화면에 반영됨  
+
+---
+
+## **✅ 2. 검색 조건이 유지되지 않는지 확인**
+검색 후 `userName`, `userCode` 값이 초기화되면서 검색이 되지 않을 수도 있습니다.  
+
+### **🔍 `searchUsers()` 실행 전후 검색 조건 확인**
+```java
+public void searchUsers() {
+    System.out.println("검색 버튼 클릭됨!");
+    System.out.println("검색 조건 - 이름: " + userName + ", 코드: " + userCode); // 값이 유지되는지 확인
+
+    userList = userService.findUsers(userName, userCode);
+
+    if (userList.isEmpty()) {
+        System.out.println("검색 결과 없음");
+    } else {
+        System.out.println("검색 결과 개수: " + userList.size());
+    }
+}
+```
+✔ `System.out.println("검색 조건 - 이름: " + userName + ", 코드: " + userCode);`를 추가하여,  
+✔ 검색 버튼 클릭 후 `userName`, `userCode`가 **초기화되지 않고 값이 유지되는지** 확인하세요.  
+
+---
+
+## **✅ 3. `@ViewScoped`가 정상적으로 동작하는지 확인**
+JSF 3.0 이상에서는 `@ViewScoped`의 패키지가 변경되었습니다.  
+⚠ **잘못된 패키지 (`javax.faces.bean.ViewScoped`)를 사용하면 동작하지 않습니다.**  
+
+✅ **올바른 `@ViewScoped` 임포트 확인**
+```java
+import jakarta.faces.view.ViewScoped;
+```
+✔ `javax.faces.bean.ViewScoped`가 아닌 **`jakarta.faces.view.ViewScoped`를 사용해야 함**  
+
+✅ **`@Named("userBean")`가 올바르게 선언되었는지 확인**
+```java
+@Named("userBean")
+@ViewScoped
+public class UserBean implements Serializable {
+```
+✔ `@ViewScoped`를 사용하면, 검색 버튼을 눌렀을 때 **같은 페이지에서는 값이 유지**되어야 합니다.  
+✔ 만약 값이 초기화된다면, `@ViewScoped`가 정상적으로 적용되지 않은 것일 수 있습니다.  
+
+---
+
+## **✅ 4. JSF `<h:inputText>` 바인딩 문제 확인**
+검색 필드가 **올바르게 `userBean`의 필드와 바인딩되었는지** 확인하세요.  
+
+✅ **JSF 검색 폼 확인**
+```xml
+<h:form id="searchForm">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="userName" value="사용자 이름:" />
+        <h:inputText id="userName" value="#{userBean.userName}" />
+
+        <h:outputLabel for="userCode" value="사용자 코드:" />
+        <h:inputText id="userCode" value="#{userBean.userCode}" />
+    </h:panelGrid>
+
+    <h:commandButton value="검색" action="#{userBean.searchUsers}">
+        <f:ajax execute="@form" render="userTable messages" />
+    </h:commandButton>
+</h:form>
+```
+✔ `h:inputText`의 `value` 속성이 **`userBean`의 필드와 바인딩**되어 있어야 함  
+✔ `execute="@form"`을 설정하여, **검색 조건이 서버로 전송되도록 설정**  
+
+---
+
+## **✅ 5. `immediate="true"` 속성 제거**
+⚠ `immediate="true"`가 설정되어 있다면, **검색 필드 값이 서버로 전달되지 않고 초기화될 수 있습니다.**  
+
+✅ **잘못된 코드 예시**
+```xml
+<h:commandButton value="검색" action="#{userBean.searchUsers}" immediate="true" />
+```
+✔ `immediate="true"`를 삭제하세요.  
+
+✅ **수정된 코드**
+```xml
+<h:commandButton value="검색" action="#{userBean.searchUsers}">
+    <f:ajax execute="@form" render="userTable messages" />
+</h:commandButton>
+```
+✔ **`immediate="true"`를 제거하면, 입력된 검색 조건이 정상적으로 서버로 전달됨**  
+
+---
+
+## **🚀 최종 체크리스트**
+| 체크할 항목 | 확인 여부 |
+|------------|---------|
+| `@ViewScoped`가 **정확한 패키지 (`jakarta.faces.view.ViewScoped`)** 로 임포트되었는가? | ✅ |
+| 검색 버튼 `<h:commandButton>`에 `<f:ajax execute="@form" render="userTable messages" />`가 추가되었는가? | ✅ |
+| `searchUsers()` 실행 전후 `System.out.println()`으로 검색 조건 (`userName`, `userCode`)이 유지되는지 확인했는가? | ✅ |
+| JSF `<h:inputText>` 필드가 `userBean`의 검색 조건과 정확히 바인딩되었는가? | ✅ |
+| `<h:commandButton>`에서 `immediate="true"`를 제거했는가? | ✅ |
+
+---
+
+**위 내용을 하나씩 점검해보세요.**  
+특히 **AJAX 요청을 확인하고, 검색 조건이 초기화되지 않는지 로그로 확인하는 것이 중요합니다.**  
+추가로 확인할 사항이 있으면 알려주세요!
