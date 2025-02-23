@@ -1,0 +1,85 @@
+`@SessionScoped`, `@RequestScoped`, `@ViewScoped`에서 각기 다른 동작을 보이고 있는 문제의 원인과 해결 방법에 대해 설명드리겠습니다.
+
+### 1. **`@SessionScoped` 동작**
+   - **동작 원리**: `@SessionScoped`는 세션 동안 지속됩니다. 즉, 사용자가 검색 버튼을 눌러 데이터를 로드하고 그 후에도 페이지를 이동하거나 새로고침을 해도 이전에 저장된 데이터가 유지됩니다.
+   - **현재 증상**: 표는 초기에는 보이지 않지만, 검색 시 정상적으로 테이블이 표시된다는 것은 세션이 잘 유지되기 때문입니다. 즉, `@SessionScoped`에서는 상태 유지가 잘 되고 있음을 의미합니다.
+
+### 2. **`@RequestScoped` 동작**
+   - **동작 원리**: `@RequestScoped`는 HTTP 요청마다 새로운 인스턴스가 생성됩니다. 즉, 검색 버튼을 눌러도 이전 상태가 유지되지 않아서 데이터가 정상적으로 표시되지 않습니다. 검색을 눌러도 이전 검색 결과가 유지되지 않거나 아무것도 표시되지 않는 이유입니다.
+   - **해결 방법**: `@RequestScoped`는 상태가 유지되지 않기 때문에, 데이터의 상태를 다시 로드하고, 상태를 유지하기 위해서는 **별도의 저장소**나 **리다이렉트**를 사용해야 합니다. 예를 들어, 검색 결과를 **`session`**에 저장하고, `@RequestScoped`에서 이를 꺼내와서 사용할 수 있습니다.
+
+### 3. **`@ViewScoped` 동작**
+   - **동작 원리**: `@ViewScoped`는 JSF 페이지가 로드된 후에 해당 페이지에서만 데이터가 유지되며, 페이지가 새로 고침되면 상태가 사라집니다. 따라서 `init()`에서 메소드 호출 여부와 관계없이, 페이지가 새로고침되면 상태를 잃게 됩니다.
+   - **해결 방법**: `@ViewScoped`를 사용하려면, 페이지 상태가 새로 고침되더라도 해당 페이지에서만 상태를 유지할 수 있도록 설계해야 합니다. 상태를 유지하려면 **검색 결과를 세션에 저장**하거나 **`@SessionScoped` 또는 `@ViewScoped`의 상태 유지 방식**을 다시 설계하는 것이 필요할 수 있습니다.
+
+### 4. **`init()` 메소드 문제**
+   - `init()` 메소드에 `userSearch()` 메소드를 넣으면 검색이 잘 되지만, 페이지가 넘어가면서 검색 조건이 남아있는 문제는 **`@ViewScoped`**나 **`@RequestScoped`**에서는 상태가 유지되지 않아서 발생하는 현상입니다. `init()`이 실행될 때마다 새로운 빈 인스턴스가 생성되므로, 이전 검색 조건이 유지되지 않게 됩니다.
+   - **해결 방법**: 검색 조건을 **`session`**에 저장하거나 **`@SessionScoped`**나 **`@ViewScoped`**를 사용할 때, 검색 후 결과를 세션에 저장하여 다음에 페이지가 로드될 때 검색 상태를 유지할 수 있습니다.
+
+### 해결 방법 요약:
+1. **`@RequestScoped`**의 경우:
+   - 상태를 유지하기 위해 검색 결과를 **`session`**에 저장하고, 다시 이를 로드하도록 합니다.
+   - `@RequestScoped`는 요청마다 새로운 인스턴스가 생성되기 때문에, 세션에 데이터를 저장하는 방식으로 문제를 해결합니다.
+
+2. **`@ViewScoped`**의 경우:
+   - 페이지 상태를 유지하려면 **`@SessionScoped`**를 사용하는 것이 더 나을 수 있습니다.
+   - 만약 `@ViewScoped`를 사용하려면, 페이지 새로고침 시 상태를 유지하려면 `ViewScope` 안에서 상태를 유지하도록 구현해야 합니다.
+
+3. **`@SessionScoped`**에서 발생하는 문제:
+   - `@SessionScoped`는 상태가 세션 동안 유지되기 때문에, 문제 없이 테이블이 잘 나타나는 것으로 보입니다. 하지만 페이지 상태를 세션에 저장하는 방식으로 구현하되, 페이지 로딩 시 검색 조건이 변경되거나 페이지 상태가 다를 때는 세션 상태를 갱신하도록 해야 합니다.
+
+### 코드 예시:
+**1. `@RequestScoped`에서 상태 유지하기 (세션에 저장)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserSearchBean {
+    private List<User> userList;
+
+    @Inject
+    private HttpSession session; // HttpSession을 주입
+
+    public String searchUsers() {
+        // 검색 조건 처리
+        userList = fetchUserList(); // 검색 결과 리스트
+
+        // 세션에 검색 결과 저장
+        session.setAttribute("userList", userList);
+
+        return "searchResults?faces-redirect=true"; // 리다이렉트하여 상태 새로 고침
+    }
+
+    public List<User> getUserList() {
+        return (List<User>) session.getAttribute("userList");
+    }
+}
+```
+
+**2. `@ViewScoped`에서 상태 유지하기 (세션에 저장)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserSearchBean {
+    private List<User> userList;
+
+    @PostConstruct
+    public void init() {
+        // 페이지 로드 시 검색 조건 초기화
+        userList = fetchUserList(); // 초기 검색 결과
+    }
+
+    public String searchUsers() {
+        // 검색 처리
+        userList = fetchUserList();
+        return null; // 리다이렉트 없이 상태 유지
+    }
+
+    public List<User> getUserList() {
+        return userList;
+    }
+}
+```
+
+### 결론
+- **`@RequestScoped`**에서는 상태가 유지되지 않기 때문에 검색 결과를 **`session`**에 저장하고, 이를 불러오는 방식으로 해결해야 합니다.
+- **`@ViewScoped`**는 페이지 새로고침 시 상태가 사라지기 때문에 상태 유지 방법에 유의해야 합니다.
