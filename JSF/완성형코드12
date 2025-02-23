@@ -1,0 +1,312 @@
+전체 구현 코드를 아래와 같이 제공할게요. 여기서는 `UserBean`, `userPage.xhtml`, `UserDAO`, `Mapper.java`, `Mapper.xml`을 모두 포함한 전체적인 예시를 제공합니다.
+
+### 1. **UserBean.java**
+
+```java
+import jakarta.inject.Named;
+import jakarta.faces.view.ViewScoped;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import jakarta.faces.context.FacesContext;
+import jakarta.faces.application.FacesMessage;
+
+@Named
+@ViewScoped
+public class UserBean implements Serializable {
+    private String organization;
+    private String userName;
+    private String userCode;
+    private String userEmail;
+    private List<Map<String, Object>> userList;
+    private List<String> organizationList;
+
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+    private int totalRecords;
+
+    private final UserDAO userDAO = new UserDAO();
+
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        userList = new ArrayList<>();
+        organizationList = userDAO.getOrganizationList();
+    }
+
+    public String searchUsers() {
+        // 검색 조건이 없으면 에러 메시지 처리
+        if ((userName == null || userName.trim().isEmpty()) && (userCode == null || userCode.trim().isEmpty())) {
+            addErrorMessage("유저명 또는 코드명을 입력해주세요.");
+            return "userPage?faces-redirect=true";  // 리다이렉트하여 검색 페이지로 이동
+        }
+
+        // 검색 결과가 0건인 경우 에러 메시지 처리
+        updateUserList(currentPage);
+        if (userList.isEmpty()) {
+            addErrorMessage("검색 결과가 없습니다.");
+            return "userPage?faces-redirect=true";  // 리다이렉트하여 검색 페이지로 이동
+        }
+
+        // 검색 결과가 30건을 초과하는 경우 에러 메시지 처리
+        if (totalRecords > 30) {
+            addErrorMessage("검색 결과가 30건을 초과합니다. 검색 조건을 좁혀주세요.");
+            return "userPage?faces-redirect=true";  // 리다이렉트하여 검색 페이지로 이동
+        }
+
+        return null;  // 정상적인 검색 결과일 경우 null 반환하여 페이지 이동하지 않음
+    }
+
+    // 에러 메시지 처리 함수
+    private void addErrorMessage(String message) {
+        FacesMessage facesMessage = new FacesMessage(FacesMessage.SEVERITY_ERROR, message, null);
+        FacesContext.getCurrentInstance().addMessage(null, facesMessage);
+    }
+
+    private void updateUserList(int page) {
+        totalRecords = userDAO.getTotalUserCount(organization, userName, userCode, userEmail);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+        userList = userDAO.getUsers(organization, userName, userCode, userEmail, (page - 1) * pageSize, pageSize);
+    }
+
+    public void goToFirstPage() {
+        updateUserList(1);
+    }
+
+    public void previousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            updateUserList(currentPage);
+        }
+    }
+
+    public void nextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            updateUserList(currentPage);
+        }
+    }
+
+    public void goToLastPage() {
+        updateUserList(totalPages);
+    }
+
+    // Getter / Setter 생략
+}
+```
+
+### 2. **userPage.xhtml**
+
+```xml
+<h:form id="searchForm">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="userName" value="유저명" />
+        <h:inputText id="userName" value="#{userBean.userName}" />
+
+        <h:outputLabel for="userCode" value="유저 코드" />
+        <h:inputText id="userCode" value="#{userBean.userCode}" />
+
+        <h:outputLabel for="organization" value="조직" />
+        <h:selectOneMenu id="organization" value="#{userBean.organization}">
+            <f:selectItems value="#{userBean.organizationList}" />
+        </h:selectOneMenu>
+    </h:panelGrid>
+
+    <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+
+    <!-- 에러 메시지 표시 -->
+    <h:messages id="messages" globalOnly="true" />
+
+    <h:dataTable id="userTable" value="#{userBean.userList}" var="user">
+        <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+        <h:column><f:facet name="header">코드</f:facet>#{user.code}</h:column>
+        <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+    </h:dataTable>
+
+    <!-- 페이지 네비게이션 -->
+    <h:panelGrid columns="5">
+        <h:commandButton value="첫 페이지" action="#{userBean.goToFirstPage}" />
+        <h:commandButton value="이전" action="#{userBean.previousPage}" />
+        <h:outputText value="#{userBean.currentPage}" />
+        <h:commandButton value="다음" action="#{userBean.nextPage}" />
+        <h:commandButton value="마지막 페이지" action="#{userBean.goToLastPage}" />
+    </h:panelGrid>
+</h:form>
+```
+
+### 3. **UserDAO.java**
+
+```java
+import java.util.List;
+import java.util.Map;
+
+public class UserDAO {
+
+    private SqlSessionFactory sqlSessionFactory;
+
+    public UserDAO() {
+        // MyBatis 설정을 통해 SqlSessionFactory 초기화
+        sqlSessionFactory = MyBatisUtil.getSqlSessionFactory();
+    }
+
+    public List<String> getOrganizationList() {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            return session.selectList("UserMapper.getOrganizationList");
+        }
+    }
+
+    public int getTotalUserCount(String organization, String userName, String userCode, String userEmail) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            Map<String, Object> params = Map.of(
+                "organization", organization,
+                "userName", userName,
+                "userCode", userCode,
+                "userEmail", userEmail
+            );
+            return session.selectOne("UserMapper.getTotalUserCount", params);
+        }
+    }
+
+    public List<Map<String, Object>> getUsers(String organization, String userName, String userCode, String userEmail, int offset, int limit) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            Map<String, Object> params = Map.of(
+                "organization", organization,
+                "userName", userName,
+                "userCode", userCode,
+                "userEmail", userEmail,
+                "offset", offset,
+                "limit", limit
+            );
+            return session.selectList("UserMapper.getUsers", params);
+        }
+    }
+}
+```
+
+### 4. **UserMapper.java (Mapper 인터페이스)**
+
+```java
+import java.util.List;
+import java.util.Map;
+
+public interface UserMapper {
+    List<String> getOrganizationList();
+    int getTotalUserCount(Map<String, Object> params);
+    List<Map<String, Object>> getUsers(Map<String, Object> params);
+}
+```
+
+### 5. **UserMapper.xml (Mapper XML)**
+
+```xml
+<mapper namespace="UserMapper">
+
+    <select id="getOrganizationList" resultType="String">
+        SELECT DISTINCT organization
+        FROM users
+    </select>
+
+    <select id="getTotalUserCount" resultType="int">
+        SELECT COUNT(*)
+        FROM users
+        WHERE 1=1
+        <if test="organization != null"> AND organization = #{organization} </if>
+        <if test="userName != null"> AND user_name LIKE CONCAT('%', #{userName}, '%') </if>
+        <if test="userCode != null"> AND user_code LIKE CONCAT('%', #{userCode}, '%') </if>
+        <if test="userEmail != null"> AND user_email LIKE CONCAT('%', #{userEmail}, '%') </if>
+    </select>
+
+    <select id="getUsers" resultType="Map">
+        SELECT user_name AS name, user_code AS code, user_email AS email
+        FROM users
+        WHERE 1=1
+        <if test="organization != null"> AND organization = #{organization} </if>
+        <if test="userName != null"> AND user_name LIKE CONCAT('%', #{userName}, '%') </if>
+        <if test="userCode != null"> AND user_code LIKE CONCAT('%', #{userCode}, '%') </if>
+        <if test="userEmail != null"> AND user_email LIKE CONCAT('%', #{userEmail}, '%') </if>
+        LIMIT #{offset}, #{limit}
+    </select>
+
+</mapper>
+```
+
+### 6. **MyBatisUtil.java (MyBatis 설정 클래스)**
+
+```java
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+import java.io.InputStream;
+
+public class MyBatisUtil {
+    private static SqlSessionFactory sqlSessionFactory;
+
+    static {
+        try {
+            String resource = "mybatis-config.xml";  // MyBatis 설정 파일
+            InputStream inputStream = Resources.getResourceAsStream(resource);
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+        } catch (Exception e) {
+            throw new RuntimeException("MyBatis 설정 파일을 로드할 수 없습니다.", e);
+        }
+    }
+
+    public static SqlSessionFactory getSqlSessionFactory() {
+        return sqlSessionFactory;
+    }
+}
+```
+
+### 7. **mybatis-config.xml (MyBatis 설정 파일)**
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/your_db"/>
+                <property name="username" value="your_username"/>
+                <property name="password" value="your_password"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <mappers>
+        <mapper resource="UserMapper.xml"/>
+    </mappers>
+</configuration>
+```
+
+---
+
+### 8. **faces-config.xml (JSF 설정 파일)**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<faces-config xmlns="http://java.sun.com/xml/ns/javaee"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+                http://java.sun.com/xml/ns/javaee/web-facesconfig_2_2.xsd">
+
+    <navigation-rule>
+        <from-view-id>/userPage.xhtml</from-view-id>
+        <navigation-case>
+            <from-outcome>userPage</from-outcome>
+            <to-view-id>/userPage.xhtml</to-view-id>
+        </navigation-case>
+    </navigation-rule>
+
+</faces-config>
+```
+
+---
+
+### 요약
+- `UserBean`에서 조건에 맞지 않으면 에러 메시지를 `FacesMessage`로 처리하고 리다이렉트합니다.
+- `userPage.xhtml`에서 검색 조건을 입력받고 에러 메시지를 표시합니다.
+- `UserDAO`, `Mapper` 및 `MyBatis` 설정이 포함되어 데이터베이스와의 상호작용을 처리합니다.
+- `faces-redirect=true`를 사용하여 리다이렉트 후 에러 메시지가 표시됩니다.
