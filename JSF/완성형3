@@ -1,0 +1,230 @@
+아래는 개선된 **UserBean.java, UserDAO.java, UserMapper.java, UserMapper.xml, User.xhtml** 전체 코드입니다.  
+이전 코드의 문제점을 수정하고, 코드 가독성을 개선한 버전입니다.  
+
+---
+
+### **1. `UserBean.java` (JSF Managed Bean)**
+```java
+import jakarta.annotation.PostConstruct;
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Named
+@SessionScoped
+public class UserBean implements Serializable {
+    private String organization;
+    private String userName;
+    private String userCode;
+    private String userEmail;
+    private List<Map<String, Object>> userList;
+    private List<String> organizationList;
+
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+    private int totalRecords;
+
+    private final UserDAO userDAO = new UserDAO();
+
+    @PostConstruct
+    public void init() {
+        userList = new ArrayList<>();
+        organizationList = userDAO.getOrganizationList();
+    }
+
+    public void search() {
+        currentPage = 1;
+        searchUsers(currentPage);
+    }
+
+    public void searchUsers(int page) {
+        totalRecords = userDAO.getTotalUserCount(organization, userName, userCode, userEmail);
+        totalPages = Math.max(1, (int) Math.ceil((double) totalRecords / pageSize));
+        userList = userDAO.getUsers(organization, userName, userCode, userEmail, (page - 1) * pageSize, pageSize);
+        currentPage = page;
+    }
+
+    public void goToFirstPage() {
+        searchUsers(1);
+    }
+
+    public void previousPage() {
+        if (currentPage > 1) {
+            searchUsers(currentPage - 1);
+        }
+    }
+
+    public void nextPage() {
+        if (currentPage < totalPages) {
+            searchUsers(currentPage + 1);
+        }
+    }
+
+    public void goToLastPage() {
+        searchUsers(totalPages);
+    }
+
+    // Getter & Setter (생략)
+}
+```
+
+---
+
+### **2. `UserDAO.java` (DAO Layer)**
+```java
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import org.apache.ibatis.session.SqlSession;
+
+public class UserDAO {
+    public List<Map<String, Object>> getUsers(String organization, String userName, String userCode, String userEmail, int offset, int limit) {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            Map<String, Object> param = new HashMap<>();
+            param.put("organization", organization);
+            param.put("userName", userName);
+            param.put("userCode", userCode);
+            param.put("userEmail", userEmail);
+            param.put("offset", offset);
+            param.put("limit", limit);
+            return mapper.getUsers(param);
+        }
+    }
+
+    public int getTotalUserCount(String organization, String userName, String userCode, String userEmail) {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            Map<String, Object> param = new HashMap<>();
+            param.put("organization", organization);
+            param.put("userName", userName);
+            param.put("userCode", userCode);
+            param.put("userEmail", userEmail);
+            return mapper.getTotalUserCount(param);
+        }
+    }
+
+    public List<String> getOrganizationList() {
+        try (SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            return mapper.getOrganizationList();
+        }
+    }
+}
+```
+
+---
+
+### **3. `UserMapper.java` (MyBatis Mapper Interface)**
+```java
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+public interface UserMapper {
+    List<Map<String, Object>> getUsers(@Param("param") Map<String, Object> param);
+    int getTotalUserCount(@Param("param") Map<String, Object> param);
+    List<String> getOrganizationList();
+}
+```
+
+---
+
+### **4. `UserMapper.xml` (MyBatis SQL Mapper)**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <select id="getUsers" resultType="map">
+        SELECT username AS name, userid AS code, email
+        FROM users
+        WHERE 1=1
+        <if test="param.organization != null and param.organization != ''">
+            AND organization = #{param.organization}
+        </if>
+        <if test="param.userName != null and param.userName != ''">
+            AND LOWER(username) LIKE CONCAT('%', LOWER(#{param.userName}), '%')
+        </if>
+        <if test="param.userCode != null and param.userCode != ''">
+            AND userid = #{param.userCode}
+        </if>
+        <if test="param.userEmail != null and param.userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{param.userEmail}), '%')
+        </if>
+        ORDER BY userid
+        OFFSET #{param.offset} LIMIT #{param.limit}
+    </select>
+
+    <select id="getTotalUserCount" resultType="int">
+        SELECT COUNT(*) FROM users
+        WHERE 1=1
+        <if test="param.organization != null and param.organization != ''">
+            AND organization = #{param.organization}
+        </if>
+        <if test="param.userName != null and param.userName != ''">
+            AND LOWER(username) LIKE CONCAT('%', LOWER(#{param.userName}), '%')
+        </if>
+        <if test="param.userCode != null and param.userCode != ''">
+            AND userid = #{param.userCode}
+        </if>
+        <if test="param.userEmail != null and param.userEmail != ''">
+            AND LOWER(email) LIKE CONCAT('%', LOWER(#{param.userEmail}), '%')
+        </if>
+    </select>
+
+    <select id="getOrganizationList" resultType="string">
+        SELECT DISTINCT organization FROM users ORDER BY organization
+    </select>
+
+</mapper>
+```
+
+---
+
+### **5. `User.xhtml` (JSF View)**
+```xml
+<h:form id="searchForm">
+    <h:panelGrid columns="4">
+        <h:outputLabel for="organization" value="조직: " />
+        <h:selectOneMenu id="organization" value="#{userBean.organization}">
+            <f:selectItem itemLabel="전체" itemValue="" />
+            <f:selectItems value="#{userBean.organizationList}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="userName" value="이름: " />
+        <h:inputText id="userName" value="#{userBean.userName}" />
+
+        <h:outputLabel for="userCode" value="코드: " />
+        <h:inputText id="userCode" value="#{userBean.userCode}" />
+
+        <h:outputLabel for="userEmail" value="이메일: " />
+        <h:inputText id="userEmail" value="#{userBean.userEmail}" />
+
+        <h:commandButton value="검색" action="#{userBean.search}" update="userTable, paginationPanel" />
+    </h:panelGrid>
+
+    <h:panelGroup id="paginationPanel" rendered="#{not empty userBean.userList}">
+        <h:commandButton value="<<" action="#{userBean.goToFirstPage}" disabled="#{userBean.currentPage == 1}" update="userTable, paginationPanel" />
+        <h:commandButton value="<" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" update="userTable, paginationPanel" />
+        <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+        <h:commandButton value=">" action="#{userBean.nextPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="userTable, paginationPanel" />
+        <h:commandButton value=">>" action="#{userBean.goToLastPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="userTable, paginationPanel" />
+
+        <h:dataTable id="userTable" value="#{userBean.userList}" var="user">
+            <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+            <h:column><f:facet name="header">코드</f:facet>#{user.code}</h:column>
+            <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+        </h:dataTable>
+    </h:panelGroup>
+</h:form>
+```
+
+이제 페이징 로직이 더 안정적으로 동작할 것입니다! 🚀
