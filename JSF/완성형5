@@ -1,0 +1,110 @@
+네, `@RequestScoped`를 사용할 경우, 기본적으로 다른 코드 부분은 크게 달라지지 않습니다. 다만, `@ViewScoped`나 `@SessionScoped`의 차이점이 `UserBean`의 생명주기(scope)와 관련이 있기 때문에, 그에 맞게 페이지가 요청될 때마다 새로운 인스턴스를 생성하게 됩니다.
+
+`@RequestScoped`에서는 사용자가 **새로운 HTTP 요청을 보낼 때마다** `UserBean`이 새로 생성되므로, **페이징 정보나 검색 조건이 유지되지 않습니다.**
+
+따라서, 실제로 변경되는 것은 **빈의 스코프(scope)**뿐입니다. 아래와 같이 `@RequestScoped`로 변경하면 나머지 코드 부분은 거의 동일하게 유지됩니다.
+
+### 변경된 `UserBean` 코드
+
+```java
+import jakarta.inject.Named;
+import jakarta.enterprise.context.RequestScoped;  // @RequestScoped로 변경
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Named
+@RequestScoped  // @RequestScoped로 변경
+public class UserBean implements Serializable {
+    private String organization;
+    private String userName;
+    private String userCode;
+    private String userEmail;
+    private List<Map<String, Object>> userList;
+    private List<String> organizationList;
+
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+    private int totalRecords;
+
+    private final UserDAO userDAO = new UserDAO();
+
+    public UserBean() {
+        userList = new ArrayList<>();
+        organizationList = userDAO.getOrganizationList();
+    }
+
+    // 검색 후 사용자 리스트 갱신
+    public void searchUsers() {
+        currentPage = 1;  // 검색 시 1페이지로 이동
+        updateUserList();
+    }
+
+    // 사용자 리스트 갱신 메서드
+    private void updateUserList() {
+        totalRecords = userDAO.getTotalUserCount(organization, userName, userCode, userEmail);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+        userList = userDAO.getUsers(organization, userName, userCode, userEmail, (currentPage - 1) * pageSize, pageSize);
+    }
+
+    // 페이징 관련 메서드
+    public void goToFirstPage() { currentPage = 1; updateUserList(); }
+    public void previousPage() { if (currentPage > 1) { currentPage--; updateUserList(); } }
+    public void nextPage() { if (currentPage < totalPages) { currentPage++; updateUserList(); } }
+    public void goToLastPage() { currentPage = totalPages; updateUserList(); }
+
+    // Getter / Setter 생략
+}
+```
+
+### 변경된 `XHTML` 코드
+
+`XHTML` 페이지에서의 내용은 그대로 유지됩니다. 페이징 버튼, 검색 폼 등의 요소는 `@RequestScoped`에서도 동일하게 동작합니다.
+
+```xml
+<h:form id="searchForm">
+    <!-- 검색 조건 -->
+    <h:panelGrid columns="4">
+        <h:outputLabel for="organization" value="조직: " />
+        <h:selectOneMenu id="organization" value="#{userBean.organization}">
+            <f:selectItem itemLabel="전체" itemValue="" />
+            <f:selectItems value="#{userBean.organizationList}" />
+        </h:selectOneMenu>
+
+        <h:outputLabel for="userName" value="이름: " />
+        <h:inputText id="userName" value="#{userBean.userName}" />
+
+        <h:outputLabel for="userCode" value="코드: " />
+        <h:inputText id="userCode" value="#{userBean.userCode}" />
+
+        <h:outputLabel for="userEmail" value="이메일: " />
+        <h:inputText id="userEmail" value="#{userBean.userEmail}" />
+
+        <h:commandButton value="검색" action="#{userBean.searchUsers}" update="userTable, paginationPanel" />
+    </h:panelGrid>
+
+    <!-- 페이징 컨트롤 및 결과 -->
+    <h:panelGroup id="paginationPanel" rendered="#{not empty userBean.userList}">
+        <h:commandButton value="<<" action="#{userBean.goToFirstPage}" disabled="#{userBean.currentPage == 1}" update="userTable, paginationPanel" />
+        <h:commandButton value="<" action="#{userBean.previousPage}" disabled="#{userBean.currentPage == 1}" update="userTable, paginationPanel" />
+        <h:outputText value="페이지 #{userBean.currentPage} / #{userBean.totalPages}" />
+        <h:commandButton value=">" action="#{userBean.nextPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="userTable, paginationPanel" />
+        <h:commandButton value=">>" action="#{userBean.goToLastPage}" disabled="#{userBean.currentPage == userBean.totalPages}" update="userTable, paginationPanel" />
+        
+        <h:dataTable id="userTable" value="#{userBean.userList}" var="user">
+            <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+            <h:column><f:facet name="header">코드</f:facet>#{user.code}</h:column>
+            <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+        </h:dataTable>
+    </h:panelGroup>
+</h:form>
+```
+
+### 핵심 차이점
+1. `@RequestScoped`에서는 **새로운 HTTP 요청이 있을 때마다 `UserBean`이 새로 생성**되므로, 이전에 입력한 값이 유지되지 않습니다.
+2. 검색 버튼을 누르면 `currentPage` 값이 1로 초기화되며, **다시 첫 페이지로 이동**합니다.
+3. 페이징 정보는 상태를 유지하지 않으므로, **각 요청 시마다 초기값부터 로드**됩니다.
+
+따라서 **페이징 상태를 유지하려면 `@RequestScoped`보다는 `@ViewScoped`가 적합**합니다.
