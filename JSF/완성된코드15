@@ -1,0 +1,165 @@
+`@ViewScoped`를 적용하면, **검색 결과가 유지되면서 페이지 이동이 가능**해야 합니다. 기존 `@SessionScoped`와의 차이점은 **검색 조건 및 결과가 페이지 리로드 시 사라지지 않으면서도, 세션 전체가 아닌 해당 뷰에서만 유지된다는 점**입니다.  
+
+### **주요 차이점**
+1. **데이터 유지 방식**
+   - `@SessionScoped`: 검색 후 다른 페이지로 이동해도 검색 결과가 유지됨.
+   - `@ViewScoped`: 현재 페이지에서만 데이터가 유지되며, 다른 페이지로 이동하면 사라짐.
+
+2. **데이터 초기화 방식**
+   - `@SessionScoped`에서는 검색 전 `userList`를 초기화할 필요가 없었지만, `@ViewScoped`에서는 **뷰가 새로 로드될 때마다 `init()`이 실행되므로 초기화가 필요**함.
+   - 따라서 `init()`에서 검색 결과가 유지되도록 `userList`를 설정하는 로직을 수정해야 함.
+
+3. **검색 후 페이지 이동**
+   - `@SessionScoped`에서는 `return "userPage?faces-redirect=true";`와 같은 리다이렉트 처리 시 데이터가 유지되지만,  
+   - `@ViewScoped`에서는 리다이렉트하면 데이터가 사라지므로, **리다이렉트를 하지 않는 방식으로 검색 결과를 반영**해야 함.
+
+---
+
+### **변경된 `UserBean.java`**
+```java
+import jakarta.inject.Named;
+import jakarta.faces.view.ViewScoped;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import jakarta.faces.context.FacesContext;
+import jakarta.faces.application.FacesMessage;
+
+@Named
+@ViewScoped
+public class UserBean implements Serializable {
+    private String organization;
+    private String userName;
+    private String userCode;
+    private String userEmail;
+    private List<Map<String, Object>> userList;
+    private List<String> organizationList;
+
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+    private int totalRecords;
+
+    private final UserDAO userDAO = new UserDAO();
+
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        userList = new ArrayList<>();
+        organizationList = userDAO.getOrganizationList();
+    }
+
+    public void searchUsers() {
+        // 기존 검색 결과 초기화 (페이지가 새로고침되지 않더라도 새로운 검색을 수행할 수 있도록)
+        userList.clear();
+
+        if ((userName == null || userName.trim().isEmpty()) && (userCode == null || userCode.trim().isEmpty())) {
+            addErrorMessage("유저명 또는 코드명을 입력해주세요.");
+            return;
+        }
+
+        updateUserList(currentPage);
+
+        if (userList.isEmpty()) {
+            addErrorMessage("검색 결과가 없습니다.");
+        }
+
+        if (totalRecords > 30) {
+            addErrorMessage("검색 결과가 30건을 초과합니다. 검색 조건을 좁혀주세요.");
+        }
+    }
+
+    // 에러 메시지 처리 함수
+    private void addErrorMessage(String message) {
+        FacesMessage facesMessage = new FacesMessage(FacesMessage.SEVERITY_ERROR, message, null);
+        FacesContext.getCurrentInstance().addMessage(null, facesMessage);
+    }
+
+    private void updateUserList(int page) {
+        totalRecords = userDAO.getTotalUserCount(organization, userName, userCode, userEmail);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+        userList = userDAO.getUsers(organization, userName, userCode, userEmail, (page - 1) * pageSize, pageSize);
+    }
+
+    public void goToFirstPage() {
+        updateUserList(1);
+    }
+
+    public void previousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            updateUserList(currentPage);
+        }
+    }
+
+    public void nextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            updateUserList(currentPage);
+        }
+    }
+
+    public void goToLastPage() {
+        updateUserList(totalPages);
+    }
+
+    // Getter / Setter 생략
+}
+```
+
+---
+
+### **변경된 `userPage.xhtml`**
+```xml
+<h:form id="searchForm">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="userName" value="유저명" />
+        <h:inputText id="userName" value="#{userBean.userName}" />
+
+        <h:outputLabel for="userCode" value="유저 코드" />
+        <h:inputText id="userCode" value="#{userBean.userCode}" />
+
+        <h:outputLabel for="organization" value="조직" />
+        <h:selectOneMenu id="organization" value="#{userBean.organization}">
+            <f:selectItems value="#{userBean.organizationList}" />
+        </h:selectOneMenu>
+    </h:panelGrid>
+
+    <h:commandButton value="검색" action="#{userBean.searchUsers}" update="userTable messages" />
+
+    <!-- 에러 메시지 표시 -->
+    <h:messages id="messages" globalOnly="true" />
+
+    <h:dataTable id="userTable" value="#{userBean.userList}" var="user">
+        <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+        <h:column><f:facet name="header">코드</f:facet>#{user.code}</h:column>
+        <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+    </h:dataTable>
+
+    <!-- 페이지 네비게이션 -->
+    <h:panelGrid columns="5">
+        <h:commandButton value="첫 페이지" action="#{userBean.goToFirstPage}" update="userTable" />
+        <h:commandButton value="이전" action="#{userBean.previousPage}" update="userTable" />
+        <h:outputText value="#{userBean.currentPage}" />
+        <h:commandButton value="다음" action="#{userBean.nextPage}" update="userTable" />
+        <h:commandButton value="마지막 페이지" action="#{userBean.goToLastPage}" update="userTable" />
+    </h:panelGrid>
+</h:form>
+```
+
+---
+
+### **주요 변경 사항**
+✅ **`@ViewScoped` 적용** → 검색 결과가 리다이렉트 없이 유지되도록 변경  
+✅ **`searchUsers()` 메서드 수정** → 검색 결과가 있을 경우 페이지 유지  
+✅ **`return "userPage?faces-redirect=true";` 제거** → 리다이렉트 없이 검색 결과 유지  
+✅ **XHTML에서 `<h:commandButton update="userTable messages" />` 적용** → AJAX를 활용해 검색 결과 및 에러 메시지만 갱신  
+
+---
+
+### **결론**
+- 기존 `@SessionScoped`에서는 **검색 후 리다이렉트(화면 전환)해도 데이터 유지**됨.  
+- `@ViewScoped`에서는 **검색 결과가 같은 화면 내에서 유지되지만, 페이지 리다이렉트하면 초기화**됨.  
+- 따라서 **리다이렉트 없이 AJAX 업데이트 방식**으로 검색 결과를 유지하도록 변경함.  
+
+이제 **검색 후에도 데이터를 유지하면서, 필요할 때 페이지를 변경할 수 있는 상태**가 되었습니다!
