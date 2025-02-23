@@ -1,0 +1,27 @@
+아, `UserDAO`가 `UserMapper`를 사용하니까 `UserMapper.java`도 필요하겠네.  
+전체 코드를 다시 정리해서 보여줄게.  
+
+---
+
+## **🔹 UserMapper.java**
+```java
+import org.apache.ibatis.annotations.Param;
+import java.util.List;
+import java.util.Map;
+
+public interface UserMapper {
+    List<Map<String, Object>> getUsers(@Param("param") Map<String, Object> param);
+
+    int getTotalUserCount(@Param("param") Map<String, Object> param);
+
+    List<String> getOrganizationList();
+}
+```
+
+---
+
+`UserMapper.java`는 `UserDAO.java`에서 호출하는 MyBatis 인터페이스야.  
+위 코드는 XML Mapper(`UserMapper.xml`)와 연결돼서 SQL 실행을 담당해.  
+
+이제 **UserDAO, UserMapper, UserMapper.xml**이 다 정리됐어!  
+혹시 수정하고 싶은 부분이 있으면 말해줘.
