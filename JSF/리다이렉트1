@@ -1,0 +1,41 @@
+`faces-redirect=true`는 JSF에서 리다이렉트를 수행할 때 사용하는 파라미터로, 특별한 설정 없이도 기본적으로 사용 가능합니다. JSF에서는 `faces-redirect=true`를 사용하여 리다이렉트를 하면, 페이지가 리다이렉트되면서 `flash` 스코프나 요청 파라미터를 포함하여 새로운 요청이 생성됩니다. 이때 **새로운 요청**을 통해 페이지가 다시 렌더링됩니다.
+
+따라서 **별도의 빌드나 XML 설정이 필요 없습니다**. 다만, 몇 가지 사항을 확인할 필요는 있습니다.
+
+### 1. **`faces-redirect=true`의 역할**
+- **리다이렉트 수행**: `faces-redirect=true`는 JSF 페이지에서 **리다이렉트를 수행**하는 역할을 합니다. 일반적인 HTTP 리다이렉트 방식과 비슷하게 작동합니다.
+- **`flash` 스코프 유지**: 리다이렉트 후에도 `flash` 스코프에 저장된 값은 유지됩니다. 이를 통해 페이지 간 데이터를 안전하게 전달할 수 있습니다.
+
+### 2. **리다이렉트 방법**
+`faces-redirect=true`를 사용하면, 페이지 이동 시 현재 요청을 새로운 요청으로 바꿔서 처리하는 방식입니다. 예를 들어, `userPage.xhtml`로 리다이렉트하려면 아래와 같이 설정합니다.
+
+```java
+return "userPage?faces-redirect=true";
+```
+
+이렇게 하면 **현재 페이지에서 `userPage.xhtml`로 리다이렉트**됩니다.
+
+### 3. **`faces-config.xml` 파일 설정**
+`faces-redirect=true`는 특별한 설정 없이 기본적으로 사용 가능합니다. 그러나 **`faces-config.xml`**에서 `navigation-rule`을 설정할 수 있습니다.
+
+예를 들어, 특정 네비게이션을 정의하고 싶으면 `faces-config.xml`에서 설정할 수 있지만, `faces-redirect=true`만으로 리다이렉트가 가능합니다.
+
+### 예시 (리다이렉트와 네비게이션 설정):
+
+```xml
+<navigation-rule>
+    <from-view-id>/searchPage.xhtml</from-view-id>
+    <navigation-case>
+        <from-outcome>success</from-outcome>
+        <to-view-id>/userPage.xhtml</to-view-id>
+        <redirect/>
+    </navigation-case>
+</navigation-rule>
+```
+
+위와 같은 설정을 `faces-config.xml`에 추가하면, `success`라는 결과값으로 `userPage.xhtml`로 리다이렉트할 수 있습니다. 그러나 **`faces-redirect=true`는 별도의 설정 없이도 사용할 수 있습니다**.
+
+### 결론
+- `faces-redirect=true`는 **기본적으로 JSF에서 지원**하는 기능이므로 **별도의 설정 없이 사용**할 수 있습니다.
+- **리다이렉트를 수행**하며, **`flash` 스코프의 데이터를 포함하여** 페이지를 이동할 수 있습니다.
+- 추가적인 네비게이션 설정은 `faces-config.xml`에서 가능하지만, `faces-redirect=true`는 설정 없이 바로 사용 가능합니다.
