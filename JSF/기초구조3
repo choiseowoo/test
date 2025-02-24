@@ -1,0 +1,152 @@
+`@Inject`를 사용하면 **의존성 주입(Dependency Injection, DI)**이 발생하며, 해당 필드는 자동으로 초기화됩니다. 하지만 이것이 동작하려면 **의존성 주입을 지원하는 프레임워크나 컨테이너**가 필요합니다. 예를 들어, **Java EE(예: Jakarta EE)** 또는 **Spring**과 같은 프레임워크를 사용해야 합니다.
+
+---
+
+### 1. **`@Inject`가 동작하는 조건**
+`@Inject`는 다음과 같은 조건에서 동작합니다:
+
+1. **의존성 주입 컨테이너가 존재해야 함**:
+   - Java EE(Jakarta EE) 환경(예: WildFly, GlassFish, TomEE 등) 또는 Spring 프레임워크가 필요합니다.
+   - 순수 JSF만으로는 `@Inject`가 동작하지 않습니다.
+
+2. **주입할 객체가 컨테이너에 등록되어 있어야 함**:
+   - `UserDao`와 같은 객체가 컨테이너에 Bean으로 등록되어 있어야 합니다.
+   - 예를 들어, Spring에서는 `@Component`, `@Service`, `@Repository` 등의 어노테이션으로 Bean을 등록합니다.
+   - Java EE에서는 `@Stateless`, `@Singleton` 등의 어노테이션을 사용합니다.
+
+3. **의존성 주입 대상 필드 또는 생성자**:
+   - `@Inject`는 필드, 생성자, 또는 메서드에 적용할 수 있습니다.
+
+---
+
+### 2. **`@Inject`를 사용한 예제**
+Spring 또는 Java EE 환경에서 `@Inject`를 사용하면 다음과 같이 코드를 작성할 수 있습니다.
+
+#### Spring 예제
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import javax.annotation.PostConstruct;
+import java.util.List;
+
+@Component // Spring Bean으로 등록
+@ManagedBean // JSF Managed Bean
+@ViewScoped
+public class SearchBean {
+    @Autowired // Spring의 의존성 주입
+    private UserDao userDao;
+
+    private String name;
+    private String status;
+    private List<User> searchResults = new ArrayList<>();
+
+    @PostConstruct
+    public void init() {
+        // 초기화 작업 (필요한 경우)
+    }
+
+    public void search() {
+        searchResults = userDao.searchUsers(name, status);
+    }
+
+    public void clear() {
+        name = null;
+        status = null;
+        searchResults.clear();
+    }
+
+    // Getters and Setters
+}
+```
+
+#### Java EE 예제
+```java
+import javax.inject.Inject;
+import javax.annotation.PostConstruct;
+import javax.enterprise.context.ViewScoped;
+import javax.inject.Named;
+import java.util.List;
+
+@Named // JSF Managed Bean
+@ViewScoped
+public class SearchBean {
+    @Inject // Java EE의 의존성 주입
+    private UserDao userDao;
+
+    private String name;
+    private String status;
+    private List<User> searchResults = new ArrayList<>();
+
+    @PostConstruct
+    public void init() {
+        // 초기화 작업 (필요한 경우)
+    }
+
+    public void search() {
+        searchResults = userDao.searchUsers(name, status);
+    }
+
+    public void clear() {
+        name = null;
+        status = null;
+        searchResults.clear();
+    }
+
+    // Getters and Setters
+}
+```
+
+---
+
+### 3. **`@Inject`가 초기화를 대체하는가?**
+`@Inject`는 **필드의 초기화를 대체**합니다. 즉, `userDao`를 직접 `new`로 생성하지 않아도 컨테이너가 자동으로 적절한 객체를 주입해 줍니다.
+
+- **수동 초기화**:
+  ```java
+  private UserDao userDao = new UserDao();
+  ```
+- **의존성 주입**:
+  ```java
+  @Inject
+  private UserDao userDao;
+  ```
+
+의존성 주입을 사용하면 객체 생성과 관리를 컨테이너가 대신 해주므로, 코드가 더 간결해지고 테스트가 용이해집니다.
+
+---
+
+### 4. **`@Inject`와 `@PostConstruct`의 관계**
+`@Inject`는 필드에 의존성을 주입하는 역할을 하고, `@PostConstruct`는 의존성 주입이 완료된 후 추가적인 초기화 작업을 수행하는 역할을 합니다.
+
+- **`@Inject`**: 필드에 의존성을 주입합니다.
+- **`@PostConstruct`**: 의존성 주입이 완료된 후 호출되며, 추가적인 초기화 작업을 수행합니다.
+
+예를 들어, `userDao`가 주입된 후에 특정한 설정을 해야 한다면 `@PostConstruct`에서 처리할 수 있습니다.
+
+```java
+@PostConstruct
+public void init() {
+    // userDao가 주입된 후 추가 작업
+    if (userDao == null) {
+        throw new IllegalStateException("UserDao is not injected!");
+    }
+}
+```
+
+---
+
+### 5. **순수 JSF에서 `@Inject` 사용 가능한가?**
+순수 JSF만으로는 `@Inject`를 사용할 수 없습니다. Java EE 또는 Spring과 같은 의존성 주입 컨테이너가 필요합니다.
+
+- **Java EE**: `@Inject`를 사용하려면 Java EE 호환 서버(예: WildFly, GlassFish)가 필요합니다.
+- **Spring**: `@Autowired`를 사용하려면 Spring 프레임워크가 필요합니다.
+
+---
+
+### 6. **정리**
+- `@Inject`는 의존성 주입을 통해 필드를 자동으로 초기화합니다.
+- 이를 사용하려면 Java EE 또는 Spring과 같은 의존성 주입 컨테이너가 필요합니다.
+- `@Inject`는 객체 생성과 관리를 컨테이너가 대신 해주므로, 코드가 더 간결해지고 유지보수가 쉬워집니다.
+- `@PostConstruct`는 의존성 주입이 완료된 후 추가적인 초기화 작업을 수행하는 데 사용됩니다.
+
+의존성 주입을 사용하면 객체 간의 결합도를 낮추고 테스트가 용이해지므로, 가능하다면 사용하는 것이 좋습니다. 😊
