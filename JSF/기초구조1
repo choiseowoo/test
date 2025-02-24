@@ -1,0 +1,258 @@
+JSF(JavaServer Faces)와 MyBatis를 사용하여 검색 페이지를 만드는 방법을 설명하겠습니다. 이 예제에서는 검색 조건으로 입력 텍스트와 풀다운 메뉴를 사용하고, 검색 버튼과 클리어 버튼을 포함한 간단한 검색 페이지를 만들어 보겠습니다.
+
+### 1. 프로젝트 설정
+먼저, JSF와 MyBatis를 사용할 수 있는 환경을 설정해야 합니다. Maven을 사용하여 필요한 의존성을 추가합니다.
+
+```xml
+<dependencies>
+    <!-- JSF -->
+    <dependency>
+        <groupId>javax.faces</groupId>
+        <artifactId>javax.faces-api</artifactId>
+        <version>2.3</version>
+    </dependency>
+    <dependency>
+        <groupId>org.glassfish</groupId>
+        <artifactId>javax.faces</artifactId>
+        <version>2.3.9</version>
+    </dependency>
+
+    <!-- MyBatis -->
+    <dependency>
+        <groupId>org.mybatis</groupId>
+        <artifactId>mybatis</artifactId>
+        <version>3.5.7</version>
+    </dependency>
+    <dependency>
+        <groupId>org.mybatis</groupId>
+        <artifactId>mybatis-spring</artifactId>
+        <version>2.0.6</version>
+    </dependency>
+
+    <!-- 기타 필요한 라이브러리 -->
+    <dependency>
+        <groupId>javax.servlet</groupId>
+        <artifactId>javax.servlet-api</artifactId>
+        <version>4.0.1</version>
+    </dependency>
+    <dependency>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <version>1.4.200</version>
+    </dependency>
+</dependencies>
+```
+
+### 2. 데이터베이스 설정
+MyBatis를 사용하기 위해 데이터베이스 설정을 해야 합니다. `mybatis-config.xml` 파일을 생성하여 데이터베이스 연결 정보를 설정합니다.
+
+```xml
+<configuration>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="org.h2.Driver"/>
+                <property name="url" value="jdbc:h2:mem:testdb"/>
+                <property name="username" value="sa"/>
+                <property name="password" value=""/>
+            </dataSource>
+        </environment>
+    </environments>
+    <mappers>
+        <mapper resource="com/example/mapper/UserMapper.xml"/>
+    </mappers>
+</configuration>
+```
+
+### 3. MyBatis Mapper 파일 생성
+검색을 위한 SQL 쿼리를 정의하는 Mapper 파일을 생성합니다. 예를 들어, `UserMapper.xml` 파일을 생성합니다.
+
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+    <select id="searchUsers" resultType="com.example.model.User">
+        SELECT * FROM users
+        WHERE name LIKE CONCAT('%', #{name}, '%')
+        AND status = #{status}
+    </select>
+</mapper>
+```
+
+### 4. 모델 클래스 생성
+검색 결과를 담을 모델 클래스를 생성합니다. 예를 들어, `User` 클래스를 생성합니다.
+
+```java
+package com.example.model;
+
+public class User {
+    private int id;
+    private String name;
+    private String status;
+
+    // Getters and Setters
+}
+```
+
+### 5. DAO 클래스 생성
+MyBatis를 사용하여 데이터베이스에 접근하는 DAO 클래스를 생성합니다.
+
+```java
+package com.example.dao;
+
+import com.example.model.User;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+
+import java.util.List;
+
+public class UserDao {
+    private SqlSessionFactory sqlSessionFactory;
+
+    public UserDao(SqlSessionFactory sqlSessionFactory) {
+        this.sqlSessionFactory = sqlSessionFactory;
+    }
+
+    public List<User> searchUsers(String name, String status) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            return session.selectList("com.example.mapper.UserMapper.searchUsers", new User(name, status));
+        }
+    }
+}
+```
+
+### 6. Managed Bean 생성
+JSF에서 사용할 Managed Bean을 생성합니다. 이 Bean은 검색 조건을 관리하고 검색 결과를 반환합니다.
+
+```java
+package com.example.bean;
+
+import com.example.dao.UserDao;
+import com.example.model.User;
+import javax.annotation.PostConstruct;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import java.util.List;
+
+@ManagedBean
+@ViewScoped
+public class SearchBean {
+    private String name;
+    private String status;
+    private List<User> searchResults;
+
+    private UserDao userDao;
+
+    @PostConstruct
+    public void init() {
+        userDao = new UserDao(MyBatisUtil.getSqlSessionFactory());
+    }
+
+    public void search() {
+        searchResults = userDao.searchUsers(name, status);
+    }
+
+    public void clear() {
+        name = null;
+        status = null;
+        searchResults = null;
+    }
+
+    // Getters and Setters
+}
+```
+
+### 7. JSF 페이지 생성
+검색 페이지를 위한 JSF 페이지를 생성합니다. `search.xhtml` 파일을 생성합니다.
+
+```xml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core">
+<h:head>
+    <title>Search Page</title>
+</h:head>
+<h:body>
+    <h:form>
+        <h:panelGrid columns="3">
+            <h:outputLabel value="Name:" />
+            <h:inputText value="#{searchBean.name}" />
+            <h:commandButton value="Search" action="#{searchBean.search}" />
+
+            <h:outputLabel value="Status:" />
+            <h:selectOneMenu value="#{searchBean.status}">
+                <f:selectItem itemValue="" itemLabel="Select Status" />
+                <f:selectItem itemValue="Active" itemLabel="Active" />
+                <f:selectItem itemValue="Inactive" itemLabel="Inactive" />
+            </h:selectOneMenu>
+            <h:commandButton value="Clear" action="#{searchBean.clear}" />
+        </h:panelGrid>
+    </h:form>
+
+    <h:dataTable value="#{searchBean.searchResults}" var="user" rendered="#{not empty searchBean.searchResults}">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Name</f:facet>
+            #{user.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Status</f:facet>
+            #{user.status}
+        </h:column>
+    </h:dataTable>
+</h:body>
+</html>
+```
+
+### 8. MyBatis 유틸리티 클래스 생성
+MyBatis의 `SqlSessionFactory`를 관리하는 유틸리티 클래스를 생성합니다.
+
+```java
+package com.example.util;
+
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+
+import java.io.IOException;
+import java.io.Reader;
+
+public class MyBatisUtil {
+    private static SqlSessionFactory sqlSessionFactory;
+
+    static {
+        try {
+            Reader reader = Resources.getResourceAsReader("mybatis-config.xml");
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(reader);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static SqlSessionFactory getSqlSessionFactory() {
+        return sqlSessionFactory;
+    }
+}
+```
+
+### 9. 데이터베이스 테이블 생성
+H2 데이터베이스를 사용하는 경우, `users` 테이블을 생성하고 샘플 데이터를 입력합니다.
+
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    status VARCHAR(50)
+);
+
+INSERT INTO users (id, name, status) VALUES (1, 'John Doe', 'Active');
+INSERT INTO users (id, name, status) VALUES (2, 'Jane Doe', 'Inactive');
+```
+
+### 10. 실행 및 테스트
+이제 프로젝트를 실행하고 `search.xhtml` 페이지를 통해 검색 기능을 테스트할 수 있습니다. 검색 조건을 입력하고 검색 버튼을 클릭하면 결과가 표시되고, 클리어 버튼을 클릭하면 검색 조건과 결과가 초기화됩니다.
+
+이 예제는 기본적인 검색 페이지를 구현하는 방법을 보여줍니다. 실제 프로젝트에서는 보다 복잡한 검색 조건과 페이징 처리 등을 추가할 수 있습니다.
