@@ -1,0 +1,98 @@
+`@PostConstruct` 어노테이션과 `init()` 메서드 안에 `userDao`를 초기화하는 이유는 **객체의 생명주기 관리**와 **의존성 주입** 때문입니다. 풀다운이나 리스트 값과는 직접적인 관련이 없습니다. 아래에서 자세히 설명드리겠습니다.
+
+---
+
+### 1. **`@PostConstruct`의 역할**
+`@PostConstruct`는 JSF(JavaServer Faces)에서 Managed Bean이 생성된 후 초기화 작업을 수행하기 위해 사용됩니다. 이 어노테이션이 붙은 메서드는 Bean이 메모리에 생성된 직후 자동으로 호출됩니다.
+
+- **왜 필요할까?**
+  - Bean이 생성될 때, 필드(멤버 변수)들은 기본값(`null`, `0`, `false` 등)으로 초기화됩니다.
+  - 하지만 `userDao`와 같은 의존성(예: 데이터베이스 접근 객체)은 반드시 초기화되어야 합니다.
+  - `@PostConstruct`를 사용하면 Bean이 완전히 생성된 후 필요한 초기화 작업을 수행할 수 있습니다.
+
+---
+
+### 2. **`userDao`를 `init()`에서 초기화하는 이유**
+`userDao`는 데이터베이스와 연동하는 객체로, `SqlSessionFactory`를 통해 생성됩니다. 이 객체는 Bean이 생성될 때 한 번만 초기화되면 되며, 이후에는 재사용됩니다.
+
+- **초기화 시점**: Bean이 생성된 직후(`@PostConstruct`).
+- **목적**:
+  - `userDao`가 `null`이 아니도록 보장합니다.
+  - `SqlSessionFactory`를 통해 `userDao`를 생성하여 데이터베이스와의 연결을 준비합니다.
+
+```java
+@PostConstruct
+public void init() {
+    userDao = new UserDao(MyBatisUtil.getSqlSessionFactory());
+}
+```
+
+---
+
+### 3. **풀다운과의 관계**
+풀다운 메뉴(예: `<h:selectOneMenu>`)는 `SearchBean`의 `status` 필드와 바인딩되어 있습니다. 이는 `userDao`와 직접적인 관련이 없습니다.
+
+- 풀다운 메뉴는 단순히 `status` 값을 선택하는 UI 요소일 뿐입니다.
+- `userDao`는 풀다운 메뉴의 값을 사용하여 데이터베이스에서 검색을 수행하는 역할을 합니다.
+
+---
+
+### 4. **리스트 값과의 관계**
+`searchResults`는 검색 결과를 담는 리스트입니다. 이 리스트는 `userDao`를 통해 데이터베이스에서 조회된 결과로 채워집니다.
+
+- `userDao`가 초기화되지 않으면 `searchResults`를 채울 수 없습니다.
+- 따라서 `userDao`는 `searchResults`를 사용하기 전에 반드시 초기화되어야 합니다.
+
+---
+
+### 5. **왜 생성자에서 초기화하지 않나?**
+생성자에서 `userDao`를 초기화할 수도 있지만, JSF Managed Bean은 기본 생성자가 필요합니다. 또한, `@PostConstruct`는 Bean이 완전히 생성된 후 호출되므로, 다른 의존성 주입이 완료된 후 초기화 작업을 수행하기에 더 적합합니다.
+
+```java
+// 생성자에서 초기화 (비추천)
+public SearchBean() {
+    userDao = new UserDao(MyBatisUtil.getSqlSessionFactory());
+}
+```
+
+- 이 방식은 동작하지만, JSF의 생명주기와 잘 맞지 않습니다.
+- `@PostConstruct`를 사용하는 것이 더 명확하고 안전합니다.
+
+---
+
+### 6. **정리**
+- `@PostConstruct`와 `init()` 메서드는 **Bean의 초기화 작업**을 위해 사용됩니다.
+- `userDao`는 데이터베이스와 연동하는 객체로, Bean이 생성된 후 초기화되어야 합니다.
+- 풀다운 메뉴나 리스트 값과는 직접적인 관련이 없으며, 단순히 `userDao`가 초기화되어야 검색 기능이 정상적으로 동작합니다.
+
+---
+
+### 추가 참고: 의존성 주입(DI)을 사용한다면?
+Spring과 같은 프레임워크를 사용한다면, `userDao`를 직접 초기화하지 않고 의존성 주입(Dependency Injection, DI)을 사용할 수 있습니다. 예를 들어:
+
+```java
+@ManagedBean
+@ViewScoped
+public class SearchBean {
+    @Inject // 또는 @Autowired (Spring에서)
+    private UserDao userDao;
+
+    private String name;
+    private String status;
+    private List<User> searchResults = new ArrayList<>();
+
+    public void search() {
+        searchResults = userDao.searchUsers(name, status);
+    }
+
+    public void clear() {
+        name = null;
+        status = null;
+        searchResults.clear();
+    }
+
+    // Getters and Setters
+}
+```
+
+이 경우 `userDao`는 프레임워크에 의해 자동으로 주입되므로, `@PostConstruct`에서 초기화할 필요가 없습니다. 하지만 순수 JSF와 MyBatis를 사용하는 경우에는 `@PostConstruct`를 사용하여 수동으로 초기화하는 것이 일반적입니다.
