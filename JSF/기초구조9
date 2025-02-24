@@ -1,0 +1,100 @@
+네, `@ViewScoped`에서 `private final UserDAO userDAO = new UserDAO();`처럼 직접 객체를 생성하면 **의존성 주입이 적용되지 않고, 검색 버튼을 눌렀을 때 데이터가 갱신되지 않을 수 있습니다.**  
+
+---
+
+## **🚨 문제점: `new UserDAO()` 직접 생성**
+```java
+@ViewScoped
+@Named("userBean")
+public class UserBean implements Serializable {
+    private final UserDAO userDAO = new UserDAO(); // ❌ 의존성 주입이 적용되지 않음
+
+    private List<User> userList;
+    private String userName;
+    private String userCode;
+
+    public void searchUsers() {
+        userList = userDAO.findUsers(userName, userCode);
+    }
+}
+```
+✅ **이 코드의 문제점**
+1. **JSF에서 관리하는 빈(`@Named`)에서 직접 객체 생성(`new UserDAO()`)하면, CDI의 의존성 주입(`@Inject`)이 적용되지 않음**
+2. `@ViewScoped`의 수명 주기와 **무관하게 `userDAO`가 새롭게 생성되므로**, 검색 버튼 클릭 시 **데이터가 갱신되지 않을 가능성**이 있음  
+
+---
+
+## **✅ 해결 방법: `@Inject` 사용**
+CDI(의존성 주입)를 적용하려면 **`@Inject`를 사용하여 `UserDAO`를 주입**해야 합니다.  
+
+```java
+import jakarta.faces.view.ViewScoped;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import java.io.Serializable;
+import java.util.List;
+
+@Named("userBean")
+@ViewScoped
+public class UserBean implements Serializable {
+    @Inject
+    private UserDAO userDAO; // ✅ CDI를 통한 의존성 주입
+
+    private List<User> userList;
+    private String userName;
+    private String userCode;
+
+    public void searchUsers() {
+        System.out.println("검색 조건 - 이름: " + userName + ", 코드: " + userCode);
+        userList = userDAO.findUsers(userName, userCode);
+        System.out.println("검색 결과 개수: " + (userList != null ? userList.size() : "0"));
+    }
+
+    // getter & setter 생략
+}
+```
+✅ **이렇게 하면:**  
+✔ **CDI 컨테이너(WildFly)가 `UserDAO`의 라이프사이클을 관리**하므로 `UserDAO`가 정상적으로 동작  
+✔ `@ViewScoped`와 함께 동작하면서 **검색 버튼 클릭 시, 검색 조건에 맞는 데이터가 정상적으로 갱신**됨  
+
+---
+
+## **✅ `@PostConstruct`에서 초기화하는 방법**
+만약 `@Inject`를 사용할 수 없는 상황이라면, **`@PostConstruct`에서 `UserDAO`를 초기화**할 수도 있습니다.  
+
+```java
+import jakarta.faces.view.ViewScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+import java.util.List;
+import jakarta.annotation.PostConstruct;
+
+@Named("userBean")
+@ViewScoped
+public class UserBean implements Serializable {
+    private UserDAO userDAO; // ✅ 필드를 선언만 하고
+
+    private List<User> userList;
+    private String userName;
+    private String userCode;
+
+    @PostConstruct
+    public void init() {
+        userDAO = new UserDAO(); // ✅ @PostConstruct에서 초기화
+    }
+
+    public void searchUsers() {
+        userList = userDAO.findUsers(userName, userCode);
+    }
+}
+```
+✔ **이 방법도 동작하지만, `@Inject`를 사용하는 것이 더 권장됨**  
+
+---
+
+## **🚀 결론**
+- `@ViewScoped`에서는 `new UserDAO()`로 직접 생성하면 **의존성 주입이 적용되지 않아 검색이 제대로 동작하지 않을 수 있음**
+- ✅ **`@Inject private UserDAO userDAO;`를 사용하는 것이 가장 권장되는 방법**  
+- `@Inject`가 어렵다면 `@PostConstruct`에서 `userDAO = new UserDAO();`로 초기화할 수도 있음  
+
+**`@Inject`로 변경한 후 검색이 정상적으로 되는지 확인해보세요!** 🚀
