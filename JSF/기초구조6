@@ -1,0 +1,147 @@
+맞습니다! `@PostConstruct`에서 `userDao`를 초기화해야 합니다. `userDao`가 `null`인 상태로 두면, 검색 기능이 동작하지 않을 수 있습니다. `@ViewScoped` Bean이 생성될 때 `userDao`를 초기화하는 것이 중요합니다.
+
+---
+
+### **문제점**
+- `userDao`가 `null`인 상태로 두면, 검색 버튼을 눌러도 `NullPointerException`이 발생할 수 있습니다.
+- `@ViewScoped`는 Bean의 생명주기를 뷰(페이지) 단위로 관리하지만, 의존성 주입은 자동으로 처리되지 않습니다. 따라서 `userDao`를 수동으로 초기화해야 합니다.
+
+---
+
+### **해결 방법**
+`@PostConstruct`에서 `userDao`를 초기화합니다. 이를 통해 Bean이 생성될 때 `userDao`가 정상적으로 초기화되도록 합니다.
+
+---
+
+### **수정된 `UserBean.java`**
+
+```java
+import jakarta.inject.Named;
+import jakarta.faces.view.ViewScoped;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import jakarta.faces.context.FacesContext;
+import jakarta.faces.application.FacesMessage;
+
+@Named
+@ViewScoped
+public class UserBean implements Serializable {
+    private String organization;
+    private String userName;
+    private String userCode;
+    private String userEmail;
+    private List<Map<String, Object>> userList;
+    private List<String> organizationList;
+
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+    private int totalRecords;
+
+    private UserDAO userDAO; // userDao를 필드로 선언
+
+    @PostConstruct
+    public void init() {
+        userDAO = new UserDAO(); // userDao 초기화
+        userList = new ArrayList<>();
+        organizationList = userDAO.getOrganizationList();
+    }
+
+    public void searchUsers() {
+        // 기존 검색 결과 초기화 (페이지가 새로고침되지 않더라도 새로운 검색을 수행할 수 있도록)
+        userList.clear();
+
+        if ((userName == null || userName.trim().isEmpty()) && (userCode == null || userCode.trim().isEmpty())) {
+            addErrorMessage("유저명 또는 코드명을 입력해주세요.");
+            return;
+        }
+
+        updateUserList(currentPage);
+
+        if (userList.isEmpty()) {
+            addErrorMessage("검색 결과가 없습니다.");
+        }
+
+        if (totalRecords > 30) {
+            addErrorMessage("검색 결과가 30건을 초과합니다. 검색 조건을 좁혀주세요.");
+        }
+    }
+
+    // 에러 메시지 처리 함수
+    private void addErrorMessage(String message) {
+        FacesMessage facesMessage = new FacesMessage(FacesMessage.SEVERITY_ERROR, message, null);
+        FacesContext.getCurrentInstance().addMessage(null, facesMessage);
+    }
+
+    private void updateUserList(int page) {
+        totalRecords = userDAO.getTotalUserCount(organization, userName, userCode, userEmail);
+        totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+        userList = userDAO.getUsers(organization, userName, userCode, userEmail, (page - 1) * pageSize, pageSize);
+    }
+
+    public void goToFirstPage() {
+        updateUserList(1);
+    }
+
+    public void previousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            updateUserList(currentPage);
+        }
+    }
+
+    public void nextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            updateUserList(currentPage);
+        }
+    }
+
+    public void goToLastPage() {
+        updateUserList(totalPages);
+    }
+
+    // Getter / Setter 생략
+}
+```
+
+---
+
+### **변경된 부분**
+1. **`userDAO` 초기화**:
+   - `@PostConstruct`에서 `userDAO = new UserDAO();`로 초기화합니다.
+   - 이를 통해 `userDAO`가 `null`이 되지 않도록 보장합니다.
+
+2. **`userList` 및 `organizationList` 초기화**:
+   - `userList`와 `organizationList`도 `@PostConstruct`에서 초기화합니다.
+   - `organizationList`는 `userDAO`를 통해 데이터를 가져옵니다.
+
+---
+
+### **왜 `@PostConstruct`에서 초기화해야 할까?**
+- **Bean 생명주기**: `@ViewScoped` Bean은 뷰(페이지)가 유지되는 동안 살아있습니다. `@PostConstruct`는 Bean이 생성된 직후 한 번만 호출되므로, 초기화 작업을 수행하기에 적합합니다.
+- **의존성 주입이 없는 환경**: 순수 JSF 환경에서는 `@Inject`를 사용할 수 없으므로, `userDAO`를 수동으로 초기화해야 합니다.
+
+---
+
+### **추가 고려사항**
+1. **의존성 주입 사용**:
+   - Spring 또는 Java EE 환경이라면 `@Inject` 또는 `@Autowired`를 사용하여 `userDAO`를 주입할 수 있습니다.
+   - 예:
+     ```java
+     @Inject
+     private UserDAO userDAO;
+     ```
+
+2. **싱글톤 패턴**:
+   - `UserDAO`가 싱글톤으로 관리된다면, `@PostConstruct`에서 초기화하지 않고 애플리케이션 시작 시 한 번만 생성할 수 있습니다.
+
+3. **테스트 용이성**:
+   - `userDAO`를 초기화하는 로직을 별도의 메서드로 분리하면, 테스트 시 Mock 객체를 주입하기 쉬워집니다.
+
+---
+
+### **결론**
+`@PostConstruct`에서 `userDAO`를 초기화하지 않으면, `userDAO`가 `null`이 되어 검색 기능이 동작하지 않을 수 있습니다. 따라서 `@PostConstruct`에서 `userDAO`를 초기화하는 것이 필수적입니다. 이를 통해 검색 기능이 정상적으로 동작하도록 보장할 수 있습니다. 😊
