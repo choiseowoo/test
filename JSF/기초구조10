@@ -1,0 +1,110 @@
+`@ViewScoped`를 사용할 때 몇 가지 주의해야 할 점이 있습니다. 특히 **MyBatis와 함께 사용할 때**, 상태 유지 및 데이터 갱신이 정상적으로 동작하도록 설정해야 합니다.  
+
+---
+
+## **✅ 1. `@ViewScoped`는 `Serializable`을 구현해야 함**
+JSF의 `@ViewScoped` 빈은 **세션에 객체를 저장하는 방식**을 사용하므로, `Serializable`을 반드시 구현해야 합니다.  
+
+```java
+@Named("userBean")
+@ViewScoped
+public class UserBean implements Serializable { // ✅ Serializable 구현 필수
+    private static final long serialVersionUID = 1L; // 권장됨
+}
+```
+✔ **안 하면 `NotSerializableException`이 발생할 수 있음.**
+
+---
+
+## **✅ 2. `@Inject` 사용 시 주의할 점**
+`@Inject`로 MyBatis의 `UserDAO`를 주입할 때 **MyBatis의 매퍼를 어떻게 관리하는지 확인**해야 합니다.  
+MyBatis에서 `@Mapper` 인터페이스를 사용할 경우, `@ApplicationScoped` 또는 `@RequestScoped`로 관리해야 할 수 있습니다.
+
+### **(1) `@Inject`로 MyBatis 매퍼를 사용할 때**
+```java
+@Named("userBean")
+@ViewScoped
+public class UserBean implements Serializable {
+    @Inject
+    private UserMapper userMapper; // ✅ MyBatis 매퍼 주입
+
+    private List<User> userList;
+    private String userName;
+    private String userCode;
+
+    public void searchUsers() {
+        userList = userMapper.findUsers(userName, userCode);
+    }
+}
+```
+✔ **이렇게 하면 MyBatis 매퍼를 직접 주입받아 사용 가능**  
+
+### **(2) `@Inject`로 DAO 클래스를 사용할 때**
+만약 DAO 클래스가 있고, **MyBatis의 `SqlSession`을 내부에서 사용한다면**, `@RequestScoped` 또는 `@ApplicationScoped`로 관리하는 것이 좋습니다.
+
+```java
+@RequestScoped // ✅ ViewScoped가 아니라 RequestScoped로 관리 (트랜잭션 관리 시 유리)
+public class UserDAO {
+    @Inject
+    private SqlSession sqlSession;
+
+    public List<User> findUsers(String userName, String userCode) {
+        return sqlSession.selectList("UserMapper.findUsers", Map.of("userName", userName, "userCode", userCode));
+    }
+}
+```
+✅ **이렇게 하면 `sqlSession`이 트랜잭션 범위 내에서 관리되어 안전하게 동작**  
+
+---
+
+## **✅ 3. MyBatis의 `@Param`과 같은 개념**
+MyBatis에서 `@Param`을 사용하는 것처럼, **JSF의 `@ViewScoped`에서도 데이터 주입 시 고려할 점이 있음**  
+
+### **(1) JSF 페이지에서 파라미터를 받을 때**
+- `f:viewParam`을 사용하여 뷰 파라미터를 설정할 수 있음  
+
+```xhtml
+<h:form>
+    <h:inputText value="#{userBean.userName}" />
+    <h:inputText value="#{userBean.userCode}" />
+    <h:commandButton value="검색" action="#{userBean.searchUsers}" />
+</h:form>
+```
+✅ 이렇게 하면 **입력값이 `@ViewScoped` 빈의 필드에 자동으로 바인딩됨**  
+
+---
+
+## **✅ 4. `@ViewScoped`에서 Ajax 사용 시 데이터가 유지되지 않는 문제**
+- `@ViewScoped`는 **뷰가 변경되면 초기화**되므로, AJAX 요청으로 데이터를 유지하려면 **JSF의 AJAX 처리 방식**을 고려해야 함  
+
+### **(1) `f:ajax`를 사용하여 데이터 갱신 유지**
+```xhtml
+<h:form>
+    <h:inputText value="#{userBean.userName}" />
+    <h:inputText value="#{userBean.userCode}" />
+
+    <h:commandButton value="검색">
+        <f:ajax execute="@form" render="userTable" />
+    </h:commandButton>
+
+    <h:dataTable value="#{userBean.userList}" var="user" id="userTable">
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+✅ **이렇게 하면 검색 후에도 `userList`가 유지되면서 표에 반영됨**  
+
+---
+
+## **🚀 결론**
+| 문제 | 해결 방법 |
+|------|-----------|
+| `@ViewScoped`는 `Serializable`을 구현해야 함 | `implements Serializable` 추가 |
+| `@Inject`로 `UserDAO` 또는 `UserMapper`를 주입할 때, 스코프 설정 필요 | DAO는 `@RequestScoped` 사용 권장 |
+| AJAX 사용 시 데이터가 사라지는 문제 | `f:ajax execute="@form" render="userTable"` 사용 |
+| MyBatis에서 `@Param`처럼 데이터 바인딩 | `f:viewParam`, JSF 바인딩 활용 |
+
+➡ **이제 `@ViewScoped`와 MyBatis를 함께 사용할 때 발생할 수 있는 문제를 피하면서 개발할 수 있을 거야!** 🚀
