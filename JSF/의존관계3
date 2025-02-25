@@ -1,0 +1,144 @@
+해당 문제는 **`UserBean`이 JSF(JavaServer Faces)에서 관리되지 않아 발생하는 문제**입니다. `UserBean`이 `null`로 해석되고 있기 때문에, JSF가 해당 빈을 찾지 못하고 있습니다. 이는 주로 다음과 같은 원인으로 발생할 수 있습니다:
+
+1. **`UserBean`이 JSF에 등록되지 않음**:
+   - `@Named` 또는 `@ManagedBean` 어노테이션이 누락되었거나, 스캔 범위에서 벗어났을 수 있습니다.
+
+2. **의존성 문제**:
+   - `common-tool` 프로젝트를 의존성으로 추가하면서, `UserBean`이 포함된 패키지가 스캔되지 않았을 수 있습니다.
+   - 또는 `common-tool` 프로젝트의 클래스와 충돌이 발생했을 수 있습니다.
+
+3. **클래스 경로 문제**:
+   - `UserBean` 클래스가 컴파일되지 않았거나, 클래스 경로에 포함되지 않았을 수 있습니다.
+
+4. **빈 스코프 문제**:
+   - `@ViewScoped`, `@SessionScoped` 등의 스코프가 잘못 설정되었을 수 있습니다.
+
+---
+
+### **문제 해결 방법**
+
+#### 1. **`UserBean`이 JSF에 등록되었는지 확인**
+`UserBean` 클래스에 `@Named` 또는 `@ManagedBean` 어노테이션이 적용되었는지 확인하세요.
+
+```java
+import jakarta.inject.Named;
+import jakarta.faces.view.ViewScoped;
+
+@Named
+@ViewScoped
+public class UserBean implements Serializable {
+    // ...
+}
+```
+
+- `@Named`: CDI(Contexts and Dependency Injection)를 사용하는 경우.
+- `@ManagedBean`: JSF의 기본 Managed Bean을 사용하는 경우.
+
+---
+
+#### 2. **스캔 범위 확인**
+`UserBean`이 포함된 패키지가 정상적으로 스캔되는지 확인하세요. 예를 들어, `beans.xml` 파일이 있는지 확인하거나, `@Named`를 사용하는 경우 CDI가 활성화되어 있는지 확인하세요.
+
+- **`beans.xml` 파일 추가**:
+  `src/main/webapp/WEB-INF/beans.xml` 파일을 추가하고, 다음과 같이 설정합니다.
+
+  ```xml
+  <beans xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+         http://xmlns.jcp.org/xml/ns/javaee/beans_1_1.xsd"
+         bean-discovery-mode="all">
+  </beans>
+  ```
+
+---
+
+#### 3. **의존성 문제 확인**
+`common-tool` 프로젝트를 의존성으로 추가하면서, `UserBean`이 포함된 패키지가 스캔되지 않았을 수 있습니다. 다음과 같은 방법으로 확인하세요:
+
+- **`common-tool` 프로젝트의 패키지 구조**:
+  `common-tool` 프로젝트에 `UserBean`과 동일한 패키지 이름이 있는지 확인하세요. 만약 있다면, 패키지 이름을 변경하거나 충돌을 해결하세요.
+
+- **의존성 스캔 범위**:
+  `common-tool` 프로젝트의 클래스가 `UserBean`과 충돌하지 않도록, 패키지 구조를 명확히 분리하세요.
+
+---
+
+#### 4. **클래스 경로 확인**
+`UserBean` 클래스가 컴파일되었는지, 클래스 경로에 포함되었는지 확인하세요.
+
+- **컴파일 확인**:
+  프로젝트를 클린 빌드(`mvn clean install` 또는 `gradle clean build`)한 후, `target` 또는 `build` 폴더에 `UserBean.class` 파일이 있는지 확인하세요.
+
+- **클래스 경로 확인**:
+  `UserBean` 클래스가 WAR 파일에 포함되었는지 확인하세요. `WEB-INF/classes` 또는 `WEB-INF/lib`에 해당 클래스가 있어야 합니다.
+
+---
+
+#### 5. **빈 스코프 확인**
+`@ViewScoped` 또는 `@SessionScoped`가 올바르게 설정되었는지 확인하세요.
+
+- **`@ViewScoped` 사용 시**:
+  `@ViewScoped`는 뷰(페이지)가 유지되는 동안 빈이 유지됩니다. 페이지가 변경되면 빈이 초기화됩니다.
+
+- **`@SessionScoped` 사용 시**:
+  `@SessionScoped`는 세션이 유지되는 동안 빈이 유지됩니다. 세션이 종료되면 빈이 초기화됩니다.
+
+---
+
+#### 6. **로그 추가**
+`UserBean`의 생성자 또는 `@PostConstruct` 메서드에 로그를 추가하여, 빈이 정상적으로 생성되고 초기화되는지 확인하세요.
+
+```java
+import jakarta.annotation.PostConstruct;
+import java.util.logging.Logger;
+
+@Named
+@ViewScoped
+public class UserBean implements Serializable {
+    private static final Logger logger = Logger.getLogger(UserBean.class.getName());
+
+    public UserBean() {
+        logger.info("UserBean created!");
+    }
+
+    @PostConstruct
+    public void init() {
+        logger.info("UserBean initialized!");
+    }
+}
+```
+
+---
+
+#### 7. **JSF 설정 확인**
+`faces-config.xml` 파일에서 `UserBean`이 정상적으로 등록되었는지 확인하세요.
+
+```xml
+<managed-bean>
+    <managed-bean-name>userBean</managed-bean-name>
+    <managed-bean-class>com.example.UserBean</managed-bean-class>
+    <managed-bean-scope>view</managed-bean-scope>
+</managed-bean>
+```
+
+---
+
+### **에러 메시지 분석**
+에러 메시지에서 다음과 같은 부분을 주목하세요:
+
+```
+Target Unreachable, identifier 'UserBean' resolved to null
+```
+
+이 메시지는 JSF가 `UserBean`을 찾지 못했음을 의미합니다. 위의 해결 방법을 차례대로 적용하면서 문제를 해결해 보세요.
+
+---
+
+### **결론**
+1. `UserBean`이 JSF에 정상적으로 등록되었는지 확인하세요.
+2. `common-tool` 프로젝트의 의존성 문제를 확인하세요.
+3. 클래스 경로와 컴파일 상태를 확인하세요.
+4. 로그를 추가하여 빈이 정상적으로 생성되고 초기화되는지 확인하세요.
+
+이 문제는 주로 설정 문제로 발생하므로, 위의 단계를 차례대로 확인하면 해결할 수 있을 것입니다. 😊
