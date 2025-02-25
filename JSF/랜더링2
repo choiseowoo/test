@@ -1,0 +1,75 @@
+구조적으로 몇 가지 문제가 있어 보여.  
+
+### **🔍 문제 분석**  
+1. **`<ul><li>` 태그가 `<h:panelGrid>` 내부에 있지만, `</li>` 태그가 잘못 배치됨**  
+   - `<h:panelGrid>`는 테이블을 생성하는데, `<ul>`과 `<li>`는 리스트를 만들기 때문에 HTML 구조적으로 맞지 않음.  
+   - `<h:panelGrid>`가 `<ul>` 안에 있거나 `<li>` 태그가 올바르게 닫혀야 함.  
+
+2. **`h:dataTable`이 `h:panelGroup` 내부에 있지만, 페이징 버튼과 데이터 테이블이 논리적으로 분리되지 않음**  
+   - 페이징 버튼을 감싸는 `<h:panelGroup>`이 `userBean.isvalibed`에 의해 조건부 렌더링되지만,  
+     **JSF에서는 `rendered`가 false일 때에도 컴포넌트 구조에 남아 있을 수 있음.**  
+   - 특히, **페이징 버튼과 테이블을 같은 `h:panelGroup`에 넣으면, 페이징 버튼이 의도치 않게 보일 가능성이 있음.**  
+
+---
+
+### **✅ 해결 방법**  
+
+#### **방법 1: 페이징 버튼과 테이블을 개별적으로 `h:panelGroup`으로 감싸기**  
+페이징 버튼과 데이터 테이블을 별도의 `h:panelGroup`으로 나누면, 페이징 버튼도 제대로 렌더링이 가능해.
+
+```xhtml
+<!-- ✅ 페이징 버튼을 별도의 panelGroup으로 분리 -->
+<h:panelGroup rendered="#{userBean.isvalibed}">
+    <h:panelGrid columns="5">
+        <h:commandButton value="첫 페이지" action="#{userBean.goToFirstPage}" />
+        <h:commandButton value="이전" action="#{userBean.previousPage}" />
+        <h:outputText value="#{userBean.currentPage}" />
+        <h:commandButton value="다음" action="#{userBean.nextPage}" />
+        <h:commandButton value="마지막 페이지" action="#{userBean.goToLastPage}" />
+    </h:panelGrid>
+</h:panelGroup>
+
+<!-- ✅ 테이블도 별도의 panelGroup으로 분리 -->
+<h:panelGroup rendered="#{userBean.isvalibed}">
+    <h:dataTable id="userTable" value="#{userBean.userList}" var="user">
+        <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+        <h:column><f:facet name="header">코드</f:facet>#{user.code}</h:column>
+        <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+    </h:dataTable>
+</h:panelGroup>
+```
+✔ **이렇게 하면 `userBean.isvalibed`가 `false`일 때, 페이징 버튼과 테이블이 모두 숨겨짐.**  
+
+---
+
+#### **방법 2: `rendered` 속성을 각 버튼과 테이블에도 개별 적용**  
+만약 페이징 버튼과 데이터 테이블을 같은 `h:panelGroup`에 유지하고 싶다면,  
+각 버튼과 테이블에 개별적으로 `rendered="#{userBean.isvalibed}"`를 추가하면 돼.
+
+```xhtml
+<h:panelGroup>
+    <h:panelGrid columns="5">
+        <h:commandButton value="첫 페이지" action="#{userBean.goToFirstPage}" rendered="#{userBean.isvalibed}" />
+        <h:commandButton value="이전" action="#{userBean.previousPage}" rendered="#{userBean.isvalibed}" />
+        <h:outputText value="#{userBean.currentPage}" rendered="#{userBean.isvalibed}" />
+        <h:commandButton value="다음" action="#{userBean.nextPage}" rendered="#{userBean.isvalibed}" />
+        <h:commandButton value="마지막 페이지" action="#{userBean.goToLastPage}" rendered="#{userBean.isvalibed}" />
+    </h:panelGrid>
+
+    <h:dataTable id="userTable" value="#{userBean.userList}" var="user" rendered="#{userBean.isvalibed}">
+        <h:column><f:facet name="header">이름</f:facet>#{user.name}</h:column>
+        <h:column><f:facet name="header">코드</f:facet>#{user.code}</h:column>
+        <h:column><f:facet name="header">이메일</f:facet>#{user.email}</h:column>
+    </h:dataTable>
+</h:panelGroup>
+```
+✔ **이렇게 하면 `userBean.isvalibed`가 `false`일 때, 개별적으로 렌더링 여부가 적용됨.**  
+
+---
+
+### **🚀 결론**
+✅ **올바른 해결 방법:**  
+1. **페이징 버튼과 테이블을 개별 `h:panelGroup`으로 분리** (추천)  
+2. **각 버튼과 테이블에 `rendered` 속성을 직접 추가**  
+
+이제 검색하기 전에는 페이징 버튼이 보이지 않을 거야! 🔥
