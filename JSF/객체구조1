@@ -1,0 +1,66 @@
+JSF에서 **XHTML의 `id`로 지정한 값을 `UserInfo` 클래스에서 받고**, 그 값을 `UserBean`에서 사용하는 방법이 가능해.  
+
+---
+
+### **✅ 해결 방법**
+#### **1. `UserInfo` 클래스에서 값 저장**  
+먼저, `UserInfo` 클래스에서 값을 저장할 필드와 `getter/setter`를 만든다.  
+
+```java
+public class UserInfo {
+    private String email;  // 이메일 필드
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+}
+```
+
+---
+
+#### **2. `UserBean`에서 `UserInfo`를 포함**  
+`UserBean`에서 `UserInfo` 객체를 관리하고, `UserInfo`에 저장된 값을 사용할 수 있도록 만든다.  
+
+```java
+@Named("userBean")
+@ViewScoped
+public class UserBean {
+    private final UserInfo userInfo = new UserInfo();  // UserInfo 객체 생성
+
+    public UserInfo getUserInfo() {  // JSF에서 접근 가능하도록 getter 제공
+        return userInfo;
+    }
+
+    public String processEmail() {  // 이메일 값 확인 및 처리
+        return "입력된 이메일: " + userInfo.getEmail();
+    }
+}
+```
+
+---
+
+#### **3. XHTML에서 `id`로 입력 값을 지정하고 `UserInfo`에 저장**  
+이제 XHTML에서 `<h:inputText>`의 `id` 값을 `userInfo.email`에 바인딩하면, **JSF가 자동으로 UserInfo 객체에 값 저장**해 줘.  
+
+```xml
+<h:form>
+    <h:outputLabel for="userEmail" value="이메일: " />
+    <h:inputText id="userEmail" value="#{userBean.userInfo.email}" />
+
+    <h:commandButton value="확인" action="#{userBean.processEmail}" />
+</h:form>
+```
+
+---
+
+### **✅ 정리**
+1. `h:inputText`에서 `id="userEmail"`을 지정하고, 값은 `userBean.userInfo.email`에 저장됨.
+2. `UserInfo` 클래스에서 `email`을 `getter/setter`로 관리.
+3. `UserBean`에서 `UserInfo` 객체를 포함하고, 이를 이용해 값 확인 및 로직 실행 가능.
+4. `processEmail()` 메서드에서 `UserInfo`의 값을 가져와 사용할 수 있음.
+
+✔ **이 방식으로 `XHTML`에서 입력한 값을 `UserInfo`에 저장하고, `UserBean`에서 가져와 사용할 수 있음.**
