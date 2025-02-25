@@ -1,0 +1,60 @@
+WildFly가 기동되지 않는 원인은 여러 가지가 있을 수 있습니다. 현재 로그에서는 오류 메시지가 명확하게 보이지 않지만, `common-tool` 프로젝트를 `User` 프로젝트의 의존성으로 추가한 후 문제가 발생한 것으로 보입니다. 몇 가지 확인해야 할 사항을 정리해 보겠습니다.
+
+---
+
+### 1. WildFly 서버 로그에서 실제 에러 메시지 확인  
+현재 제공된 로그는 WildFly가 기동되는 과정에서의 정보(INFO) 및 경고(WARN) 메시지입니다.  
+실제로 기동이 안 되는 경우, **ERROR 또는 EXCEPTION**이 포함된 로그가 있을 가능성이 높습니다.  
+- WildFly 콘솔의 마지막 부분에서 `ERROR`, `FATAL`, `Exception` 키워드를 검색해 보세요.
+- 만약 에러 로그가 있다면 공유해 주시면 원인을 더 정확히 분석할 수 있습니다.
+
+---
+
+### 2. `common-tool`이 제대로 `User` 프로젝트에 추가되었는지 확인  
+Eclipse에서 `User` 프로젝트의 **Build Path**에 `common-tool`을 추가했다면, 이를 `pom.xml`에도 반영해야 합니다.  
+
+1) `User` 프로젝트의 `pom.xml`에 `common-tool`이 의존성으로 추가되었는지 확인하세요.
+   
+   ```xml
+   <dependencies>
+       <dependency>
+           <groupId>com.example</groupId>
+           <artifactId>common-tool</artifactId>
+           <version>1.0.0</version>
+           <scope>compile</scope>
+       </dependency>
+   </dependencies>
+   ```
+   (`groupId`, `artifactId`, `version`은 실제 프로젝트에 맞게 조정)
+
+2) `common-tool` 프로젝트도 `mvn install`을 실행하여 로컬 Maven Repository(`.m2/repository/`)에 설치되었는지 확인하세요.
+
+---
+
+### 3. `common-tool`이 WildFly에 배포되는지 확인  
+`common-tool`이 **라이브러리(JAR) 형태**가 아닌 **프로젝트**로 추가된 경우, WildFly가 이를 인식하지 못할 수도 있습니다.
+
+- `User` 프로젝트가 `.war` 파일로 빌드될 때 `common-tool`의 클래스를 포함하는지 확인해야 합니다.
+- `User` 프로젝트의 `target/mdms2-0.0.1-SNAPSHOT.war/WEB-INF/lib/`에 `common-tool-1.0.0.jar`가 존재하는지 확인하세요.
+- 존재하지 않는다면, `pom.xml`에서 `scope`를 `provided`에서 `compile`로 변경 후 다시 빌드하세요.
+
+---
+
+### 4. Eclipse에서 WildFly의 `Deployment Assembly` 설정 확인  
+- `User` 프로젝트 → `Properties` → `Deployment Assembly` 메뉴를 확인하세요.
+- `common-tool`이 `WEB-INF/lib`에 포함되도록 설정되어 있는지 확인하세요.
+
+---
+
+### 5. WildFly 캐시 정리 및 재배포  
+WildFly에 이전 배포된 파일이 남아 있어서 충돌할 가능성이 있습니다.  
+아래 방법으로 WildFly 배포 디렉터리를 정리하고 다시 시도해 보세요.
+
+```bash
+rm -rf WILDFLY_HOME/standalone/deployments/mdms2-0.0.1-SNAPSHOT.*
+```
+그 후 다시 `mvn clean package`로 빌드하여 WildFly에 배포하세요.
+
+---
+
+위 방법들을 확인한 후에도 해결되지 않으면, `ERROR` 메시지를 공유해 주시면 더 정확한 원인을 분석할 수 있습니다.
