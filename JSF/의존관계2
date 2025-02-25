@@ -1,0 +1,44 @@
+의존관계를 추가한 후 문제가 발생했다면, 가장 가능성 있는 원인은 **`common-tool`을 의존성으로 추가하면서 CDI 빈(Bean) 관리가 꼬였거나, 클래스 로딩 순서가 변경된 것**입니다.  
+
+### **✅ 빠르게 해결하는 방법**
+1. **의존성 정리**  
+   `common-tool`을 `user` 프로젝트에서 사용하는 **라이브러리로 패키징**하려면, 다음처럼 `pom.xml`에서 추가합니다.  
+   ```xml
+   <dependency>
+       <groupId>jp.co.engin.system</groupId>
+       <artifactId>common-tool</artifactId>
+       <version>1.0.0</version>
+   </dependency>
+   ```
+   만약 **이전에는 정상 작동했는데 `common-tool`을 추가한 후 문제가 발생했다면**, `scope`를 `provided`로 설정해 패키징되지 않도록 시도할 수도 있습니다.  
+   ```xml
+   <dependency>
+       <groupId>jp.co.engin.system</groupId>
+       <artifactId>common-tool</artifactId>
+       <version>1.0.0</version>
+       <scope>provided</scope>
+   </dependency>
+   ```
+
+2. **CDI 빈(Bean) 스캔 문제 해결**  
+   - `common-tool`에도 `META-INF/beans.xml`을 추가해야 합니다.  
+   - `user` 프로젝트에도 `WEB-INF/beans.xml`이 존재해야 합니다.  
+
+3. **서버를 클린 후 다시 배포**  
+   ```sh
+   mvn clean install
+   ```
+   그리고 **WildFly에서 기존 배포된 WAR 파일을 삭제한 후, 새로 배포**하세요.  
+
+---
+
+### **✅ 추가 확인할 사항**
+#### **1️⃣ `UserBean`이 `common-tool`에 있는가?**
+- `UserBean`이 `common-tool`로 이동된 것이 아니라 여전히 `user` 프로젝트에 있다면, `common-tool`을 추가하는 것과 상관없이 원래 상태로 돌아가야 합니다.
+- 만약 `UserBean`을 `common-tool`로 옮겼다면, CDI 스캔 설정(`beans.xml`)이 필요합니다.
+
+#### **2️⃣ `common-tool`을 의존성으로 추가하기 전에 어떻게 동작했는가?**
+- 이전에는 `user` 프로젝트가 `common-tool` 없이 정상 작동했기 때문에, `common-tool`이 잘못된 방식으로 패키징되면서 WildFly에서 `UserBean`을 못 찾는 문제가 발생한 가능성이 큽니다.
+- 이 경우 `common-tool`을 WAR가 아니라 JAR처럼 인식하게 만들고, `provided`로 설정하여 WildFly 내부에서 인식할 수 있도록 하는 방법을 시도할 수 있습니다.
+
+위 작업을 차례대로 시도한 후, 여전히 `UserBean`을 찾을 수 없으면 로그를 확인하고 추가 정보를 알려주세요!
