@@ -1,0 +1,72 @@
+WildFly에서 `extends`를 사용했을 때 WAR 파일에서 에러가 발생하는 이유는 여러 가지가 있을 수 있어. 특히, JSF에서 `extends`를 사용할 때는 **의존성 관리**와 **직렬화(Serialization) 문제**가 주요 원인이 될 가능성이 커.  
+
+### **1. Serializable 관련 문제 해결**  
+부모 클래스가 `Serializable`을 구현하고 있다면, 자식 클래스도 같은 방식으로 `Serializable`을 유지해야 해.  
+**그런데 부모 클래스에서 `serialVersionUID`가 없거나 다른 경우, WildFly에서 직렬화 관련 예외가 발생할 수 있어.**  
+
+**✅ 해결 방법:**  
+부모 클래스와 자식 클래스 둘 다 `serialVersionUID`를 명시적으로 선언해야 해.  
+
+```java
+public class ParentClass implements Serializable {
+    private static final long serialVersionUID = 1L;
+}
+  
+public class ChildClass extends ParentClass {
+    private static final long serialVersionUID = 1L;
+}
+```
+
+---
+
+### **2. CDI(의존성 주입)와 관련된 문제**  
+JSF에서 `@Named`와 `@ViewScoped` 같은 **CDI(Contexts and Dependency Injection)**를 사용할 때는, 부모 클래스와 자식 클래스 간의 관리 방식이 충돌할 수 있어.  
+- 부모 클래스가 `@Named`, `@ViewScoped`, `@SessionScoped` 등으로 관리되면, 자식 클래스가 이를 상속할 때 WildFly에서 **CDI 관련 에러**가 발생할 수 있음.  
+
+**✅ 해결 방법:**  
+부모 클래스는 일반적인 POJO로 두고, CDI 애너테이션(`@Named`, `@ViewScoped` 등)은 자식 클래스에서 선언하도록 해.  
+
+```java
+public class ParentClass implements Serializable {
+    private static final long serialVersionUID = 1L;
+    // 부모 클래스 로직
+}
+
+@Named("childBean") // CDI 애너테이션은 자식 클래스에서 사용
+@ViewScoped
+public class ChildClass extends ParentClass {
+    private static final long serialVersionUID = 1L;
+    // 자식 클래스 로직
+}
+```
+
+---
+
+### **3. 클래스 로딩 문제 (WAR에서 ClassNotFoundException 등 발생)**  
+WildFly에서 **WAR 패키징 시 클래스 로딩 순서 문제**가 발생할 수 있음.  
+- 부모 클래스가 다른 JAR 파일에 있거나, 다른 모듈로 배포될 경우, 클래스 로딩 충돌로 인해 **NoClassDefFoundError** 또는 **ClassCastException** 같은 오류가 발생할 수 있음.  
+
+**✅ 해결 방법:**  
+1. 부모 클래스를 **같은 WAR 내부의 패키지로 배치**  
+2. 또는 `beans.xml` 설정 확인  
+   - `WEB-INF/beans.xml` 파일이 존재하는지 확인 (CDI 관리 문제 방지)  
+   - `<beans xmlns="http://java.sun.com/xml/ns/javaee" version="1.1" bean-discovery-mode="all"/>` 설정  
+
+---
+
+### **4. WildFly의 JDK 버전과 호환성 문제**  
+- **WildFly가 사용하는 JDK 버전과 코드에서 사용하는 JDK 버전이 다르면** 직렬화, 클래스 로딩 관련 문제 발생 가능  
+- **JDK 11 이상에서는 일부 JSF/CDI 동작 방식이 변경**되었으므로, 현재 WildFly의 JDK 버전을 확인  
+
+**✅ 해결 방법:**  
+- `java -version` 명령어로 JDK 버전 확인 후, 프로젝트의 `pom.xml` 또는 `build.gradle`에서 **맞는 버전의 Java를 사용**하는지 확인  
+
+---
+
+### **결론**  
+1. **`serialVersionUID` 추가**  
+2. **CDI 애너테이션은 부모가 아닌 자식 클래스에만 사용**  
+3. **WAR 내부 패키지 구조 확인 (클래스 로딩 문제 해결)**  
+4. **JDK 버전 및 WildFly 설정 확인**  
+
+이렇게 하면 `extends`를 사용하면서도 WildFly에서 에러 없이 실행할 수 있을 거야!
