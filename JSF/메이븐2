@@ -1,0 +1,121 @@
+Maven에서 `jakarta.faces` 의존성을 추가했는데도 정상적으로 동작하지 않는다면, 몇 가지 원인을 확인해야 합니다.  
+
+---
+
+## **1. Maven 의존성 확인**
+Jakarta Faces(Jakarta Server Faces, JSF)를 추가하려면 `jakarta.faces` 또는 `org.glassfish` 패키지를 사용하는 것이 일반적입니다.  
+
+아래처럼 `pom.xml`의 `<dependencies>` 섹션에 추가해 보세요.  
+
+### **Jakarta Faces (JSF 4.0)**
+```xml
+<dependency>
+    <groupId>jakarta.faces</groupId>
+    <artifactId>jakarta.faces-api</artifactId>
+    <version>4.0.1</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+✅ **주의**  
+- `scope`가 `provided`인 경우 **서버(WildFly)가 이미 JSF를 제공해야 함**  
+- 만약 직접 포함하려면 `scope`를 제거하거나 `compile`로 변경
+
+---
+
+## **2. JSF 구현체 추가 (Mojarra 또는 MyFaces)**
+**JSF API만 추가하면 실행되지 않으므로, 구현체(Mojarra 또는 MyFaces)를 추가해야 함.**  
+
+### **Mojarra 4.0 (GlassFish)**
+```xml
+<dependency>
+    <groupId>org.glassfish</groupId>
+    <artifactId>jakarta.faces</artifactId>
+    <version>4.0.2</version>
+</dependency>
+```
+
+### **MyFaces 4.0 (Apache)**
+```xml
+<dependency>
+    <groupId>org.apache.myfaces.core</groupId>
+    <artifactId>myfaces-api</artifactId>
+    <version>4.0.0</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.myfaces.core</groupId>
+    <artifactId>myfaces-impl</artifactId>
+    <version>4.0.0</version>
+</dependency>
+```
+✅ **Mojarra와 MyFaces 중 하나만 선택해서 사용해야 함!**
+
+---
+
+## **3. Maven Repository에서 다운로드 여부 확인**
+의존성이 제대로 다운로드되지 않으면 수동으로 업데이트해야 합니다.  
+
+### **수동 업데이트 방법**
+1. **Eclipse → `User` 프로젝트 우클릭 → `Maven` → `Update Project...`** (`Alt + F5`)
+2. `Force Update of Snapshots/Releases` 체크 후 `OK`
+3. 만약 해결되지 않으면 `mvn clean install -U` 실행  
+
+또는 **Maven 로컬 저장소에서 삭제 후 다시 다운로드**  
+```sh
+rm -rf ~/.m2/repository/jakarta/faces
+mvn clean install
+```
+
+---
+
+## **4. Maven 설정 (`settings.xml`) 확인**
+Maven이 중앙 저장소(`https://repo.maven.apache.org/maven2/`)를 제대로 찾고 있는지 확인.  
+`~/.m2/settings.xml` 파일에서 `<mirrors>` 설정이 잘못되었을 경우 다운로드 실패할 수 있음.
+
+만약 설정이 필요하면 다음과 같이 추가:  
+```xml
+<mirrors>
+    <mirror>
+        <id>central</id>
+        <name>Maven Central</name>
+        <url>https://repo.maven.apache.org/maven2</url>
+        <mirrorOf>central</mirrorOf>
+    </mirror>
+</mirrors>
+```
+
+---
+
+## **5. WildFly 서버에서 JSF 모듈 활성화 확인**
+WildFly는 기본적으로 `jakarta.faces`를 제공하기 때문에, **내장된 JSF 버전과 충돌할 가능성**이 있음.  
+
+**1) WildFly의 `standalone.xml`에서 JSF 모듈이 활성화되었는지 확인**
+```xml
+<subsystem xmlns="urn:jboss:domain:jsf:2.0">
+    <default-jsf-impl-slot>main</default-jsf-impl-slot>
+</subsystem>
+```
+➡ JSF가 기본적으로 제공됨  
+
+**2) `WEB-INF/jboss-deployment-structure.xml`에서 명시적으로 JSF 버전 설정**
+```xml
+<jboss-deployment-structure>
+    <subsystem name="jsf">
+        <module name="com.sun.jsf-impl" slot="main"/>
+    </subsystem>
+</jboss-deployment-structure>
+```
+
+➡ **WildFly의 기본 JSF를 사용할 것인지, 별도 라이브러리를 포함할 것인지 설정해야 함**  
+
+---
+
+## **결론: 점검해야 할 사항**
+1️⃣ **JSF API & 구현체 추가 (`jakarta.faces` + `mojarra` 또는 `myfaces`)**  
+2️⃣ **Maven 의존성 강제 업데이트 (`mvn clean install -U`)**  
+3️⃣ **Maven 중앙 저장소 연결 확인 (`settings.xml`)**  
+4️⃣ **WildFly에서 기본 JSF 활성화 여부 확인 (`standalone.xml`)**  
+5️⃣ **필요하면 `jboss-deployment-structure.xml` 설정하여 JSF 충돌 해결**  
+
+위 방법을 하나씩 시도해 보면 해결될 가능성이 높습니다!  
+어떤 오류 메시지가 뜨는지도 같이 확인하면 더 정확한 원인을 찾을 수 있습니다.
