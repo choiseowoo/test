@@ -1,0 +1,85 @@
+현재 두 개의 `UserBean` 클래스가 있는데, **하나의 `UserBean`으로 합쳐서 `userDto`와 `userName`을 함께 관리**하면 됩니다.  
+즉, **검색 입력값(`userName`)을 받아서 `userDto.username`에 설정한 후, `searchUser()`에서 DB 조회**하는 구조로 변경하면 됩니다.  
+
+---
+
+## **1. `UserBean` 통합 코드**
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import java.util.List;
+import java.util.Map;
+
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private UserDto userDto = new UserDto(); // 검색과 결과 저장 DTO
+    private String userName; // 검색 입력값 (화면 입력값 저장)
+
+    // 검색 필드 값 가져오기
+    public void getFiled() {
+        Map<Object, String> map = getform;
+        this.userName = map.get("usernm"); // 화면에서 입력된 값을 저장
+        userDto.setUsername(this.userName); // userDto에도 저장
+    }
+
+    // 검색 실행
+    public void searchUser() {
+        System.out.println("검색할 사용자: " + userDto.getUsername());
+
+        // DB 조회 (예제 코드, 실제는 MyBatis나 JPA 사용)
+        List<Userinfo> result = userService.getUserByName(userDto.getUsername()); 
+        userDto.setUserlist(result); // 조회된 데이터 저장
+    }
+
+    // Getter & Setter
+    public UserDto getUserDto() {
+        return userDto;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+        userDto.setUsername(userName); // userDto에도 저장
+    }
+}
+```
+---
+
+## **2. `JSF (xhtml)` 코드**
+```xml
+<h:form>
+    <!-- 검색 입력 -->
+    <h:inputText value="#{userBean.userName}" />
+    <h:commandButton value="검색" action="#{userBean.getFiled}" />
+    <h:commandButton value="DB 검색" action="#{userBean.searchUser}" />
+
+    <!-- 검색 결과 테이블 -->
+    <h:dataTable value="#{userBean.userDto.userlist}" var="user">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+## **3. 동작 방식**
+1. **사용자가 검색어 입력** → `userName`에 값 저장  
+2. **"검색" 버튼 클릭** → `getFiled()` 실행 → `userDto.username`에 값 설정  
+3. **"DB 검색" 버튼 클릭** → `searchUser()` 실행 → DB 조회 후 `userlist` 저장  
+4. **결과 테이블에 DB 조회 값 출력**  
+
+✅ **`userName`과 `userDto.username`을 동기화하여 검색 입력과 DB 조회를 함께 관리**  
+✅ **JSF에서 검색 값을 유지하고, 결과를 `userDto.userlist`에 저장하여 테이블에 출력**  
+
+이제 **하나의 `UserBean`으로 모든 기능을 깔끔하게 처리할 수 있습니다!**
