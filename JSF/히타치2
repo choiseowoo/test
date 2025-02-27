@@ -1,0 +1,81 @@
+네, 이번 프로젝트에서 **Hitachi 프레임워크를 사용할 수 없다면**, `@In`, `@Out`을 이용한 DTO 값 전달이 불가능하므로 **`@PostConstruct`에서 초기 값을 설정하는 방식으로 변경**해야 합니다.  
+
+### **1. `@PostConstruct`를 활용한 DTO 초기화 방법**
+기존 프로젝트에서는 `@In`을 통해 **AP 송신 시 자동으로 값이 들어왔지만**,  
+신규 프로젝트에서는 **DB에서 직접 값을 조회하고, JSF에서 사용할 DTO를 초기화하는 방식**으로 변경해야 합니다.
+
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private UserDto userDto;
+
+    @PostConstruct
+    public void init() {
+        userDto = new UserDto();
+        // DB에서 값을 불러와서 DTO에 설정
+        userDto.setUsername("초기값");
+        userDto.setStatus("Active");
+    }
+
+    public UserDto getUserDto() {
+        return userDto;
+    }
+}
+```
+이렇게 하면 **페이지가 로드될 때(`@PostConstruct`) DTO가 초기화**되고, **이후에는 세션이나 스코프를 이용해 유지**할 수 있습니다.
+
+---
+
+### **2. 기존 `@In`, `@Out` 방식과의 차이점**
+| 기존 프로젝트 (`AP 송수신`) | 신규 프로젝트 (`DB 직접 연결`) |
+|------------------|------------------|
+| `@In`을 사용하여 AP에서 값 자동 주입 | `@PostConstruct`에서 DB 조회 후 DTO 설정 |
+| `@Out`을 사용하여 AP 응답 시 값 반환 | JSF의 상태 관리 (`@ViewScoped`, 세션 활용) |
+| `setSession`, `getSession` 없이도 DTO 값 유지 | `setSession`, `getSession` 사용 가능 |
+
+---
+
+### **3. JSF에서 값 유지하기 위한 추가 조치**
+1. **뷰 스코프(`@ViewScoped`)를 사용**하여 페이지 이동 시 DTO 값 유지
+2. **세션(`setSession`, `getSession`)을 활용**하여 검색, 페이징 시 값 유지
+
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private UserDto userDto;
+
+    @PostConstruct
+    public void init() {
+        userDto = new UserDto();
+        userDto.setUsername("초기값");
+        userDto.setStatus("Active");
+        
+        // 세션에서 기존 데이터 불러오기
+        HttpSession session = (HttpSession) FacesContext.getCurrentInstance().getExternalContext().getSession(true);
+        UserDto savedDto = (UserDto) session.getAttribute("userDto");
+        if (savedDto != null) {
+            this.userDto = savedDto;
+        }
+    }
+
+    public void saveToSession() {
+        HttpSession session = (HttpSession) FacesContext.getCurrentInstance().getExternalContext().getSession(true);
+        session.setAttribute("userDto", this.userDto);
+    }
+
+    public UserDto getUserDto() {
+        return userDto;
+    }
+}
+```
+
+---
+
+### **4. 결론**
+- **Hitachi 프레임워크(`@In`, `@Out`)가 없으므로 `@PostConstruct`에서 DTO 값을 직접 설정해야 함.**
+- **DB에서 값을 조회 후 DTO에 저장하는 방식으로 변경.**
+- **값을 유지하려면 `@ViewScoped` 사용하거나 `setSession`, `getSession`을 활용해야 함.**
+
+즉, **기존 프로젝트에서 자동으로 처리되던 부분을 직접 코드로 구현**해야 한다는 차이점이 있습니다!
