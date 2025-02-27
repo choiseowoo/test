@@ -1,0 +1,158 @@
+`getform`에서 가져온 **4개의 검색 조건을 `userDto`에 저장**하고,  
+이를 기반으로 **DB에서 검색 조건을 반영하여 `userDto.setUserlist(result);`에 결과를 설정**하는 방법을 설명합니다.  
+
+---
+
+## **✅ 1. `UserDto`에 검색 조건 필드 추가**
+먼저, DTO에 **4개의 검색 조건을 저장할 필드를 추가**해야 합니다.  
+```java
+public class UserDto {
+    private String username;
+    private String department;
+    private String role;
+    private String location;
+
+    private List<Userinfo> userlist; // 검색 결과
+
+    // Getter & Setter
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+
+    public List<Userinfo> getUserlist() { return userlist; }
+    public void setUserlist(List<Userinfo> userlist) { this.userlist = userlist; }
+}
+```
+
+---
+
+## **✅ 2. `UserBean`에서 `getform` 값을 `UserDto`에 저장**
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import java.util.List;
+import java.util.Map;
+
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private UserDto userDto = new UserDto(); // DTO 객체 생성
+
+    // **검색 조건을 DTO에 저장**
+    public void getFiled() {
+        Map<Object, String> map = getform; // 화면에서 입력된 값 가져오기
+
+        // 4개 조건을 DTO에 저장
+        userDto.setUsername(map.get("usernm"));
+        userDto.setDepartment(map.get("department"));
+        userDto.setRole(map.get("role"));
+        userDto.setLocation(map.get("location"));
+    }
+
+    // **DB 검색 실행**
+    public void searchUser() {
+        System.out.println("검색 조건: " 
+            + "이름=" + userDto.getUsername() 
+            + ", 부서=" + userDto.getDepartment() 
+            + ", 역할=" + userDto.getRole() 
+            + ", 위치=" + userDto.getLocation());
+
+        // 4개 조건을 사용하여 DB 조회 (예제 코드, 실제는 MyBatis 사용)
+        List<Userinfo> result = userService.getUserByConditions(
+            userDto.getUsername(), 
+            userDto.getDepartment(), 
+            userDto.getRole(), 
+            userDto.getLocation()
+        );
+
+        // DTO에 검색 결과 저장
+        userDto.setUserlist(result);
+    }
+
+    // Getter & Setter
+    public UserDto getUserDto() {
+        return userDto;
+    }
+}
+```
+
+---
+
+## **✅ 3. MyBatis (또는 JPA)에서 4개의 조건을 반영한 DB 조회**
+**MyBatis XML 예제** (`UserMapper.xml`)  
+```xml
+<select id="getUserByConditions" resultType="Userinfo">
+    SELECT * FROM user_table
+    WHERE 1=1
+    <if test="username != null and username != ''">
+        AND username = #{username}
+    </if>
+    <if test="department != null and department != ''">
+        AND department = #{department}
+    </if>
+    <if test="role != null and role != ''">
+        AND role = #{role}
+    </if>
+    <if test="location != null and location != ''">
+        AND location = #{location}
+    </if>
+</select>
+```
+
+**MyBatis 인터페이스 (`UserService.java`)**
+```java
+public interface UserService {
+    List<Userinfo> getUserByConditions(String username, String department, String role, String location);
+}
+```
+
+---
+
+## **✅ 4. JSF (xhtml)에서 검색 입력 받기**
+```xml
+<h:form>
+    <!-- 검색 조건 입력 -->
+    이름: <h:inputText value="#{userBean.userDto.username}" /><br/>
+    부서: <h:inputText value="#{userBean.userDto.department}" /><br/>
+    역할: <h:inputText value="#{userBean.userDto.role}" /><br/>
+    위치: <h:inputText value="#{userBean.userDto.location}" /><br/>
+
+    <!-- 검색 실행 -->
+    <h:commandButton value="검색" action="#{userBean.getFiled}" />
+    <h:commandButton value="DB 검색" action="#{userBean.searchUser}" />
+
+    <!-- 검색 결과 -->
+    <h:dataTable value="#{userBean.userDto.userlist}" var="user">
+        <h:column><f:facet name="header">ID</f:facet> #{user.id} </h:column>
+        <h:column><f:facet name="header">이름</f:facet> #{user.name} </h:column>
+        <h:column><f:facet name="header">부서</f:facet> #{user.department} </h:column>
+        <h:column><f:facet name="header">역할</f:facet> #{user.role} </h:column>
+        <h:column><f:facet name="header">위치</f:facet> #{user.location} </h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+## **✅ 실행 흐름**
+1. **사용자가 검색 조건(이름, 부서, 역할, 위치) 입력**
+2. **"검색" 버튼 클릭** → `getFiled()` 실행 → `userDto`에 검색 조건 저장
+3. **"DB 검색" 버튼 클릭** → `searchUser()` 실행 → DB에서 4개의 조건으로 검색  
+4. **결과 테이블에 검색된 데이터 출력**
+
+---
+
+## **✅ 정리**
+- **검색 조건 4개**를 `UserDto`에 저장  
+- **DB 조회 시 4개 조건을 반영**하여 `setUserlist(result)`에 결과 설정  
+- **JSF에서 `h:inputText`를 이용하여 조건 입력 및 결과 표시**  
+
+이제 **4개의 조건을 활용한 검색이 가능**합니다!
