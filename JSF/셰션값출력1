@@ -1,0 +1,106 @@
+JSF에서 **검색 조건 값을 세션에 저장**하고, 다른 메서드에서 해당 값을 사용하려면 **JSF의 `ExternalContext`를 활용하여 세션에 저장**하면 됩니다.  
+
+---
+
+## **1. `UserBean`에서 검색 조건을 세션에 저장하고 불러오기**
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import javax.faces.context.ExternalContext;
+import javax.faces.context.FacesContext;
+import java.util.List;
+import java.util.Map;
+
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    private UserDto userDto = new UserDto(); // 검색 DTO
+    private String userName; // 검색 입력값
+
+    // **1. 검색 필드 값 가져와서 세션에 저장**
+    public void getFiled() {
+        Map<Object, String> map = getform;
+        this.userName = map.get("usernm"); // 화면에서 입력된 값 저장
+        userDto.setUsername(this.userName); // DTO에도 저장
+
+        // **세션에 검색값 저장**
+        FacesContext.getCurrentInstance()
+                    .getExternalContext()
+                    .getSessionMap()
+                    .put("searchUserName", this.userName);
+    }
+
+    // **2. 검색 실행 (세션 값 활용)**
+    public void searchUser() {
+        // **세션에서 검색값 가져오기**
+        ExternalContext externalContext = FacesContext.getCurrentInstance().getExternalContext();
+        this.userName = (String) externalContext.getSessionMap().get("searchUserName");
+
+        System.out.println("검색할 사용자: " + this.userName);
+
+        // DB 조회 (예제 코드, 실제는 MyBatis나 JPA 사용)
+        List<Userinfo> result = userService.getUserByName(this.userName); 
+        userDto.setUserlist(result); // 조회된 데이터 저장
+    }
+
+    // **3. 세션에서 저장된 검색 조건을 불러오는 메서드**
+    public void loadSessionSearchCondition() {
+        ExternalContext externalContext = FacesContext.getCurrentInstance().getExternalContext();
+        this.userName = (String) externalContext.getSessionMap().get("searchUserName");
+    }
+
+    // Getter & Setter
+    public UserDto getUserDto() {
+        return userDto;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+        userDto.setUsername(userName); // DTO에도 저장
+    }
+}
+```
+---
+
+## **2. `JSF (xhtml)` 코드**
+```xml
+<h:form>
+    <!-- 검색 입력 -->
+    <h:inputText value="#{userBean.userName}" />
+    <h:commandButton value="검색" action="#{userBean.getFiled}" />
+    <h:commandButton value="DB 검색" action="#{userBean.searchUser}" />
+
+    <!-- 세션에서 검색 조건 불러오기 -->
+    <h:commandButton value="세션 불러오기" action="#{userBean.loadSessionSearchCondition}" />
+
+    <!-- 검색 결과 테이블 -->
+    <h:dataTable value="#{userBean.userDto.userlist}" var="user">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+---
+
+## **3. 동작 방식**
+1. **검색어 입력 후 "검색" 버튼 클릭**  
+   - `getFiled()` 실행 → 입력된 `userName`을 세션에 저장  
+2. **"DB 검색" 버튼 클릭**  
+   - `searchUser()` 실행 → 세션에서 검색어를 가져와 DB 조회  
+3. **"세션 불러오기" 버튼 클릭**  
+   - `loadSessionSearchCondition()` 실행 → 세션에서 검색어를 불러와 화면에 표시  
+
+✅ **검색어를 세션에 저장하여, 페이지 이동 후에도 유지 가능**  
+✅ **검색 후 다른 페이지에서 검색 조건을 불러와 사용 가능**  
+
+이렇게 하면 검색 조건을 세션에 보존하고 다른 메서드에서도 활용할 수 있습니다!
