@@ -1,0 +1,37 @@
+코드에서 `userdto.getUsername = map.get("usernm");` 부분이 **잘못되었습니다.**  
+이렇게 하면 **컴파일 오류가 발생**합니다. 이유는 다음과 같습니다.  
+
+1. **`getUsername`은 메서드이고, 필드처럼 값을 할당할 수 없음**  
+   - `userdto.getUsername = map.get("usernm");` ❌ **(오류)**
+   - `userdto.setUsername(map.get("usernm"));` ✅ **(올바른 코드)**  
+
+2. **올바른 방식으로 값 설정하기**
+   - `setUsername()` 메서드를 통해 값을 저장해야 합니다.  
+
+---
+
+## **✅ 올바른 코드**
+```java
+UserDto userDto = new UserDto(); // 객체 생성
+
+Map<Object, String> map = getform; // 화면에서 입력된 값 가져오기
+
+// DTO에 값 저장
+userDto.setUsername(map.get("usernm")); 
+```
+
+---
+
+## **📌 만약 `userdto.getUsername();`을 사용하고 싶다면?**
+값을 가져오는 경우 `getUsername()`을 사용합니다.
+```java
+String username = userDto.getUsername(); // 저장된 값 가져오기
+```
+
+### **🔹정리**
+| 동작 | 잘못된 코드 ❌ | 올바른 코드 ✅ |
+|------|-------------|-------------|
+| 값 저장 | `userdto.getUsername = map.get("usernm");` | `userdto.setUsername(map.get("usernm"));` |
+| 값 가져오기 | `String name = userdto.setUsername();` | `String name = userdto.getUsername();` |
+
+올바른 `setter`와 `getter`를 사용하면 원하는 값을 넘겨줄 수 있습니다!
