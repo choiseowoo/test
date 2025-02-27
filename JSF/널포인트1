@@ -1,0 +1,75 @@
+`setSession`에서 `NullPointerException`이 발생하는 이유는 여러 가지가 있을 수 있습니다. 몇 가지 주요 원인을 점검해볼게요.
+
+---
+
+### **1. `getSession(false)`를 사용했는지 확인**
+`HttpSession`을 가져올 때 `getSession(false)`를 사용하면 세션이 없는 경우 `null`을 반환합니다.  
+즉, 아래처럼 되어 있다면 `session`이 `null`이어서 `setAttribute()`를 호출할 때 `NullPointerException`이 발생할 수 있습니다.
+
+```java
+public void setSession(String pageName, String key, Object value) {
+    HttpSession session = FacesContext.getCurrentInstance().getExternalContext().getSession(false);
+    session.setAttribute(pageName + "_" + key, value);  // session이 null이면 NullPointerException 발생
+}
+```
+
+**해결 방법:** `getSession(true)`로 변경하여 세션이 없을 경우 새로 생성하도록 합니다.
+
+```java
+public void setSession(String pageName, String key, Object value) {
+    HttpSession session = (HttpSession) FacesContext.getCurrentInstance().getExternalContext().getSession(true);
+    session.setAttribute(pageName + "_" + key, value);
+}
+```
+
+---
+
+### **2. `FacesContext.getCurrentInstance()`가 `null`일 가능성**
+만약 `FacesContext.getCurrentInstance()`가 `null`이면 `getExternalContext()` 호출 시 `NullPointerException`이 발생할 수 있습니다.  
+이 문제는 **JSF 라이프사이클 중 FacesContext가 존재하지 않는 곳에서 메서드를 호출할 때** 발생합니다.
+
+**확인 방법:**  
+- JSF의 `@PostConstruct` 같은 라이프사이클 메서드에서 호출하는지 확인.
+- 비 JSF 환경(예: 별도 스레드)에서 실행하고 있지 않은지 점검.
+
+---
+
+### **3. `setSession` 호출 시 `value`가 `null`일 가능성**
+세션에 `null` 값을 저장하는 것이 문제가 되지는 않지만, `pageName`이나 `key`가 `null`이면 `session.setAttribute()`에서 `NullPointerException`이 발생할 수 있습니다.
+
+**안전하게 처리하는 방법:**
+```java
+public void setSession(String pageName, String key, Object value) {
+    if (pageName == null || key == null) {
+        throw new IllegalArgumentException("pageName과 key는 null일 수 없습니다.");
+    }
+    HttpSession session = (HttpSession) FacesContext.getCurrentInstance().getExternalContext().getSession(true);
+    session.setAttribute(pageName + "_" + key, value);
+}
+```
+
+---
+
+### **4. `getSession`에서 `null`이 반환되는지 확인**
+`getSession` 메서드에서 세션을 가져올 때 `null`이 반환되면, `setSession`에서 값을 저장할 때 `NullPointerException`이 발생할 가능성이 있습니다.
+
+```java
+public Object getSession(String pageName, String key) {
+    HttpSession session = (HttpSession) FacesContext.getCurrentInstance().getExternalContext().getSession(false);
+    if (session == null) {
+        return null;
+    }
+    return session.getAttribute(pageName + "_" + key);
+}
+```
+
+---
+
+### **결론**
+1. **`getSession(false)`를 `getSession(true)`로 변경**하여 세션이 없을 때 새로 생성.
+2. **`FacesContext.getCurrentInstance()`가 `null`인지 확인.**  
+   - JSF 라이프사이클 내에서 호출하는지 점검.
+3. **`pageName`과 `key`가 `null`인지 체크.**
+4. **`getSession`에서 `null`을 반환하는지 확인.**
+
+코드 수정 후에도 문제가 발생하면, `NullPointerException`의 에러 로그를 확인해서 어떤 부분에서 발생하는지 구체적으로 알려주면 더 정확하게 해결할 수 있어요!
