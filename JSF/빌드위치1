@@ -1,0 +1,89 @@
+### **📌 `systemPath` 경로 설정 방법**  
+현재 프로젝트 구조가 다음과 같다면:  
+```
+C://mdms/workspace/mdms        ← 메인 프로젝트 (`mdms`)
+C://mdms/workspace/lib         ← `stringutil.jar` 위치
+```
+이 경우, `pom.xml`에서 `systemPath`를 **절대 경로** 또는 **상대 경로**로 설정할 수 있습니다.
+
+---
+
+## **✅ 1. 절대 경로 사용 (권장)**
+```xml
+<dependency>
+    <groupId>org.stringutil</groupId>
+    <artifactId>stringutil</artifactId>
+    <version>1.0.0</version> 
+    <scope>system</scope>
+    <systemPath>C:/mdms/workspace/lib/stringutil.jar</systemPath>
+</dependency>
+```
+**🔹 장점:**  
+- 경로가 확실하게 설정되어 문제가 발생할 가능성이 낮음  
+
+**🔹 단점:**  
+- 다른 개발자의 환경이 다르면 경로를 변경해야 함  
+- OS가 Windows가 아니면 사용할 수 없음  
+
+---
+
+## **✅ 2. 상대 경로 사용 (더 좋은 방법)**
+Maven에서 프로젝트 경로를 기준으로 상대 경로를 사용할 수 있습니다.  
+```xml
+<dependency>
+    <groupId>org.stringutil</groupId>
+    <artifactId>stringutil</artifactId>
+    <version>1.0.0</version> 
+    <scope>system</scope>
+    <systemPath>${project.basedir}/../lib/stringutil.jar</systemPath>
+</dependency>
+```
+**📌 `../lib/`를 사용한 이유**  
+- `${project.basedir}` → 현재 Maven 프로젝트 경로 (`C://mdms/workspace/mdms/`)  
+- `../lib/` → `mdms` 폴더의 부모 폴더로 이동 후 `lib/` 폴더 접근  
+
+**🔹 장점:**  
+- 다른 개발 환경에서도 동일하게 적용 가능  
+- 운영체제에 상관없이 경로 설정 가능  
+
+**🔹 단점:**  
+- `mdms` 프로젝트의 상대 위치를 잘 맞춰야 함  
+
+---
+
+## **✅ 3. `lib` 폴더를 프로젝트 내부로 이동 (베스트 방식)**
+Maven에서는 **`systemPath`를 사용하지 않는 것이 좋습니다.**  
+최선의 방법은 `lib` 폴더를 `mdms` 프로젝트 내부로 이동하는 것입니다.  
+```
+C://mdms/workspace/mdms/lib/stringutil.jar
+```
+이렇게 하면 `systemPath` 대신 `maven-install-plugin`을 사용하여 로컬 JAR을 추가할 수 있습니다.
+
+### **📌 `lib/` 폴더를 프로젝트 내부로 이동 후 `pom.xml` 설정**
+```xml
+<dependency>
+    <groupId>org.stringutil</groupId>
+    <artifactId>stringutil</artifactId>
+    <version>1.0.0</version> 
+    <scope>system</scope>
+    <systemPath>${project.basedir}/lib/stringutil.jar</systemPath>
+</dependency>
+```
+**📌 `lib/` 폴더를 프로젝트 내부로 이동하면:**  
+- `systemPath` 없이 Maven 프로젝트 내부에서 JAR 관리 가능  
+- 경로 충돌 없이 개발자마다 동일한 환경에서 사용 가능  
+
+---
+
+## **✅ 최종 정리**
+| 방법 | `systemPath` 설정 | 장점 | 단점 |
+|------|------------------|------|------|
+| 절대 경로 사용 | `C:/mdms/workspace/lib/stringutil.jar` | 확실한 경로 | 운영체제 및 개발 환경 변경 시 수정 필요 |
+| 상대 경로 사용 | `${project.basedir}/../lib/stringutil.jar` | 다른 개발 환경에서도 사용 가능 | 상대 경로 계산 필요 |
+| `lib/` 폴더를 프로젝트 내부로 이동 | `${project.basedir}/lib/stringutil.jar` | 가장 안정적, 운영체제 무관 | 프로젝트 내부 폴더 구조를 변경해야 함 |
+
+📌 **권장:**  
+1️⃣ `lib/` 폴더를 `mdms` 내부로 이동 (`${project.basedir}/lib/stringutil.jar`)  
+2️⃣ `systemPath`를 최소한으로 사용하고, 가능한 Maven Repository 활용  
+
+이제 경로를 맞춰서 적용해보세요! 🚀
