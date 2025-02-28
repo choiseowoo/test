@@ -1,0 +1,93 @@
+### **✅ 1. `javax.faces.component.UIComponent`가 호출되는 이유**
+현재 프로젝트가 **Jakarta EE 8 (또는 EE 9+)로 전환**되었는데도 **`javax.faces.component.UIComponent`를 찾으려고 하는 이유**는 다음과 같습니다.
+
+#### **📌 원인 1: 기존 코드가 `javax` 네임스페이스를 사용하고 있음**
+- 새로운 **Jakarta EE 9+에서는 `javax.faces.*` → `jakarta.faces.*`** 로 패키지가 변경되었습니다.
+- 만약 기존 코드가 `javax.faces.component.UIComponent`를 사용하고 있다면,  
+  → **Jakarta EE 환경에서는 `jakarta.faces.component.UIComponent`로 변경해야 함.**
+- 해결 방법: **코드 전체를 `javax.faces.` → `jakarta.faces.`로 변경**해야 함.
+
+```java
+// 기존 코드 (Java EE 8 이하)
+import javax.faces.component.UIComponent;
+
+// 새로운 코드 (Jakarta EE 9+)
+import jakarta.faces.component.UIComponent;
+```
+
+---
+
+#### **📌 원인 2: `faces-config.xml` 또는 `web.xml`에서 `javax` 네임스페이스를 참조하고 있음**
+- `faces-config.xml`에서 여전히 **`javax.faces` 네임스페이스를 사용**하고 있다면,  
+  → **Jakarta EE 9+에서는 `jakarta.faces`로 수정해야 함.**
+
+✅ **예제 (`faces-config.xml`)**
+```xml
+<!-- 기존 Java EE 8 (javax) -->
+<faces-config xmlns="http://java.sun.com/xml/ns/javaee"
+              version="2.2">
+    <application>
+        <el-resolver>javax.faces.application.Application</el-resolver>
+    </application>
+</faces-config>
+
+<!-- Jakarta EE 9+ (jakarta) -->
+<faces-config xmlns="https://jakarta.ee/xml/ns/jakartaee"
+              version="3.0">
+    <application>
+        <el-resolver>jakarta.faces.application.Application</el-resolver>
+    </application>
+</faces-config>
+```
+✅ **해결 방법:** `faces-config.xml`에서 `javax.faces` → `jakarta.faces`로 변경해야 함.
+
+---
+
+#### **📌 원인 3: 프로젝트가 여전히 `javax.faces` 라이브러리를 포함하고 있음**
+Maven 프로젝트에서 여전히 **`javax.faces` 관련 라이브러리를 참조**하고 있다면,  
+→ Jakarta EE 9+로 마이그레이션할 때 문제가 발생할 수 있음.
+
+✅ **`pom.xml`에서 `javax.faces` → `jakarta.faces`로 변경해야 함.**
+```xml
+<!-- 기존 Java EE 8 (javax) -->
+<dependency>
+    <groupId>javax.faces</groupId>
+    <artifactId>javax.faces-api</artifactId>
+    <version>2.3</version>
+    <scope>provided</scope>
+</dependency>
+
+<!-- Jakarta EE 9+ (jakarta) -->
+<dependency>
+    <groupId>jakarta.faces</groupId>
+    <artifactId>jakarta.faces-api</artifactId>
+    <version>3.0.0</version>
+    <scope>provided</scope>
+</dependency>
+```
+✅ **해결 방법:** `pom.xml`에서 `javax.faces` 관련 의존성을 제거하고 `jakarta.faces`로 변경.
+
+---
+
+#### **📌 원인 4: 실행되는 서버가 Jakarta EE 9+가 아닌 Java EE 8 이하일 가능성**
+- **서버(WildFly, Payara, Tomcat 등)가 Jakarta EE 9+가 아니라면**, 여전히 `javax.faces.*`를 사용할 수도 있음.
+- 해결 방법:
+  1. **WildFly 26+ / Payara 6+ / Tomcat 10+** 등의 Jakarta EE 9+ 지원 서버를 사용
+  2. `pom.xml`에서 **Jakarta EE 9+ 관련 의존성을 명확히 추가**
+  3. **Maven 프로젝트의 컴파일러 설정 확인 (`javax`로 컴파일되는지 확인)**
+
+---
+
+### **✅ 결론**
+🚀 **현재 `javax.faces.component.UIComponent`를 참조하는 이유는:**
+1. 코드에서 여전히 **`javax.faces` 네임스페이스를 사용**하고 있을 가능성이 높음.
+2. `faces-config.xml` 또는 `web.xml`에서 `javax.faces`를 참조하고 있을 수도 있음.
+3. `pom.xml`에서 `javax.faces-api` 의존성을 포함하고 있을 가능성 있음.
+4. Jakarta EE 9+ 환경에서 실행되지 않고, Java EE 8 이하 환경에서 실행되고 있을 가능성 있음.
+
+✅ **해결 방법:**
+- `javax.faces` → `jakarta.faces`로 변경 (`import`, `faces-config.xml`, `web.xml`, `pom.xml` 전부)
+- Jakarta EE 9+ 지원하는 최신 WildFly, Payara, Tomcat 버전에서 실행 확인
+- `mvn dependency:tree` 실행하여 `javax.faces`가 포함되는지 확인
+
+🔥 **즉, 코드와 환경 설정을 모두 Jakarta EE 9+에 맞게 수정해야 함!**
