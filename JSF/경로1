@@ -1,0 +1,78 @@
+### **직접 JAR 추가했는데 클래스를 못 찾는 이유와 해결 방법**  
+
+직접 JAR 파일을 추가해도 **빌드 경로와 실행 경로에서 JAR이 정상적으로 인식되지 않는 경우**가 있습니다.  
+에러가 발생하는 이유는 다음과 같습니다.  
+
+---
+
+## **1. 프로젝트가 Maven 기반이라면 `pom.xml`에도 추가해야 함**
+Maven 프로젝트에서는 `pom.xml`에 명시적으로 추가되지 않은 외부 JAR은 컴파일 시 인식되지 않습니다.  
+따라서, **직접 추가한 JAR이 실행 시 적용되지 않는 문제**가 발생할 수 있습니다.  
+
+### ✅ **해결 방법: `pom.xml`에 추가**
+```xml
+<dependency>
+    <groupId>org.stringutil</groupId>
+    <artifactId>stringutil</artifactId>
+    <version>1.0.0</version> 
+    <scope>system</scope>
+    <systemPath>${project.basedir}/lib/stringutil.jar</systemPath>
+</dependency>
+```
+- **`${project.basedir}/lib/stringutil.jar`** → JAR 파일을 `lib/` 폴더에 넣고 경로 지정  
+- **`<scope>system</scope>`** → 로컬 JAR을 사용할 때 필요  
+
+### **🔹 추가 후 Maven 업데이트**
+```bash
+mvn clean install
+```
+또는 **Eclipse에서 `Project > Maven > Update Project (Alt+F5)` 실행**  
+
+---
+
+## **2. 직접 추가한 JAR이 `Build Path`에는 있지만 `Runtime`에서 빠진 경우**
+`Project > Properties > Java Build Path`에서 `JAR`이 추가되어 있지만, 실행(Run) 시 클래스패스에서 빠질 수도 있습니다.  
+
+### ✅ **해결 방법: JAR이 `Order and Export`에 체크되어 있는지 확인**
+1. `Project > Properties > Java Build Path`  
+2. `Order and Export` 탭으로 이동  
+3. **추가한 JAR에 체크 표시**  
+4. `Apply and Close` 후 프로젝트 `clean` & `build`  
+
+---
+
+## **3. JAR 파일이 손상되었거나, 클래스 내부 패키지가 다를 가능성**
+다운받은 JAR 파일이 손상되었거나, `org.stringutil` 패키지 내부 구조가 다를 수 있습니다.  
+
+### ✅ **해결 방법: JAR 파일 내부 확인**
+1. **JAR 파일이 올바른지 확인**
+   - `.jar` 파일을 `.zip`으로 확장자 변경 후 열어보기  
+   - `org/stringutil/...` 경로로 클래스 파일(`.class`)이 있는지 확인  
+
+2. **올바른 패키지로 임포트하기**
+   ```java
+   import org.stringutil.StringUtil; // 정확한 클래스명 확인
+   ```
+   - 패키지명이 다르면 `import org.utils.StringUtil;` 같은 다른 경로일 수도 있음  
+
+---
+
+## **4. Eclipse에서 추가한 JAR이 정상적으로 로드되지 않는 경우**
+JAR을 직접 추가했지만, **Eclipse 내부 캐시 문제**로 인식되지 않는 경우도 있습니다.  
+
+### ✅ **해결 방법: `.classpath` 직접 수정**
+1. **프로젝트 루트에 있는 `.classpath` 파일 열기**  
+2. `<classpathentry kind="lib" path="lib/stringutil.jar"/>` 항목이 있는지 확인  
+3. 없으면 수동 추가 후 프로젝트 `clean` & `build`  
+
+---
+
+## **🚀 최종 정리**
+| 문제 | 해결 방법 |
+|------|-----------|
+| Maven 프로젝트인데 `pom.xml`에 없음 | `pom.xml`에 `<dependency>` 추가 |
+| 실행 시 클래스 못 찾음 | `Order and Export`에서 JAR 체크 |
+| JAR 내부 구조가 다름 | `.jar` 압축 풀어 `org/stringutil` 경로 확인 |
+| Eclipse에서 추가했는데 인식 안 됨 | `.classpath` 파일 직접 수정 |
+
+**우선 `pom.xml`에 추가하는 방법을 시도해보고, 그래도 안 되면 `Order and Export` 설정을 확인하세요!**
