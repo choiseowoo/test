@@ -1,0 +1,52 @@
+네, **`WEB-INF/lib/`** 에 JAR 파일을 배치하면 **`pom.xml`에 별도로 지정할 필요가 없습니다.**  
+
+### **✅ 이유**
+- **`WEB-INF/lib/`** 폴더는 **Servlet 컨테이너(Tomcat, WildFly 등)** 가 자동으로 JAR을 로드하는 경로입니다.
+- **Maven에서 별도로 의존성 추가하지 않아도**, 배포된 애플리케이션이 JAR을 인식합니다.
+
+---
+
+## **📌 1. `WEB-INF/lib/`에 JAR 배치하는 방법**
+### **🔹 배포 폴더 구조 (예: WildFly, Tomcat)**
+```
+mdms.war/
+│── WEB-INF/
+│   ├── lib/              ← 여기에 JAR 배치
+│   │   ├── stringutil.jar
+│   │   ├── other-library.jar
+│   ├── web.xml
+│── index.xhtml
+```
+**🚀 실행 시, `WEB-INF/lib/` 내 JAR이 자동으로 클래스패스에 포함됨**
+
+---
+
+## **📌 2. pom.xml 설정 없이 사용 가능**
+- 만약 `stringutil.jar`을 **`WEB-INF/lib/`** 폴더에 배치했다면, `pom.xml`에 `<dependency>` 를 추가하지 않아도 됩니다.
+- **Maven이 빌드할 때 `WEB-INF/lib/` 내 JAR을 자동으로 포함**하므로 추가 설정이 필요 없습니다.
+
+---
+
+## **📌 3. 그래도 `pom.xml`에 지정해야 할 경우**
+만약 **개발 중에도 같은 JAR을 참조하고 싶다면**, `pom.xml`에 `<dependency>`를 추가하는 방법이 있습니다.  
+하지만 **배포 후 실행할 때만 필요하다면, `WEB-INF/lib/`에 배치하는 것으로 충분**합니다.
+
+✅ **개발 중에도 JAR이 필요하면, 아래처럼 `provided` 스코프로 추가**
+```xml
+<dependency>
+    <groupId>org.stringutil</groupId>
+    <artifactId>stringutil</artifactId>
+    <version>1.0.0</version>
+    <scope>provided</scope>  <!-- 컴파일 시에는 필요하지만, 배포 시에는 포함되지 않음 -->
+</dependency>
+```
+✔️ `scope` 를 `provided` 로 설정하면, **개발할 때는 필요하지만 배포(WAR 파일)에는 포함되지 않음.**
+
+---
+
+## **📌 4. 결론**
+✅ **`WEB-INF/lib/` 에 배치하면, `pom.xml`에 `<dependency>` 추가할 필요 없음.**  
+✅ **Maven으로 관리하려면, `<scope>provided</scope>`로 추가하면 개발 중에는 사용 가능.**  
+✅ **JAR을 Maven Repository에 추가할 필요가 없으므로, 운영 환경에서도 그대로 배포 가능.**  
+
+🚀 **배포할 때만 필요하다면 `WEB-INF/lib/`에 복사하는 것이 가장 간단한 방법!**
