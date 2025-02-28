@@ -1,0 +1,78 @@
+렌더링 파일(`kit.어쩌구`)이 커스텀 태그를 처리하는 역할을 한다면, 보통 **렌더러(Renderer) 클래스**이거나 **컴포넌트(Component) 클래스**일 가능성이 큽니다.  
+
+### **✅ 1. 일반적인 JSF 커스텀 태그 구조**
+JSF에서 커스텀 태그를 만들 때는 **렌더러(Renderer)와 컴포넌트(UIComponentBase 또는 UIComponent)** 를 함께 사용합니다.
+
+#### **📌 커스텀 태그 기본 구조**
+1. **구조 파일 (Component) → `UIComponentBase`를 상속**  
+   - 태그가 어떤 데이터를 가질지 정의
+2. **렌더링 파일 (Renderer) → `Renderer`를 상속**  
+   - HTML을 어떻게 출력할지 정의
+
+---
+
+### **✅ 2. `kit.어쩌구` 렌더링 파일이 `extends` 받는 클래스 확인**
+#### **📌 1) `Renderer`를 상속하는 경우**
+렌더링 파일이 **출력 방식을 담당**하는 경우, **JSF의 `Renderer` 클래스를 상속**하는 것이 일반적입니다.
+
+```java
+public class CustomRenderer extends Renderer {
+    @Override
+    public void encodeEnd(FacesContext context, UIComponent component) throws IOException {
+        ResponseWriter writer = context.getResponseWriter();
+        writer.startElement("div", component);
+        writer.writeText("Hello, Custom Tag!", null);
+        writer.endElement("div");
+    }
+}
+```
+✅ **렌더러는 보통 `Renderer` 클래스를 상속**하며, **웹 페이지에 태그를 HTML로 렌더링**하는 역할을 합니다.
+
+---
+
+#### **📌 2) `UIComponentBase`를 상속하는 경우**
+렌더링 파일이 아니라 **구조 파일(컴포넌트)일 가능성**도 있습니다.  
+이 경우, **`UIComponentBase`를 상속**하여 태그 속성을 정의합니다.
+
+```java
+public class CustomComponent extends UIComponentBase {
+    @Override
+    public String getFamily() {
+        return "customComponent";
+    }
+}
+```
+✅ **컴포넌트는 `UIComponentBase`를 상속하며, 렌더러와 연결될 수도 있음**
+
+---
+
+### **✅ 3. `kit.어쩌구` 클래스가 어디서 확장되는지 확인하는 방법**
+1. **코드 검색 (`Ctrl + Shift + T` in Eclipse)**
+   - `kit.어쩌구`를 검색하여 어떤 클래스를 상속받는지 확인
+2. **컴파일된 `.class` 파일에서 확인**
+   - `target/classes/kit/어쩌구.class` 파일을 확인 후, 디컴파일해서 `extends` 대상 확인
+3. **Faces-config.xml에서 확인**
+   - `faces-config.xml` 파일에 `<renderer>` 태그가 있는지 확인  
+     예:  
+     ```xml
+     <renderer>
+         <component-family>customComponent</component-family>
+         <renderer-type>customRenderer</renderer-type>
+         <renderer-class>kit.어쩌구</renderer-class>
+     </renderer>
+     ```
+   - 위와 같은 설정이 있다면, `kit.어쩌구`는 **렌더러 클래스**이며 `Renderer`를 상속받았을 가능성이 큼.
+
+---
+
+### **✅ 4. 결론**
+1. `kit.어쩌구` 파일이 **렌더링을 담당하는 파일이라면**,  
+   → **보통 `Renderer` 클래스를 상속**하여 **HTML 생성 역할**을 함  
+2. 만약 **UI 컴포넌트의 구조를 담당한다면**,  
+   → **`UIComponentBase`를 상속**하여 태그 속성을 정의  
+3. **확인 방법**  
+   - `Ctrl + Shift + T`로 `kit.어쩌구` 검색  
+   - `faces-config.xml`에서 `<renderer-class>` 확인  
+   - `.class` 파일 디컴파일하여 `extends` 대상 확인
+
+✅ **렌더링 로직이 있는지 `encodeBegin`, `encodeEnd` 같은 메서드가 있는지 확인하면 Renderer인지 쉽게 판단 가능!**
