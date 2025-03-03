@@ -1,0 +1,167 @@
+`UserDto` 안에 `PageConDto`를 포함한 구조에서 JSF(JavaServer Faces)와 MyBatis를 사용하여 페이징 처리를 구현하려면, 다음과 같은 단계를 따를 수 있습니다. 이 예제에서는 JSF를 통해 화면에서 페이징 정보를 받아오고, MyBatis를 통해 데이터베이스에서 페이징된 데이터를 조회하는 방법을 설명합니다.
+
+### 1. `PageConDto` 클래스 수정
+`PageConDto` 클래스에는 페이징 계산을 위한 메서드를 추가할 수 있습니다. 예를 들어, 현재 페이지의 시작 위치와 종료 위치를 계산하는 메서드를 추가합니다.
+
+```java
+public class PageConDto {
+    private int pag; // 현재 페이지
+    private int oneKns = 10; // 한 페이지당 표시할 항목 수 (기본값 10)
+    private int maxKns = 100; // 최대 표시 항목 수 (기본값 100)
+    private int titalKns; // 전체 항목 수
+    private boolean lastPagFlg; // 마지막 페이지 여부
+    private boolean firstPagFlg; // 첫 페이지 여부
+    private int srtPos; // 검색 시작 위치
+    private int sryPos; // 검색 종료 위치
+
+    // Getter와 Setter 메서드
+    public int getPag() { return pag; }
+    public void setPag(int pag) { this.pag = pag; }
+    public int getOneKns() { return oneKns; }
+    public void setOneKns(int oneKns) { this.oneKns = oneKns; }
+    public int getMaxKns() { return maxKns; }
+    public void setMaxKns(int maxKns) { this.maxKns = maxKns; }
+    public int getTitalKns() { return titalKns; }
+    public void setTitalKns(int titalKns) { this.titalKns = titalKns; }
+    public boolean isLastPagFlg() { return lastPagFlg; }
+    public void setLastPagFlg(boolean lastPagFlg) { this.lastPagFlg = lastPagFlg; }
+    public boolean isFirstPagFlg() { return firstPagFlg; }
+    public void setFirstPagFlg(boolean firstPagFlg) { this.firstPagFlg = firstPagFlg; }
+    public int getSrtPos() { return srtPos; }
+    public void setSrtPos(int srtPos) { this.srtPos = srtPos; }
+    public int getSryPos() { return sryPos; }
+    public void setSryPos(int sryPos) { this.sryPos = sryPos; }
+
+    // 페이징 계산 메서드
+    public void calculatePositions() {
+        this.srtPos = (pag - 1) * oneKns;
+        this.sryPos = pag * oneKns;
+        this.firstPagFlg = (pag == 1);
+        this.lastPagFlg = (sryPos >= titalKns);
+    }
+}
+```
+
+### 2. `UserDto` 클래스 수정
+`UserDto` 클래스에서는 `PageConDto`를 포함하고, 페이징 정보를 설정할 수 있도록 합니다.
+
+```java
+public class UserDto {
+    private String username;
+    private String usercode;
+    private String userid;
+    private String usermail;
+    private PageConDto pagedto;
+
+    // 기본 생성자
+    public UserDto() {
+        this.pagedto = new PageConDto();
+    }
+
+    // Getter와 Setter 메서드
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getUsercode() { return usercode; }
+    public void setUsercode(String usercode) { this.usercode = usercode; }
+    public String getUserid() { return userid; }
+    public void setUserid(String userid) { this.userid = userid; }
+    public String getUsermail() { return usermail; }
+    public void setUsermail(String usermail) { this.usermail = usermail; }
+    public PageConDto getPagedto() { return pagedto; }
+    public void setPagedto(PageConDto pagedto) { this.pagedto = pagedto; }
+}
+```
+
+### 3. JSF에서 페이징 정보 설정
+JSF 페이지(예: XHTML)에서 페이징 정보를 입력받고, `UserDto`를 통해 전달합니다.
+
+```xml
+<h:form>
+    <h:inputText value="#{userBean.userDto.pagedto.pag}" />
+    <h:commandButton value="Search" action="#{userBean.searchUsers}" />
+</h:form>
+```
+
+### 4. `UserBean` (Managed Bean)에서 페이징 처리
+`UserBean`에서는 `UserDto`를 통해 페이징 정보를 받아와 MyBatis를 호출합니다.
+
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
+import javax.inject.Inject;
+
+@ManagedBean
+@SessionScoped
+public class UserBean {
+    private UserDto userDto = new UserDto();
+
+    @Inject
+    private UserMapper userMapper; // MyBatis Mapper
+
+    public String searchUsers() {
+        // 페이징 계산
+        userDto.getPagedto().calculatePositions();
+
+        // MyBatis를 통해 페이징된 데이터 조회
+        List<UserDto> userList = userMapper.selectUsersWithPaging(userDto.getPagedto());
+
+        // 전체 항목 수 설정 (예: MyBatis를 통해 전체 항목 수 조회)
+        int totalCount = userMapper.selectTotalCount();
+        userDto.getPagedto().setTitalKns(totalCount);
+
+        // 결과 처리
+        return "userList"; // 결과를 보여줄 페이지로 이동
+    }
+
+    // Getter와 Setter
+    public UserDto getUserDto() { return userDto; }
+    public void setUserDto(UserDto userDto) { this.userDto = userDto; }
+}
+```
+
+### 5. MyBatis Mapper 설정
+MyBatis Mapper에서는 페이징 정보를 사용하여 데이터를 조회합니다.
+
+```xml
+<select id="selectUsersWithPaging" resultType="UserDto">
+    SELECT *
+    FROM users
+    LIMIT #{oneKns} OFFSET #{srtPos}
+</select>
+
+<select id="selectTotalCount" resultType="int">
+    SELECT COUNT(*)
+    FROM users
+</select>
+```
+
+### 6. MyBatis Mapper 인터페이스
+MyBatis Mapper 인터페이스에서 메서드를 정의합니다.
+
+```java
+public interface UserMapper {
+    List<UserDto> selectUsersWithPaging(PageConDto pagedto);
+    int selectTotalCount();
+}
+```
+
+### 7. 결과 화면
+JSF 페이지에서 페이징된 결과를 표시합니다.
+
+```xml
+<h:dataTable value="#{userBean.userList}" var="user">
+    <h:column>#{user.username}</h:column>
+    <h:column>#{user.usercode}</h:column>
+    <h:column>#{user.userid}</h:column>
+    <h:column>#{user.usermail}</h:column>
+</h:dataTable>
+```
+
+### 요약
+1. `PageConDto`에 페이징 계산 로직을 추가합니다.
+2. `UserDto`에서 `PageConDto`를 포함하고, JSF를 통해 페이징 정보를 설정합니다.
+3. `UserBean`에서 페이징 정보를 계산하고 MyBatis를 호출합니다.
+4. MyBatis Mapper에서 페이징된 데이터를 조회합니다.
+5. JSF 페이지에서 결과를 표시합니다.
+
+이 구조를 통해 JSF와 MyBatis를 활용한 페이징 처리를 구현할 수 있습니다. 추가적으로 예외 처리나 유효성 검사 등을 고려하면 더 완벽한 구현이 가능합니다.
