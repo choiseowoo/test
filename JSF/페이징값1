@@ -1,0 +1,197 @@
+JSF + MyBatis를 사용하여 `UserDto` 안에 `PageConDto`를 설정하고 페이징을 구현하는 방법을 설명할게요.  
+
+---
+
+## 1. **UserDto와 PageConDto 구조**  
+`UserDto` 안에 `PageConDto`를 포함하여 페이징 정보를 관리합니다.
+
+### **① UserDto (사용자 정보 + 페이징 정보)**
+```java
+public class UserDto {
+    private String username;
+    private String usercode;
+    private String userid;
+    private String usermail;
+    private PageConDto pageConDto; // 페이징 DTO
+
+    // Getter & Setter
+    public PageConDto getPageConDto() {
+        return pageConDto;
+    }
+
+    public void setPageConDto(PageConDto pageConDto) {
+        this.pageConDto = pageConDto;
+    }
+}
+```
+
+### **② PageConDto (페이징 관련 정보)**
+```java
+public class PageConDto {
+    private int pag; // 현재 페이지
+    private int oneKns = -1; // 한 페이지에 표시할 개수
+    private int maxKns = -1; // 최대 레코드 개수
+    private int titalKns; // 전체 레코드 개수
+    private boolean lastPagFlg; // 마지막 페이지 여부
+    private boolean firstPagFlg; // 첫 페이지 여부
+    private int SrtPos; // 검색 시작 위치
+    private int SryPos; // 검색 종료 위치
+
+    // Getter & Setter 생략...
+}
+```
+
+---
+
+## 2. **MyBatis SQL 쿼리 작성**
+MyBatis에서 페이징 처리를 위한 SQL 쿼리를 작성합니다.
+
+```xml
+<select id="getUserList" resultType="UserDto">
+    SELECT * FROM users
+    WHERE username LIKE #{username}
+    LIMIT #{start}, #{pageSize} 
+</select>
+
+<select id="getTotalUserCount" resultType="int">
+    SELECT COUNT(*) FROM users
+</select>
+```
+- `LIMIT #{start}, #{pageSize}`: 페이지 번호와 페이지당 개수를 기반으로 데이터를 가져옵니다.
+- `getTotalUserCount`: 전체 데이터 개수를 조회합니다.
+
+---
+
+## 3. **서비스(Service) 레이어에서 페이징 로직 구현**
+서비스 클래스에서 `PageConDto`를 설정하고 MyBatis 쿼리를 호출하여 데이터를 가져옵니다.
+
+```java
+public class UserService {
+
+    @Autowired
+    private UserMapper userMapper;
+
+    public UserDto getUserList(int page, int pageSize) {
+        UserDto userDto = new UserDto();
+        PageConDto pageConDto = new PageConDto();
+
+        int totalRecords = userMapper.getTotalUserCount(); // 전체 데이터 개수 조회
+        pageConDto.setPag(page);
+        pageConDto.setMaxKns(totalRecords);
+        pageConDto.setOneKns(pageSize);
+        pageConDto.setSrtPos((page - 1) * pageSize); // 시작 위치 계산
+        pageConDto.setSryPos(page * pageSize);
+        pageConDto.setLastPagFlg(page * pageSize >= totalRecords);
+        pageConDto.setFirstPagFlg(page == 1);
+
+        userDto.setPageConDto(pageConDto);
+
+        List<UserDto> userList = userMapper.getUserList(pageConDto.getSrtPos(), pageConDto.getOneKns()); // MyBatis에서 데이터 조회
+        userDto.setUserList(userList);
+
+        return userDto;
+    }
+}
+```
+- `pageConDto.setSrtPos((page - 1) * pageSize);`: 페이지 번호를 기반으로 SQL `LIMIT`에 사용할 시작 위치를 설정합니다.
+- `pageConDto.setLastPagFlg(page * pageSize >= totalRecords);`: 현재 페이지에서 표시된 개수가 총 개수 이상이면 마지막 페이지로 설정합니다.
+
+---
+
+## 4. **JSF 페이지에서 데이터 바인딩**
+JSF 화면에서 데이터를 표시하고, 이전/다음 페이지 버튼을 추가합니다.
+
+```xhtml
+<h:form>
+    <h:dataTable value="#{userBean.userDto.userList}" var="user">
+        <h:column>
+            <f:facet name="header">사용자명</f:facet>
+            #{user.username}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이메일</f:facet>
+            #{user.usermail}
+        </h:column>
+    </h:dataTable>
+
+    <!-- 이전/다음 버튼 -->
+    <h:commandButton value="이전" action="#{userBean.previousPage}" disabled="#{userBean.userDto.pageConDto.firstPagFlg}" />
+    <h:commandButton value="다음" action="#{userBean.nextPage}" disabled="#{userBean.userDto.pageConDto.lastPagFlg}" />
+</h:form>
+```
+- `value="#{userBean.userDto.userList}"`: 데이터 테이블에서 `UserDto` 리스트를 바인딩합니다.
+- `disabled="#{userBean.userDto.pageConDto.firstPagFlg}"`: 첫 번째 페이지에서는 "이전" 버튼을 비활성화합니다.
+- `disabled="#{userBean.userDto.pageConDto.lastPagFlg}"`: 마지막 페이지에서는 "다음" 버튼을 비활성화합니다.
+
+---
+
+## 5. **JSF Managed Bean에서 페이징 로직 추가**
+JSF에서 "이전"과 "다음" 버튼을 눌렀을 때 페이지 번호를 변경하고 데이터를 다시 불러옵니다.
+
+```java
+@ManagedBean
+@SessionScoped
+public class UserBean {
+
+    @ManagedProperty("#{userService}")
+    private UserService userService;
+
+    private UserDto userDto;
+
+    @PostConstruct
+    public void init() {
+        userDto = userService.getUserList(1, 10); // 초기값: 첫 페이지, 10개씩 조회
+    }
+
+    public void previousPage() {
+        if (userDto.getPageConDto().getPag() > 1) {
+            userDto = userService.getUserList(userDto.getPageConDto().getPag() - 1, userDto.getPageConDto().getOneKns());
+        }
+    }
+
+    public void nextPage() {
+        if (!userDto.getPageConDto().isLastPagFlg()) {
+            userDto = userService.getUserList(userDto.getPageConDto().getPag() + 1, userDto.getPageConDto().getOneKns());
+        }
+    }
+
+    // Getter & Setter 생략...
+}
+```
+- `@PostConstruct`: JSF가 처음 로드될 때 첫 페이지 데이터를 불러옵니다.
+- `previousPage()`: 현재 페이지가 1보다 크면 이전 페이지를 불러옵니다.
+- `nextPage()`: 현재 페이지가 마지막 페이지가 아니면 다음 페이지를 불러옵니다.
+
+---
+
+## 6. **결과 예시**
+**처음 화면 (1페이지):**
+```
+사용자명      이메일
+----------------------
+홍길동       hong@test.com
+김철수       kim@test.com
+이영희       lee@test.com
+----------------------
+[이전] (비활성화)  [다음] (활성화)
+```
+
+**다음 페이지 클릭 (2페이지):**
+```
+사용자명      이메일
+----------------------
+박민수       park@test.com
+조윤서       cho@test.com
+----------------------
+[이전] (활성화)  [다음] (비활성화)
+```
+
+---
+
+## 7. **정리**
+✅ **MyBatis에서 LIMIT을 사용하여 페이징 쿼리 작성**  
+✅ **PageConDto를 통해 페이지 번호, 시작 위치, 끝 위치 설정**  
+✅ **JSF에서 데이터 바인딩 및 페이징 버튼 추가**  
+✅ **Managed Bean에서 페이지 이동 처리**  
+
+이제 `UserDto` 안에 `PageConDto`를 사용하여 JSF + MyBatis 기반의 페이징을 구현할 수 있습니다!
