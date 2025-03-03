@@ -1,0 +1,60 @@
+현재 코드에서 `requestMsg.pageControlDto`가 `totalRecords` 값을 설정한 후 새 객체로 다시 초기화되면서 다른 값들이 사라지는 문제가 발생하는 것 같습니다.  
+
+### **문제 분석**  
+1. `setPageControl()`을 통해 **Boolean 값**을 `requestMsg.pageControlDto`에 설정함.  
+2. 이후, `totalRecords` 값을 설정하기 위해 **새로운 `PageControlDto` 객체**를 생성하여 `requestMsg.pageControlDto`에 대입함.  
+   ```java
+   requestMsg.pageControlDto = new PageControlDto();
+   requestMsg.pageControlDto.settotalcnt(totalRecords);
+   ```
+   → 이 과정에서 **이전 DTO 객체의 데이터가 사라짐** (기존의 Boolean 값 등도 초기화됨).  
+
+---
+
+### **해결 방법**  
+새로운 `PageControlDto` 객체를 생성하는 대신, 기존 객체를 **재사용**하여 `totalRecords` 값을 유지하는 방법이 필요합니다.  
+#### ✅ 방법 1: 기존 DTO를 유지하면서 `totalRecords`만 추가 설정  
+```java
+// 기존 객체를 유지하면서 totalRecords 설정
+requestMsg.pageControlDto.settotalcnt(totalRecords);
+```
+#### ✅ 방법 2: 기존 값 복사 후 새로운 DTO에 반영  
+```java
+// 기존 DTO를 임시 변수에 저장
+PageControlDto oldPageControl = requestMsg.pageControlDto;
+
+// 새로운 DTO 생성 후 기존 값 유지
+requestMsg.pageControlDto = new PageControlDto();
+requestMsg.pageControlDto.setsearchPag(oldPageControl.getsearchPag());
+requestMsg.pageControlDto.setonepage(oldPageControl.getonepage());
+requestMsg.pageControlDto.setmaxpage(oldPageControl.getmaxpage());
+requestMsg.pageControlDto.setfirstFlg(oldPageControl.getfirstFlg());
+requestMsg.pageControlDto.setlastFlg(oldPageControl.getlastFlg());
+
+// totalRecords 설정
+requestMsg.pageControlDto.settotalcnt(totalRecords);
+```
+**🔹 장점:** 기존에 저장된 Boolean 값(`firstFlg`, `lastFlg` 등)이 유지됨.  
+
+---
+
+### **수정된 코드 예시**  
+```java
+// 기존 DTO 객체를 재사용
+requestMsg.pageControlDto = setPageControl(pattern, dispMaxLimit, searchMaxLimit, requestMsg.pageControlDto);
+
+// 기존의 pageControlDto 객체를 유지하면서 totalRecords 값 추가
+requestMsg.pageControlDto.settotalcnt(totalRecords);
+
+System.out.println("2回目 検索ページ: " + requestMsg.pageControlDto.getsearchPag());
+System.out.println("2回目 １ページ件数: " + requestMsg.pageControlDto.getonepage());
+System.out.println("2回目 最大表示件数: " + requestMsg.pageControlDto.getmaxpage());
+System.out.println("2回目 ※全体件数 : " + requestMsg.pageControlDto.gettotalcnt());
+```
+---
+
+### **결론**  
+❌ **잘못된 점:** `requestMsg.pageControlDto = new PageControlDto();` → **기존 데이터가 사라짐**  
+✅ **해결 방법:** 기존 `PageControlDto`를 유지하면서 `totalcnt` 값을 설정하거나, **새로운 DTO를 만들 경우 기존 값 복사**  
+
+이렇게 수정하면 `Boolean 값`과 `totalRecords` 값을 모두 유지하면서 정상적으로 페이징 처리가 될 거예요!
