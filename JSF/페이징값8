@@ -1,0 +1,108 @@
+현재 **"앞 버튼(-1)", "뒤 버튼(+1)"** 클릭 시 리스트 범위를 초과하면 `offset`에서 오류가 발생하고, **"맨뒤 버튼(0)"** 클릭 시도 동일한 문제가 발생하는 상황입니다.  
+
+---
+
+## **🔹 문제 분석**
+- **앞 버튼(-1)**: 첫 번째 페이지에서 더 감소하면 `offset`이 음수가 되어 오류 발생  
+- **뒤 버튼(+1)**: 마지막 페이지를 초과하면 리스트 범위를 벗어나 오류 발생  
+- **맨뒤 버튼(0)**: 무조건 `0`이 지정되므로 `offset` 계산이 잘못되어 오류 발생  
+
+---
+
+## **✅ 해결 방법**
+1. **페이지 번호가 범위를 초과하지 않도록 예외 처리**  
+   → **최소값(`1`)과 최대값(`totalPages`)을 벗어나지 않도록 제한**  
+2. **맨뒤 버튼 클릭 시 `totalPages` 값을 설정**  
+   → **맨뒤 버튼을 클릭하면 `totalPages`로 이동하도록 변경**  
+
+---
+
+## **📌 1. `setPageControl()`에서 범위 초과 방지**
+아래처럼 `currentPage` 값이 **1보다 작거나, totalPages보다 크지 않도록 제한**하면 됩니다.  
+
+```java
+public PageControlDto setPageControl(String pattern, int dispMaxLimit, int searchMaxLimit, PageControlDto dto, int totalPages) {
+    if (dto == null) {
+        dto = new PageControlDto(); // DTO가 null이면 새 객체 생성
+    }
+
+    int currentPage = dto.getsearchPag(); // 현재 페이지 값 가져오기
+
+    if ("1".equals(pattern)) { // 맨앞 버튼 (1 페이지로 이동)
+        currentPage = 1;
+    } else if ("-1".equals(pattern)) { // 앞 버튼 (현재 페이지 - 1)
+        currentPage = Math.max(1, currentPage - 1);
+    } else if ("+1".equals(pattern)) { // 뒤 버튼 (현재 페이지 + 1)
+        currentPage = Math.min(totalPages, currentPage + 1);
+    } else if ("0".equals(pattern)) { // 맨뒤 버튼 (마지막 페이지로 이동)
+        currentPage = totalPages;
+    }
+
+    dto.setsearchPag(currentPage); // 변경된 페이지 값 저장
+    dto.setonepage(dispMaxLimit);
+    dto.setmaxpage(searchMaxLimit);
+
+    return dto;
+}
+```
+✅ **`Math.max(1, currentPage - 1)` → 최소 1을 유지하여 음수 방지**  
+✅ **`Math.min(totalPages, currentPage + 1)` → 마지막 페이지 초과 방지**  
+✅ **맨뒤 버튼 `"0"` 클릭 시 `totalPages`로 설정**하여 오류 해결  
+
+---
+
+## **📌 2. `setPageControl()` 호출 및 DTO 값 설정**
+아래 코드에서 `totalPages` 값을 넘겨줘야 합니다.
+
+```java
+// 총 페이지 수 계산
+int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+
+// DTO 값 설정 (totalPages를 추가로 넘김)
+requestMsg.pageControlDto = setPageControl(pattern, dispMaxLimit, searchMaxLimit, requestMsg.pageControlDto, totalPages);
+
+// 검색 처리 후 totalRecords 값 설정
+requestMsg.pageControlDto.settotalcnt(totalRecords);
+
+// offset 계산 시 오류 방지
+int offset = (requestMsg.pageControlDto.getsearchPag() - 1) * pageSize;
+offset = Math.max(0, offset); // 음수 방지
+```
+✅ **offset 계산 시 `Math.max(0, offset);` 적용하여 음수 방지**  
+✅ **totalPages를 `setPageControl()`에 전달하여 정확한 페이지 수 유지**  
+
+---
+
+## **📌 3. 버튼 클릭 시 JSF에서 `pattern` 값 전달**
+```xhtml
+<h:commandButton value="<< 맨앞" action="#{userBean.changePage('1')}" />
+<h:commandButton value="< 앞" action="#{userBean.changePage('-1')}" />
+<h:commandButton value="뒤 >" action="#{userBean.changePage('+1')}" />
+<h:commandButton value="맨뒤 >>" action="#{userBean.changePage('0')}" />
+```
+```java
+public void changePage(String pattern) {
+    // 페이징 업데이트
+    requestMsg.pageControlDto = setPageControl(pattern, dispMaxLimit, searchMaxLimit, requestMsg.pageControlDto, totalPages);
+}
+```
+✅ **버튼 클릭 시 `pattern` 값을 `setPageControl()`에 전달**하여 페이지 변경  
+
+---
+
+## **🔹 최종 정리**
+| 버튼 | 기존 동작 (문제) | 수정 후 동작 (정상) |
+|------|------------------|------------------|
+| 맨앞 (`1`) | 무조건 1로 이동 | 그대로 유지 |
+| 앞 (`-1`) | 1페이지에서 누르면 `0`이 되어 오류 | **1 이하로 못 내려가게 수정** |
+| 뒤 (`+1`) | 마지막 페이지에서 누르면 `totalPages+1`이 되어 오류 | **totalPages 이상 못 올라가게 수정** |
+| 맨뒤 (`0`) | `0`으로 이동하여 `offset` 오류 | **totalPages로 이동하도록 수정** |
+
+---
+
+## **✅ 결론**
+✔ **버튼 클릭 시 범위를 초과하지 않도록 `Math.max()`, `Math.min()` 적용**  
+✔ **맨뒤 버튼 `"0"`을 `totalPages`로 설정하여 마지막 페이지로 이동**  
+✔ **offset 계산 시 `Math.max(0, offset);`로 음수 방지**  
+
+이제 **offset 에러 없이 페이징 기능이 정상적으로 동작할 거예요!**
