@@ -1,0 +1,88 @@
+네, `setPageControl()` 메서드를 통해 `requestMsg.pageControlDto` 값을 설정하고 DTO를 반환받아 사용하는 방식은 **좋은 방식**입니다.  
+이렇게 하면 `setPageControl()` 내부에서 조건을 설정하여 `PageControlDto` 객체의 값을 동적으로 변경할 수 있습니다.  
+
+---
+
+## **✅ `setPageControl()` 방식이 괜찮은 이유**  
+1. **DTO 객체 재사용 가능** → 기존 DTO 값을 유지하면서 새로운 값을 설정 가능  
+2. **가독성이 높아짐** → `setPageControl()`을 호출하면 DTO 값이 자동으로 설정됨  
+3. **유지보수 편리** → DTO 변경이 필요할 때 `setPageControl()` 메서드만 수정하면 됨  
+
+---
+
+## **📌 1. `setPageControl()` 메서드에서 조건문으로 DTO 값 설정**
+`setPageControl()` 메서드를 정의하여 특정 조건에 따라 DTO 값을 설정하는 방법입니다.  
+
+```java
+public PageControlDto setPageControl(String pattern, int dispMaxLimit, int searchMaxLimit, PageControlDto dto) {
+    if (dto == null) {
+        dto = new PageControlDto(); // DTO가 null이면 새 객체 생성
+    }
+
+    // 패턴에 따라 특정 값을 설정
+    if ("2".equals(pattern)) {
+        dto.setsearchPag(1); // 1페이지로 이동
+        dto.setfirstFlg(true);  // 첫 페이지 여부 설정
+    } else if ("3".equals(pattern)) {
+        dto.setsearchPag(2); // 2페이지로 이동
+        dto.setfirstFlg(false);
+        dto.setlastFlg(false);
+    } else {
+        // 기본적으로 현재 페이지 유지
+        dto.setsearchPag(dto.getsearchPag());
+    }
+
+    // 최대 표시 개수와 검색 최대 개수 설정
+    dto.setonepage(dispMaxLimit);
+    dto.setmaxpage(searchMaxLimit);
+
+    return dto;
+}
+```
+✅ **기존 `dto` 객체를 유지하면서 값만 변경**  
+✅ `"2"`, `"3"` 등 특정 패턴 값에 따라 **페이지 번호, 플래그 값 변경**  
+✅ DTO가 `null`이면 **새 객체를 생성하여 반환**  
+
+---
+
+## **📌 2. `setPageControl()`의 반환 값을 사용하여 DTO 설정**
+이제 `setPageControl()`을 호출하여 `requestMsg.pageControlDto`를 업데이트합니다.  
+
+```java
+// DTO 값을 설정하고 반환받아 사용
+requestMsg.pageControlDto = setPageControl(pattern, dispMaxLimit, searchMaxLimit, requestMsg.pageControlDto);
+
+// 검색 처리 후 totalRecords 값 설정
+requestMsg.pageControlDto.settotalcnt(totalRecords);
+```
+✅ **DTO 값을 직접 반환받아 사용**하여 새로운 값을 반영  
+✅ `totalRecords` 값도 추가로 설정 가능  
+
+---
+
+## **📌 3. DTO 값 사용하기**
+JSF나 다른 클래스에서 DTO 값을 가져와 사용할 수도 있습니다.  
+
+### **✅ DTO 값을 직접 사용**
+```java
+int currentPage = requestMsg.pageControlDto.getsearchPag();
+boolean isLastPage = requestMsg.pageControlDto.getlastFlg();
+
+System.out.println("현재 페이지: " + currentPage);
+System.out.println("마지막 페이지 여부: " + isLastPage);
+```
+
+### **✅ JSF에서 DTO 값 사용 (XHTML)**
+```xhtml
+<h:outputText value="현재 페이지: #{userBean.requestMsg.pageControlDto.searchPag}" />
+<h:outputText value="전체 데이터 개수: #{userBean.requestMsg.pageControlDto.totalcnt}" />
+```
+
+---
+
+## **🔹 결론**
+✅ `setPageControl()`을 사용하여 DTO 값을 설정하고 반환받아 사용 → **좋은 방식!**  
+✅ 기존 `requestMsg.pageControlDto`를 유지하면서 특정 값만 변경 가능  
+✅ DTO 값을 **직접 사용**하거나, JSF 등에서 활용 가능  
+
+이제 `setPageControl()`을 활용하여 유연하게 페이징을 조작할 수 있을 거예요!
