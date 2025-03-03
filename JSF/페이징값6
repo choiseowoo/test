@@ -1,0 +1,51 @@
+네, **1번 방법(기존 DTO를 유지하면서 `totalRecords`만 추가 설정)**을 구체적으로 설명해 드릴게요.  
+
+---
+
+### **🔹 기존 코드의 문제점**  
+```java
+requestMsg.pageControlDto = new PageControlDto();
+requestMsg.pageControlDto.settotalcnt(totalRecords);
+```
+위 코드는 **새로운 `PageControlDto` 객체를 생성**하기 때문에, 기존의 **검색 페이지 번호, Boolean 값(`firstFlg`, `lastFlg`)** 등이 모두 초기화됩니다.  
+
+---
+
+### **✅ 해결 방법: 기존 DTO 유지하면서 `totalRecords` 값만 추가 설정**  
+
+#### **1️⃣ 기존 DTO 유지하면서 값 설정**
+기존의 `requestMsg.pageControlDto`를 그대로 유지하고 `settotalcnt(totalRecords);`만 추가하면 됩니다.  
+```java
+// 기존의 pageControlDto를 유지하면서 totalRecords 값만 추가 설정
+requestMsg.pageControlDto.settotalcnt(totalRecords);
+```
+이렇게 하면 기존에 `setPageControl()`에서 설정한 값들이 그대로 남아있고, `totalRecords` 값만 추가됩니다.  
+
+---
+
+#### **2️⃣ 최종 수정된 코드**
+```java
+// 기존 DTO 객체를 유지하면서 Boolean 값과 검색 페이지 정보 유지
+requestMsg.pageControlDto = setPageControl(pattern, dispMaxLimit, searchMaxLimit, requestMsg.pageControlDto);
+
+// 검색 처리 후 totalRecords(전체 데이터 개수) 설정
+requestMsg.pageControlDto.settotalcnt(totalRecords);
+
+// 확인용 로그 출력
+System.out.println("検索ページ: " + requestMsg.pageControlDto.getsearchPag());
+System.out.println("１ページ件数: " + requestMsg.pageControlDto.getonepage());
+System.out.println("最大表示件数: " + requestMsg.pageControlDto.getmaxpage());
+System.out.println("※全体件数 : " + requestMsg.pageControlDto.gettotalcnt());
+System.out.println("最終頁フラグ: " + requestMsg.pageControlDto.getlastFlg());
+System.out.println("前頁フラグ: " + requestMsg.pageControlDto.getfirstFlg());
+System.out.println("検索開始行位置 : " + requestMsg.pageControlDto.startsearchpos());
+System.out.println("検索終了行位置 : " + requestMsg.pageControlDto.lastsearchpos());
+```
+---
+
+### **📌 요약**  
+✅ `requestMsg.pageControlDto`를 **새로 생성하지 않고** 기존 객체를 유지하면서 `totalRecords` 값만 추가  
+✅ 기존의 Boolean 값(`firstFlg`, `lastFlg`), 페이지 정보(`searchPag`, `onepage` 등)를 유지  
+✅ 불필요한 객체 초기화 없이 기존 데이터를 유지하여 페이징 정상 동작  
+
+이제 `Boolean 값`도 유지되고, `totalRecords`도 정상적으로 반영될 거예요!
