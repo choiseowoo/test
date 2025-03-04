@@ -1,0 +1,35 @@
+`NullPointerException`이 발생하는 이유는 `MsSession mesession = null;`로 선언했기 때문에 `mesession`이 `null`인 상태에서 `mesession.getSession()`을 호출하려고 했기 때문입니다.  
+
+### 해결 방법
+1. **객체를 초기화하기**  
+   `mesession`을 `null`로 두지 말고, `new` 키워드를 사용하여 객체를 생성하면 됩니다.
+   ```java
+   MsSession mesession = new MsSession(); // 객체 생성
+   mesession.getSession(); // 이제 NullPointerException이 발생하지 않음
+   ```
+
+2. **싱글턴 패턴 사용 (만약 MsSession이 싱글턴 클래스라면)**  
+   만약 `MsSession`이 싱글턴 클래스로 구현되어 있다면, 올바르게 인스턴스를 가져와야 합니다.
+   ```java
+   MsSession mesession = MsSession.getInstance(); // 싱글턴 인스턴스 가져오기
+   mesession.getSession();
+   ```
+
+3. **객체가 null인지 체크하기**  
+   `mesession`이 `null`일 가능성이 있다면, `if`문을 사용하여 체크하고 적절한 조치를 취할 수 있습니다.
+   ```java
+   if (mesession != null) {
+       mesession.getSession();
+   } else {
+       System.out.println("mesession이 null입니다. 초기화가 필요합니다.");
+   }
+   ```
+
+4. **DI(의존성 주입) 확인**  
+   만약 `MsSession`이 Spring이나 CDI 같은 프레임워크에서 관리되는 빈(bean)이라면, `new MsSession()`로 생성하는 것이 아니라 의존성 주입을 통해 가져와야 합니다.
+   ```java
+   @Inject
+   private MsSession mesession;
+   ```
+
+위 방법 중에서 `MsSession`의 구현 방식에 맞는 해결 방법을 적용하면 `NullPointerException`을 해결할 수 있습니다. `MsSession`의 생성 방식이 어떻게 되어 있는지 확인해 보세요.
