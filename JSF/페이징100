@@ -1,0 +1,75 @@
+### **해결 방법: `0` 대신 `totalPages` 값으로 설정**  
+
+현재 코드에서 **맨뒤 이동 (`SEARCH_LAST_PAGE`) 시 `pageControlDto.setPag(0);`** 로 설정되는데,  
+`0`은 유효한 페이지 값이 아니기 때문에 `NullPointerException` 이 발생할 가능성이 크다.  
+
+#### **✅ 해결 방법**
+- `0` 대신 `totalPages` 값을 할당하여 유효한 페이지 번호로 설정  
+- `pageControlDto`가 `null`이 아닐 때만 접근하도록 방어 코드 추가  
+
+---
+
+### **✅ 수정 코드**
+```java
+public PageControlDto updatePageControl(String pattern, PageControlDto pageControlDto, int totalPages) {
+    if (pageControlDto == null) {
+        pageControlDto = new PageControlDto(); // NullPointer 방지
+    }
+
+    // 표시
+    if (SEARCH_PAGE.equals(pattern)) {
+        pageControlDto.setPag(1);
+        pageControlDto.setlastPagFlg(false);
+        pageControlDto.setfirstPagFlg(false);
+    }
+    // 맨앞이동
+    else if (SEARCH_FIRST_PAGE.equals(pattern)) {
+        pageControlDto.setPag(1);
+        pageControlDto.setlastPagFlg(false);
+        pageControlDto.setfirstPagFlg(false);
+    }
+    // 앞이동
+    else if (SEARCH_PREV_PAGE.equals(pattern)) {
+        int prevPage = pageControlDto.getPag() - 1;
+        pageControlDto.setPag(Math.max(1, prevPage));  // 최소 1페이지 유지
+        pageControlDto.setlastPagFlg(false);
+        pageControlDto.setfirstPagFlg(prevPage <= 1);  // 1이면 true
+    }
+    // 뒤이동
+    else if (SEARCH_NEXT_PAGE.equals(pattern)) {
+        int nextPage = pageControlDto.getPag() + 1;
+        pageControlDto.setPag(Math.min(totalPages, nextPage));  // 최대 totalPages 유지
+        pageControlDto.setlastPagFlg(nextPage >= totalPages);  // 마지막 페이지이면 true
+        pageControlDto.setfirstPagFlg(false);
+    }
+    // 맨뒤이동 (수정된 부분)
+    else if (SEARCH_LAST_PAGE.equals(pattern)) {
+        pageControlDto.setPag(totalPages);  // 0이 아니라 totalPages로 설정
+        pageControlDto.setlastPagFlg(true);
+        pageControlDto.setfirstPagFlg(false);
+    }
+    // 재표시
+    else if (SEARCH_REFRESH.equals(pattern)) {
+        pageControlDto.setlastPagFlg(false);
+        pageControlDto.setfirstPagFlg(false);
+    }
+
+    return pageControlDto;
+}
+```
+
+---
+
+### **🚀 수정된 점**
+1. **`0` 대신 `totalPages` 값 사용**  
+   - 기존: `pageControlDto.setPag(0);`  
+   - 변경: `pageControlDto.setPag(totalPages);`  
+
+2. **`NullPointerException` 방지**  
+   - `pageControlDto == null` 일 경우 새 객체 생성
+
+3. **페이지 값의 유효성 검증**  
+   - `앞이동`: `Math.max(1, prevPage);` (최소 `1` 유지)  
+   - `뒤이동`: `Math.min(totalPages, nextPage);` (최대 `totalPages` 유지)  
+
+이제 맨뒤이동 버튼을 눌러도 `NullPointerException` 없이 정상 작동할 것이다!
