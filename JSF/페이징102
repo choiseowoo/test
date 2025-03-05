@@ -1,0 +1,34 @@
+위 코드에서 `맨뒤이동` 버튼을 클릭할 때 `pageControlDto.setPag(0)`으로 설정하는 부분이 문제입니다. `setPag(0)`을 하면 `pageControlDto`의 페이지 값이 0으로 설정되기 때문에, 이후의 처리 과정에서 페이지 값이 비정상적으로 처리될 수 있고, 특히 페이지 값이 `null`로 처리되어 null 포인터 예외가 발생할 수 있습니다.
+
+### **해결 방법**
+`맨뒤이동` 버튼을 클릭할 때 `setPag(0)`이 아닌 **`setPag(totalPages)`**로 설정해야 합니다. `setPag(0)`이 아니라 **마지막 페이지 번호**로 설정하여 페이지가 정상적으로 로딩되도록 해야 합니다.
+
+### **수정된 코드 예시**
+
+```java
+// 맨뒤이동
+else if (SEARCH_LAST_PAGE.equals(pattern)) {
+    pageControlDto.setPag(pageControlDto.getTotalPages()); // 마지막 페이지 번호로 설정
+    pageControlDto.setlastPagFlg(true); // 최종 페이지
+    pageControlDto.setfirstPagFlg(false); // 앞 페이지
+}
+```
+
+### **상세 설명**
+1. `pageControlDto.setPag(0)`을 `pageControlDto.setPag(pageControlDto.getTotalPages())`로 수정합니다.
+2. `pageControlDto.getTotalPages()`는 전체 페이지 수를 저장하는 변수이므로, 이를 통해 맨 마지막 페이지로 이동할 수 있습니다.
+3. 페이지 번호가 0이 되지 않도록 하고, `null` 에러를 방지할 수 있습니다.
+
+### **전체적인 흐름**
+1. **맨뒤이동** 버튼을 클릭하면, `pageControlDto.setPag(pageControlDto.getTotalPages())`로 설정해 마지막 페이지로 이동합니다.
+2. 이후, `pageControlDto.getPag()` 값이 정상적으로 마지막 페이지를 가리키며, 페이지가 0으로 처리되는 문제가 해결됩니다.
+
+### **추가 사항**
+- 만약 `getTotalPages()` 메서드가 없다면, 페이지를 계산할 수 있는 로직을 추가해야 합니다. 예를 들어, `totalRecords`와 `pageSize`를 기반으로 `totalPages`를 계산하는 방식입니다.
+
+```java
+int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+pageControlDto.setTotalPages(totalPages);
+```
+
+이렇게 변경하면 `맨뒤이동`을 클릭해도 `null` 에러가 발생하지 않으며, 정상적으로 마지막 페이지로 이동할 수 있습니다.
