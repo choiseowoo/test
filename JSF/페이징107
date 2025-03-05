@@ -1,0 +1,199 @@
+맞습니다. 제공된 코드는 `PageControlDto`를 사용하여 페이지네이션을 처리하는 로직을 설명하고 있지만, 이전에 보여드린 코드에는 `PageControlDto` 객체를 사용하는 방식이 포함되지 않았습니다. 
+
+아래는 `PageControlDto`를 포함한 전체 코드 예시입니다. `getPagedData` 메서드는 `PageControlDto`를 받아 페이지네이션을 처리하는 방식으로 개선되었습니다.
+
+### 개선된 코드: `PageControlDto`와 함께하는 페이지네이션
+
+#### **1. `PageControlDto` 클래스**
+
+`PageControlDto`는 페이지 정보를 담고 있는 DTO(Data Transfer Object)입니다. 페이지 크기와 현재 페이지를 저장하고, 총 페이지 수나 다른 페이지 관련 정보를 계산할 수 있도록 합니다.
+
+```java
+public class PageControlDto {
+    private int pag;           // 현재 페이지
+    private int pageSize;      // 페이지 크기 (한 페이지에 표시될 레코드 수)
+    private int totalRecords;  // 총 레코드 수
+    private int totalPages;    // 총 페이지 수
+    private boolean firstPagFlg;  // 첫 페이지 여부
+    private boolean lastPagFlg;   // 마지막 페이지 여부
+    
+    // Getters and Setters
+    public int getPag() {
+        return pag;
+    }
+
+    public void setPag(int pag) {
+        this.pag = pag;
+    }
+
+    public int getPageSize() {
+        return pageSize;
+    }
+
+    public void setPageSize(int pageSize) {
+        this.pageSize = pageSize;
+    }
+
+    public int getTotalRecords() {
+        return totalRecords;
+    }
+
+    public void setTotalRecords(int totalRecords) {
+        this.totalRecords = totalRecords;
+    }
+
+    public int getTotalPages() {
+        return totalPages;
+    }
+
+    public void setTotalPages(int totalPages) {
+        this.totalPages = totalPages;
+    }
+
+    public boolean isFirstPagFlg() {
+        return firstPagFlg;
+    }
+
+    public void setFirstPagFlg(boolean firstPagFlg) {
+        this.firstPagFlg = firstPagFlg;
+    }
+
+    public boolean isLastPagFlg() {
+        return lastPagFlg;
+    }
+
+    public void setLastPagFlg(boolean lastPagFlg) {
+        this.lastPagFlg = lastPagFlg;
+    }
+}
+```
+
+#### **2. `DataDao`에서 페이징 처리**
+
+`DataDao` 클래스에서 `PageControlDto`를 사용하여 페이지네이션을 처리하는 메서드를 작성합니다. `jdbcTemplate`을 사용하여 데이터베이스에서 데이터를 가져옵니다.
+
+```java
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.List;
+
+public class DataDao {
+    private JdbcTemplate jdbcTemplate;
+
+    public DataDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    // 데이터베이스에서 총 레코드 수 가져오기
+    public int getTotalRecords() {
+        String countQuery = "SELECT COUNT(*) FROM data_table";
+        return jdbcTemplate.queryForObject(countQuery, Integer.class);
+    }
+
+    // 페이지네이션된 데이터 가져오기
+    public List<Data> getPagedData(PageControlDto pageControlDto) {
+        int pageSize = pageControlDto.getPageSize();
+        int currentPage = pageControlDto.getPag();
+        
+        // 총 레코드 수 계산
+        int totalRecords = getTotalRecords();  // 데이터베이스에서 총 레코드 수를 가져오는 메서드
+        int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+        
+        // 페이지 값이 유효하지 않으면 수정
+        if (currentPage < 1) {
+            currentPage = 1;  // 페이지가 1보다 작으면 1로 설정
+        } 
+        if (currentPage > totalPages) {
+            currentPage = totalPages;  // 페이지가 전체 페이지 수를 초과하면 마지막 페이지로 설정
+        }
+
+        // OFFSET 계산
+        int offset = (currentPage - 1) * pageSize;
+
+        // SQL 쿼리
+        String query = "SELECT * FROM data_table LIMIT " + pageSize + " OFFSET " + offset;
+
+        // 데이터베이스에서 페이징된 데이터를 가져옴
+        List<Data> dataList = jdbcTemplate.query(query, new DataRowMapper());
+
+        // 페이지 정보 설정
+        pageControlDto.setTotalRecords(totalRecords);
+        pageControlDto.setTotalPages(totalPages);
+        pageControlDto.setFirstPagFlg(currentPage == 1);
+        pageControlDto.setLastPagFlg(currentPage == totalPages);
+
+        return dataList;
+    }
+}
+```
+
+#### **3. `DataRowMapper` 클래스**
+
+`DataRowMapper`는 데이터베이스에서 가져온 결과를 `Data` 객체로 매핑하는 클래스입니다. 예시로 간단히 구현할 수 있습니다.
+
+```java
+import org.springframework.jdbc.core.RowMapper;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class DataRowMapper implements RowMapper<Data> {
+    @Override
+    public Data mapRow(ResultSet rs, int rowNum) throws SQLException {
+        Data data = new Data();
+        data.setId(rs.getInt("id"));
+        data.setName(rs.getString("name"));
+        // 필요한 다른 필드들도 추가
+        return data;
+    }
+}
+```
+
+#### **4. `Data` 클래스**
+
+`Data` 클래스는 데이터베이스에서 가져온 레코드를 저장하는 모델 클래스입니다.
+
+```java
+public class Data {
+    private int id;
+    private String name;
+
+    // Getters and Setters
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+```
+
+#### **5. 사용 예시**
+
+`DataDao`에서 페이지네이션된 데이터를 가져오는 예시입니다. `PageControlDto` 객체를 전달하여 페이지네이션을 처리하고, 결과를 받아옵니다.
+
+```java
+PageControlDto pageControlDto = new PageControlDto();
+pageControlDto.setPageSize(10);  // 페이지 크기 설정
+pageControlDto.setPag(1);        // 현재 페이지 설정
+
+DataDao dataDao = new DataDao(jdbcTemplate);
+List<Data> dataList = dataDao.getPagedData(pageControlDto);
+
+// 페이지 정보 확인
+System.out.println("Total Records: " + pageControlDto.getTotalRecords());
+System.out.println("Total Pages: " + pageControlDto.getTotalPages());
+System.out.println("Is First Page: " + pageControlDto.isFirstPagFlg());
+System.out.println("Is Last Page: " + pageControlDto.isLastPagFlg());
+```
+
+### **결론**
+
+위 코드에서 `PageControlDto`를 사용하여 페이지네이션을 처리하고, `jdbcTemplate`을 이용해 데이터베이스에서 페이지에 맞는 데이터를 가져옵니다. 또한, 페이지 번호가 유효한지 확인하고, 페이지가 범위를 벗어나지 않도록 조정하는 로직도 포함되었습니다. `DataDao`에서 페이지와 관련된 로직을 처리하고, `DataRowMapper`를 사용하여 데이터베이스 결과를 Java 객체로 변환하는 방식입니다.
