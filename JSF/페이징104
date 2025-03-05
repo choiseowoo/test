@@ -1,0 +1,110 @@
+`SQL`이나 `DAO`에서 `맨뒤이동` 에러를 제어하는 방법은 페이지네이션을 처리하는 로직을 `DAO` 레벨에서 수정하여, 페이지 값이 범위를 벗어나지 않도록 제어하는 방식입니다. 이를 위해서는 페이지 값을 설정할 때 SQL 쿼리 내에서 `페이지 값`을 체크하거나, `DAO`에서 페이지 값이 유효한지 먼저 확인하고, 유효하지 않으면 적절한 값을 설정하는 방식으로 해결할 수 있습니다.
+
+### **방법 1: DAO에서 페이지 값 체크**
+먼저, `DAO`에서 페이지 값을 체크하여 유효하지 않으면 올바른 페이지로 설정하는 방법입니다. 예를 들어, 맨뒤이동에서 `pageControlDto.setPag(0)`가 들어간다면, `0` 대신 `totalPages`를 설정하도록 유효성 검사를 할 수 있습니다.
+
+```java
+public PageControlDto getPageControlDto(String pattern, PageControlDto pageControlDto) {
+    // 총 페이지 수 계산
+    int totalRecords = getTotalRecords();  // 예: 데이터베이스에서 총 레코드 수 가져오기
+    int pageSize = pageControlDto.getPageSize();  // 페이지당 아이템 수
+    int totalPages = (int) Math.ceil((double) totalRecords / pageSize); // 전체 페이지 수 계산
+
+    // 맨뒤이동
+    if (SEARCH_LAST_PAGE.equals(pattern)) {
+        // 마지막 페이지가 0으로 설정되지 않도록, 전체 페이지 수를 설정
+        pageControlDto.setPag(totalPages); // 마지막 페이지로 이동
+        pageControlDto.setlastPagFlg(true); // 최종 페이지
+        pageControlDto.setfirstPagFlg(false); // 앞 페이지
+    }
+    // 나머지 조건들 처리
+    else if (SEARCH_PAGE.equals(pattern)) {
+        pageControlDto.setPag(1);
+        pageControlDto.setlastPagFlg(false);
+        pageControlDto.setfirstPagFlg(false);
+    }
+    else if (SEARCH_FIRST_PAGE.equals(pattern)) {
+        pageControlDto.setPag(1);
+        pageControlDto.setlastPagFlg(false);
+        pageControlDto.setfirstPagFlg(false);
+    }
+    else if (SEARCH_PREV_PAGE.equals(pattern)) {
+        pageControlDto.setPag(pageControlDto.getPag() - 1);
+        pageControlDto.setlastPagFlg(false);
+        pageControlDto.setfirstPagFlg(true);
+    }
+    else if (SEARCH_NEXT_PAGE.equals(pattern)) {
+        pageControlDto.setPag(pageControlDto.getPag() + 1);
+        pageControlDto.setlastPagFlg(false);
+        pageControlDto.setfirstPagFlg(false);
+    }
+    else if (SEARCH_REFRESH.equals(pattern)) {
+        pageControlDto.setlastPagFlg(false);
+        pageControlDto.setfirstPagFlg(false);
+    }
+
+    // 페이지 값이 범위 내에 있도록 확인
+    if (pageControlDto.getPag() < 1) {
+        pageControlDto.setPag(1);  // 페이지 값이 1 미만이면 1로 설정
+    }
+    if (pageControlDto.getPag() > totalPages) {
+        pageControlDto.setPag(totalPages);  // 페이지 값이 전체 페이지 수를 초과하면 마지막 페이지로 설정
+    }
+
+    return pageControlDto;
+}
+```
+
+### **방법 2: SQL 쿼리에서 페이지 값 유효성 체크**
+SQL 쿼리에서 `LIMIT` 및 `OFFSET`을 사용할 때, 페이지 값이 범위 내에 있는지 먼저 확인하는 방법입니다. `MySQL`, `PostgreSQL` 등의 데이터베이스에서는 `LIMIT`과 `OFFSET`을 사용해 페이징 처리할 때, 페이지 값이 범위를 벗어나지 않도록 `SQL` 쿼리에서 처리할 수 있습니다.
+
+```java
+public List<Data> getPagedData(PageControlDto pageControlDto) {
+    int pageSize = pageControlDto.getPageSize();
+    int page = pageControlDto.getPag();
+    
+    // 총 레코드 수 계산
+    int totalRecords = getTotalRecords();  // 데이터베이스에서 총 레코드 수를 가져오는 메서드
+    int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+    
+    // 페이지 값이 유효하지 않으면 수정
+    if (page < 1) {
+        page = 1;  // 페이지가 1보다 작으면 1로 설정
+    } 
+    if (page > totalPages) {
+        page = totalPages;  // 페이지가 전체 페이지 수를 초과하면 마지막 페이지로 설정
+    }
+
+    int offset = (page - 1) * pageSize;  // OFFSET 계산
+
+    // SQL 쿼리
+    String query = "SELECT * FROM data_table LIMIT " + pageSize + " OFFSET " + offset;
+
+    // 데이터베이스에서 페이징된 데이터를 가져옴
+    List<Data> dataList = jdbcTemplate.query(query, new DataRowMapper());
+
+    return dataList;
+}
+```
+
+### **방법 3: SQL에서 `CASE` 사용하여 페이지 범위 제어**
+`SQL`에서 `CASE` 문을 사용하여 페이지 번호가 범위를 벗어났을 때, 자동으로 유효한 값으로 변경해주는 방법입니다. 이 방법은 쿼리 자체에서 제어할 수 있는 방법입니다.
+
+```sql
+SELECT *
+FROM data_table
+LIMIT 10
+OFFSET 
+    CASE 
+        WHEN page < 1 THEN 0
+        WHEN page > (SELECT COUNT(*) / 10 FROM data_table) THEN (SELECT COUNT(*) / 10 FROM data_table)
+        ELSE (page - 1) * 10
+    END;
+```
+
+### **요약**
+1. **DAO에서 페이지 값 체크**: `DAO`에서 페이지 값을 체크하여 유효하지 않은 값을 수정합니다. 예를 들어, `맨뒤이동` 시 `pageControlDto.setPag(totalPages)`로 마지막 페이지로 설정합니다.
+2. **SQL에서 페이지 값 유효성 검증**: `LIMIT`과 `OFFSET`을 사용할 때 페이지 값을 제어하는 방법입니다. `SQL`에서 직접 유효한 페이지로 처리할 수 있습니다.
+3. **`SQL`에서 `CASE`문 사용**: `SQL`에서 페이지 값이 유효하지 않으면 자동으로 조정할 수 있습니다.
+
+이렇게 `DAO`나 `SQL`에서 페이지 값의 유효성을 체크하여 `맨뒤이동` 시 발생하는 에러를 방지할 수 있습니다.
