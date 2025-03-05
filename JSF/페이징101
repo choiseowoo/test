@@ -1,0 +1,173 @@
+검색 페이지에서 페이징 처리하는 전체 예제를 **SQL, DAO, Service, Bean(JSF Managed Bean), DTO**를 포함하여 만들어볼게.  
+
+---
+
+# **📌 전체 예제 코드**  
+- **DB 테이블:** `users (id, name, email, created_at)`
+- **페이징 방식:** `LIMIT, OFFSET`을 사용한 페이징  
+- **패턴:** `맨앞이동(1), 앞이동(2), 뒤이동(3), 맨뒤이동(4), 재설정(6)`
+
+---
+
+## **1️⃣ SQL (MyBatis XML 기반 예제)**  
+
+```xml
+<select id="searchUsers" resultType="UserDto">
+    SELECT id, name, email, created_at 
+    FROM users 
+    ORDER BY created_at DESC
+    LIMIT #{pageSize} OFFSET #{offset}
+</select>
+
+<select id="countTotalUsers" resultType="int">
+    SELECT COUNT(*) FROM users
+</select>
+```
+🔹 `LIMIT #{pageSize}` → 한 번에 가져올 개수  
+🔹 `OFFSET #{offset}` → 시작 위치  
+
+---
+
+## **2️⃣ DTO (PageControlDto.java)**
+```java
+@Data
+public class PageControlDto {
+    private int currentPage;  // 현재 페이지
+    private int pageSize;     // 페이지 크기
+    private int totalRecords; // 전체 데이터 개수
+    private int totalPages;   // 전체 페이지 개수
+
+    private boolean firstPageFlag; // 첫 페이지 여부
+    private boolean lastPageFlag;  // 마지막 페이지 여부
+}
+```
+
+---
+
+## **3️⃣ DAO (UserDao.java)**  
+```java
+@Mapper
+public interface UserDao {
+    List<UserDto> searchUsers(@Param("pageSize") int pageSize, @Param("offset") int offset);
+    int countTotalUsers();
+}
+```
+🔹 `countTotalUsers()` → 전체 개수를 구해서 페이징에 활용  
+
+---
+
+## **4️⃣ Service (UserService.java)**  
+```java
+@Service
+public class UserService {
+    @Autowired
+    private UserDao userDao;
+
+    public PageControlDto getUserList(int requestedPage, int pageSize) {
+        int totalRecords = userDao.countTotalUsers();
+        int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+
+        int currentPage = Math.max(1, Math.min(requestedPage, totalPages)); // 최소 1, 최대 totalPages 보장
+        int offset = (currentPage - 1) * pageSize;
+
+        List<UserDto> users = userDao.searchUsers(pageSize, offset);
+
+        // DTO 설정
+        PageControlDto pageControl = new PageControlDto();
+        pageControl.setCurrentPage(currentPage);
+        pageControl.setPageSize(pageSize);
+        pageControl.setTotalRecords(totalRecords);
+        pageControl.setTotalPages(totalPages);
+        pageControl.setFirstPageFlag(currentPage == 1);
+        pageControl.setLastPageFlag(currentPage == totalPages);
+
+        return pageControl;
+    }
+}
+```
+🔹 `currentPage`가 0이면 `1`로 보정  
+🔹 `currentPage`가 `totalPages`보다 크면 `totalPages`로 보정  
+
+---
+
+## **5️⃣ Managed Bean (UserBean.java, JSF 사용)**  
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    @EJB
+    private UserService userService;
+
+    private PageControlDto pageControl;
+    private List<UserDto> userList;
+
+    private static final int PAGE_SIZE = 10; // 한 페이지당 10개
+
+    @PostConstruct
+    public void init() {
+        fetchUsers(1); // 처음에는 1페이지 불러옴
+    }
+
+    public void fetchUsers(int requestedPage) {
+        pageControl = userService.getUserList(requestedPage, PAGE_SIZE);
+        userList = pageControl.getUsers();
+    }
+
+    // 버튼 이벤트
+    public void moveFirst() { fetchUsers(1); }
+    public void movePrevious() { fetchUsers(pageControl.getCurrentPage() - 1); }
+    public void moveNext() { fetchUsers(pageControl.getCurrentPage() + 1); }
+    public void moveLast() { fetchUsers(pageControl.getTotalPages()); }
+
+    public List<UserDto> getUserList() { return userList; }
+    public PageControlDto getPageControl() { return pageControl; }
+}
+```
+
+---
+
+## **6️⃣ JSF XHTML 페이지 (userList.xhtml)**
+```xhtml
+<h:dataTable value="#{userBean.userList}" var="user">
+    <h:column>
+        <f:facet name="header">ID</f:facet>
+        #{user.id}
+    </h:column>
+    <h:column>
+        <f:facet name="header">이름</f:facet>
+        #{user.name}
+    </h:column>
+    <h:column>
+        <f:facet name="header">이메일</f:facet>
+        #{user.email}
+    </h:column>
+</h:dataTable>
+
+<!-- 페이징 버튼 -->
+<h:commandButton value="⏮ 맨앞" action="#{userBean.moveFirst}" disabled="#{userBean.pageControl.firstPageFlag}" />
+<h:commandButton value="◀ 앞" action="#{userBean.movePrevious}" disabled="#{userBean.pageControl.firstPageFlag}" />
+<h:commandButton value="▶ 뒤" action="#{userBean.moveNext}" disabled="#{userBean.pageControl.lastPageFlag}" />
+<h:commandButton value="⏭ 맨뒤" action="#{userBean.moveLast}" disabled="#{userBean.pageControl.lastPageFlag}" />
+```
+🔹 **첫 페이지면** "맨앞이동", "앞이동" 버튼 비활성화 (`disabled`)  
+🔹 **마지막 페이지면** "뒤이동", "맨뒤이동" 버튼 비활성화 (`disabled`)  
+
+---
+
+# **✅ 전체 흐름**
+1. **페이지 요청 시** `UserBean` → `UserService` 호출
+2. **`UserService`에서 `UserDao` 호출하여 데이터 조회**
+3. **페이징 처리 및 현재 상태 저장 (DTO)**
+4. **XHTML에서 버튼 활성/비활성화 처리**
+
+---
+
+# **📌 해결된 문제점**
+✅ **"맨뒤이동" 시 `0`으로 설정되는 문제 해결!**  
+✅ **"앞이동"과 "뒤이동"에서 페이지 범위 보장!**  
+✅ **SQL의 `LIMIT, OFFSET`을 사용하여 효율적인 페이징 구현!**  
+
+---
+
+이제 `page=0` 문제 없이 안전하게 페이징이 동작할 거야!  
+이제 적용해보고 필요한 부분 수정해도 좋아!
