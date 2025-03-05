@@ -1,0 +1,241 @@
+### **🔥 JSF + MyBatis 검색 기능 (검색 조건 4개, 페이징 포함, 상태 코드 반환) 완성 코드**  
+
+#### **✅ 구현 요구사항**  
+1. 검색 조건 4개 (예: `username`, `email`, `organization`, `role`)  
+2. 페이징 기능 포함 (`page`, `pageSize`)  
+3. 검색 결과 개수 반환  
+4. 상태 코드 반환 (`1=정상`, `0=오류`, `2=검색 지연`, `3=0건`, `4=100건 초과`)  
+5. JSF에서 상태 코드 및 검색 결과 출력  
+
+---
+
+## **1️⃣ MyBatis Mapper (SQL 정의)**
+📌 **페이징을 위해 `LIMIT`과 `OFFSET`을 사용**  
+```xml
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <!-- 검색 쿼리 -->
+    <select id="searchUsers" resultType="com.example.model.User">
+        SELECT * FROM users
+        WHERE 1=1
+        <if test="username != null and username != ''">
+            AND username LIKE CONCAT('%', #{username}, '%')
+        </if>
+        <if test="email != null and email != ''">
+            AND email LIKE CONCAT('%', #{email}, '%')
+        </if>
+        <if test="organization != null and organization != ''">
+            AND organization = #{organization}
+        </if>
+        <if test="role != null and role != ''">
+            AND role = #{role}
+        </if>
+        ORDER BY id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <!-- 전체 검색 결과 개수 조회 -->
+    <select id="countUsers" resultType="int">
+        SELECT COUNT(*) FROM users
+        WHERE 1=1
+        <if test="username != null and username != ''">
+            AND username LIKE CONCAT('%', #{username}, '%')
+        </if>
+        <if test="email != null and email != ''">
+            AND email LIKE CONCAT('%', #{email}, '%')
+        </if>
+        <if test="organization != null and organization != ''">
+            AND organization = #{organization}
+        </if>
+        <if test="role != null and role != ''">
+            AND role = #{role}
+        </if>
+    </select>
+
+</mapper>
+```
+
+---
+
+## **2️⃣ 검색 서비스 (MyBatis + 검색 상태 코드)**
+```java
+@Service
+public class UserService {
+
+    @Autowired
+    private UserMapper userMapper;
+
+    public SearchResult searchUsers(SearchCriteria criteria) {
+        SearchResult result = new SearchResult();
+
+        try {
+            long startTime = System.currentTimeMillis();
+
+            // ✅ 전체 검색 개수 조회
+            int totalRecords = userMapper.countUsers(criteria);
+            result.setTotalRecords(totalRecords);
+
+            // ✅ 검색 상태 코드 처리
+            if (totalRecords == 0) {
+                result.setStatusCode(3); // 검색 결과 없음
+                return result;
+            }
+            if (totalRecords > 100) {
+                result.setStatusCode(4); // 검색 결과 100건 초과
+                return result;
+            }
+
+            // ✅ 검색 실행 (페이징 처리)
+            int offset = (criteria.getPage() - 1) * criteria.getPageSize();
+            criteria.setOffset(offset);
+            List<User> users = userMapper.searchUsers(criteria);
+            result.setUsers(users);
+
+            long endTime = System.currentTimeMillis();
+            long executionTime = endTime - startTime;
+
+            // ✅ 검색 시간이 오래 걸릴 경우 (5초 초과)
+            if (executionTime > 5000) {
+                result.setStatusCode(2);
+                return result;
+            }
+
+            result.setStatusCode(1); // 정상 검색 완료
+            return result;
+
+        } catch (Exception e) {
+            result.setStatusCode(0); // 비정상적 오류 발생
+            return result;
+        }
+    }
+}
+```
+
+---
+
+## **3️⃣ 검색 요청을 위한 DTO (SearchCriteria, SearchResult)**
+```java
+@Data
+public class SearchCriteria {
+    private String username;
+    private String email;
+    private String organization;
+    private String role;
+    private int page;
+    private int pageSize;
+    private int offset; // MyBatis 페이징 처리
+}
+
+@Data
+public class SearchResult {
+    private int statusCode;
+    private int totalRecords;
+    private List<User> users;
+}
+```
+
+---
+
+## **4️⃣ JSF Bean (검색 결과 처리)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserSearchBean {
+    @EJB
+    private UserService userService;
+
+    private SearchCriteria criteria = new SearchCriteria();
+    private SearchResult searchResult;
+
+    public void search() {
+        searchResult = userService.searchUsers(criteria);
+
+        // ✅ 상태 코드에 따른 메시지 출력
+        switch (searchResult.getStatusCode()) {
+            case 1:
+                FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("검색이 정상적으로 완료되었습니다."));
+                break;
+            case 0:
+                FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("검색이 비정상적으로 취소되었습니다."));
+                break;
+            case 2:
+                FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("검색 시간이 너무 오래 걸립니다."));
+                break;
+            case 3:
+                FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("검색 결과가 없습니다."));
+                break;
+            case 4:
+                FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("검색 결과가 100건을 초과합니다. 조건을 조정하세요."));
+                break;
+        }
+    }
+
+    // ✅ GETTERS & SETTERS
+    public SearchCriteria getCriteria() { return criteria; }
+    public void setCriteria(SearchCriteria criteria) { this.criteria = criteria; }
+    public SearchResult getSearchResult() { return searchResult; }
+}
+```
+
+---
+
+## **5️⃣ JSF 페이지 (`search.xhtml`)**
+```xml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="username" value="사용자명:" />
+        <h:inputText id="username" value="#{userSearchBean.criteria.username}" />
+
+        <h:outputLabel for="email" value="이메일:" />
+        <h:inputText id="email" value="#{userSearchBean.criteria.email}" />
+
+        <h:outputLabel for="organization" value="조직:" />
+        <h:inputText id="organization" value="#{userSearchBean.criteria.organization}" />
+
+        <h:outputLabel for="role" value="역할:" />
+        <h:inputText id="role" value="#{userSearchBean.criteria.role}" />
+
+        <h:outputLabel for="page" value="페이지:" />
+        <h:inputText id="page" value="#{userSearchBean.criteria.page}" />
+
+        <h:outputLabel for="pageSize" value="페이지 크기:" />
+        <h:inputText id="pageSize" value="#{userSearchBean.criteria.pageSize}" />
+    </h:panelGrid>
+
+    <h:commandButton value="검색" action="#{userSearchBean.search}" />
+
+    <!-- 검색 결과 표시 -->
+    <h:dataTable value="#{userSearchBean.searchResult.users}" var="user">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">사용자명</f:facet>
+            #{user.username}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이메일</f:facet>
+            #{user.email}
+        </h:column>
+        <h:column>
+            <f:facet name="header">조직</f:facet>
+            #{user.organization}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+## **✅ 정리 (JSF + MyBatis 검색 상태 코드 적용)**
+1. **MyBatis에서 검색 쿼리 실행 (페이징 포함)**
+2. **MyBatis에서 전체 개수 조회**
+3. **조건에 맞는 상태 코드 반환**
+4. **JSF Bean에서 검색 실행 후 결과 처리**
+5. **JSF 페이지에서 결과 및 상태 코드 출력**
+
+---
+
+이제 **검색 조건 4개 + 페이징 + 상태 코드 반환 + JSF 연동**이 모두 구현되었습니다!  
+**이 방식으로 검색 기능을 개발하면, JSF에서 검색 상태를 쉽게 관리할 수 있습니다.**
