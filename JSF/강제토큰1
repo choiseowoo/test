@@ -1,0 +1,66 @@
+테스트 환경에서 **토큰 값이 제대로 취득되지 않는 상황**을 해결하려면, **`HttpServletRequest`에서 토큰을 올바르게 가져올 수 있도록 처리**해야 합니다. 만약 **테스트 환경에서 `HttpServletRequest`가 제대로 설정되지 않거나 값이 없을 경우**를 대비해 **디폴트 값이나 예외 처리를 추가하는 방법**을 사용할 수 있습니다.
+
+### **1. `HttpServletRequest`에서 토큰을 올바르게 취득하는 방법**
+우선, `getServletRequest()` 메서드가 제대로 `HttpServletRequest` 객체를 반환하는지 확인해야 합니다. 그런 다음 `getAttribute("REQUEST_TOKENKEY")`에서 값을 안전하게 가져오는 방식으로 수정할 수 있습니다.
+
+### **수정된 코드 예시**
+```java
+public String getToken() {
+    // HttpServletRequest를 받아옵니다.
+    HttpServletRequest servletRequest = getServletRequest();
+    
+    if (servletRequest != null) {
+        // REQUEST_TOKENKEY가 설정되어 있는지 확인하고, 존재하면 값을 반환
+        String token = (String) servletRequest.getAttribute("REQUEST_TOKENKEY");
+        
+        // 토큰이 없을 경우 디폴트 값 설정 (예: 테스트 환경에서 "default-token"으로 대체)
+        if (token == null) {
+            token = "default-token"; // 이 값은 테스트 환경에서 사용할 값으로 설정
+        }
+        
+        return token;
+    } else {
+        // servletRequest가 null인 경우 디폴트 값 반환
+        return "default-token";
+    }
+}
+```
+
+### **설명**
+1. **`getServletRequest()`**: `HttpServletRequest` 객체를 반환하는 메서드가 제대로 작동하는지 확인합니다. 만약 이 메서드가 `null`을 반환하면, 토큰을 취득할 수 없습니다.
+2. **`getAttribute("REQUEST_TOKENKEY")`**: 실제로 HTTP 요청에 설정된 `REQUEST_TOKENKEY`를 가져옵니다. 이 값이 없다면 `null`을 반환하게 되는데, **테스트 환경에서는 디폴트 값을 사용**하도록 설정합니다.
+3. **디폴트 토큰 값**: 테스트 환경에서 `HttpServletRequest`에 실제로 `REQUEST_TOKENKEY`가 설정되지 않았다면, 디폴트 값(예: `"default-token"`)을 설정해 두면 됩니다. 이후 이 값으로 테스트를 진행할 수 있습니다.
+
+### **2. 테스트 환경에서의 `getServletRequest()` 대체**
+만약 테스트 환경에서 `HttpServletRequest`를 제대로 설정하기 어렵다면, **모의 객체(Mock Object)** 를 사용하여 `getServletRequest()` 메서드가 반환하는 값을 지정할 수 있습니다.
+
+#### **JUnit 테스트 예시** (Mockito 사용)
+```java
+import static org.mockito.Mockito.*;
+import javax.servlet.http.HttpServletRequest;
+
+@Test
+public void testGetToken() {
+    // Mockito로 HttpServletRequest 객체를 모킹
+    HttpServletRequest mockRequest = mock(HttpServletRequest.class);
+    
+    // REQUEST_TOKENKEY 속성 설정
+    when(mockRequest.getAttribute("REQUEST_TOKENKEY")).thenReturn("test-token");
+    
+    // getServletRequest() 메서드가 mockRequest를 반환하도록 설정
+    MyClass myClass = new MyClass();
+    myClass.setServletRequest(mockRequest); // setServletRequest() 메서드에서 mockRequest 설정
+    
+    // 테스트 실행
+    String token = myClass.getToken();
+    
+    // 토큰이 "test-token"이어야 한다.
+    assertEquals("test-token", token);
+}
+```
+
+---
+
+### **결론**
+- **`getToken()`에서 `HttpServletRequest`가 제대로 작동하지 않는다면** 디폴트 값을 설정하거나 예외 처리를 추가하는 방법으로 처리할 수 있습니다.
+- **테스트 환경에서 `HttpServletRequest`를 모킹(Mock)하여** 테스트할 경우, **`Mockito` 라이브러리**를 사용해 `getAttribute()` 값을 설정할 수 있습니다.
