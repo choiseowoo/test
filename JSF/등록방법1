@@ -1,0 +1,118 @@
+JSF + MyBatis에서 **`INSERT` 실행 결과를 확인**하고, 성공하면 `"1"`을 반환하고 실패하면 `"0"`을 반환하여 JSF에서 에러 메시지를 출력하는 방법을 설명해 줄게.  
+
+---
+
+### **1. MyBatis XML에서 `INSERT` 결과 반환**
+MyBatis의 `insert` 문은 기본적으로 **영향을 받은 행 수 (int)** 를 반환한다. 이를 활용하여 성공 시 `"1"`, 실패 시 `"0"`을 반환하도록 만든다.
+
+#### **`UserMapper.xml`**
+```xml
+<insert id="insertUser" parameterType="User">
+    INSERT INTO users (user_id, user_name, email) 
+    VALUES (#{userId}, #{userName}, #{email})
+</insert>
+```
+
+---
+
+### **2. MyBatis Mapper 인터페이스 (`UserMapper.java`)**
+```java
+public interface UserMapper {
+    int insertUser(User user);  // 영향받은 행 수(int) 반환
+}
+```
+
+---
+
+### **3. Service 클래스에서 `INSERT` 실행 결과 반환**
+```java
+import jakarta.inject.Inject;
+import jakarta.enterprise.context.RequestScoped;
+
+@RequestScoped
+public class UserService {
+    
+    @Inject
+    private UserMapper userMapper;
+
+    public String addUser(User user) {
+        try {
+            int result = userMapper.insertUser(user);
+            return result > 0 ? "1" : "0";  // 성공 시 "1", 실패 시 "0"
+        } catch (Exception e) {
+            return "0";  // 예외 발생 시 실패 처리
+        }
+    }
+}
+```
+
+---
+
+### **4. JSF Managed Bean에서 `INSERT` 실행 후 메시지 처리**
+```java
+import jakarta.faces.application.FacesMessage;
+import jakarta.faces.context.FacesContext;
+import jakarta.inject.Inject;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Named;
+
+@Named
+@RequestScoped
+public class UserBean {
+
+    @Inject
+    private UserService userService;
+
+    private User user = new User();
+
+    public void insertUser() {
+        String result = userService.addUser(user);
+        
+        if ("1".equals(result)) {
+            FacesContext.getCurrentInstance().addMessage(null,
+                new FacesMessage(FacesMessage.SEVERITY_INFO, "등록 성공!", null));
+        } else {
+            FacesContext.getCurrentInstance().addMessage(null,
+                new FacesMessage(FacesMessage.SEVERITY_ERROR, "등록 실패!", null));
+        }
+    }
+
+    public User getUser() {
+        return user;
+    }
+}
+```
+
+---
+
+### **5. JSF 페이지에서 메시지 표시 (`user.xhtml`)**
+```xhtml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel for="userId" value="User ID:" />
+        <h:inputText id="userId" value="#{userBean.user.userId}" />
+
+        <h:outputLabel for="userName" value="User Name:" />
+        <h:inputText id="userName" value="#{userBean.user.userName}" />
+
+        <h:outputLabel for="email" value="Email:" />
+        <h:inputText id="email" value="#{userBean.user.email}" />
+    </h:panelGrid>
+
+    <h:commandButton value="등록" action="#{userBean.insertUser}" />
+
+    <!-- 메시지 표시 -->
+    <h:messages globalOnly="true" showSummary="true" showDetail="false" />
+</h:form>
+```
+
+---
+
+### **6. 실행 흐름**
+1. 사용자가 **JSF 폼에서 정보를 입력**하고 `"등록"` 버튼을 클릭함.
+2. `UserBean.insertUser()` 호출 → `UserService.addUser()` 실행 → `UserMapper.insertUser(user)` 호출.
+3. MyBatis에서 `INSERT` 실행 → 영향받은 행 수 반환.
+4. `result > 0`이면 `"1"`을 반환, 실패하면 `"0"` 반환.
+5. `"1"`이면 `"등록 성공!"`, `"0"`이면 `"등록 실패!"` 메시지를 출력.
+
+✅ **이렇게 하면 JSF에서 `INSERT` 결과를 받아서 성공/실패 메시지를 표시할 수 있어!**
