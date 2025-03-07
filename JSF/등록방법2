@@ -1,0 +1,63 @@
+네, **기본적으로 위 코드에서도 `INSERT` 실행 결과가 0이면 실패로 처리되므로**, 이미 등록된 `id`가 있을 경우 `"등록 실패!"` 메시지가 출력될 거야.  
+
+하지만 **더 명확하게 예외 처리**를 추가하면 **중복 키 오류가 발생했을 때도 정확한 메시지를 출력**할 수 있어.  
+아래 방법을 참고해 봐!  
+
+---
+
+## **✔ 1. `UserService`에서 중복 키 예외 처리 추가**
+```java
+import org.apache.ibatis.exceptions.PersistenceException;
+import org.postgresql.util.PSQLException;
+
+public String addUser(User user) {
+    try {
+        int result = userMapper.insertUser(user);
+        return result > 0 ? "1" : "0";  // 성공하면 "1", 실패하면 "0"
+    } catch (PersistenceException e) {
+        // PostgreSQL에서 중복 키 예외 발생 시
+        if (e.getCause() instanceof PSQLException) {
+            PSQLException sqlException = (PSQLException) e.getCause();
+            if (sqlException.getSQLState().equals("23505")) {  // 23505: UNIQUE 제약 조건 위반
+                return "duplicate"; // 중복 에러 발생 시 "duplicate" 반환
+            }
+        }
+        return "0";  // 그 외의 에러는 실패 처리
+    } catch (Exception e) {
+        return "0";  // 기타 예외 처리
+    }
+}
+```
+
+> **`SQLState 23505`는 PostgreSQL에서 UNIQUE 제약 조건 위반 시 발생하는 코드**야.  
+> 만약 **다른 DBMS를 사용하면 해당 DBMS의 SQL 상태 코드를 확인해서 변경**해야 해.  
+
+---
+
+## **✔ 2. `UserBean`에서 중복 에러 메시지 처리**
+```java
+public void insertUser() {
+    String result = userService.addUser(user);
+    
+    if ("1".equals(result)) {
+        FacesContext.getCurrentInstance().addMessage(null,
+            new FacesMessage(FacesMessage.SEVERITY_INFO, "등록 성공!", null));
+    } else if ("duplicate".equals(result)) {
+        FacesContext.getCurrentInstance().addMessage(null,
+            new FacesMessage(FacesMessage.SEVERITY_WARN, "이미 등록된 ID입니다.", null));
+    } else {
+        FacesContext.getCurrentInstance().addMessage(null,
+            new FacesMessage(FacesMessage.SEVERITY_ERROR, "등록 실패!", null));
+    }
+}
+```
+
+---
+
+## **✔ 3. 실행 흐름**
+1. 사용자가 **기존에 등록된 `userId`로 등록을 시도**하면, DB에서 **`UNIQUE` 제약 조건에 의해 INSERT가 실패**함.
+2. MyBatis가 `PersistenceException`을 던지고, `getSQLState()` 값이 `"23505"`인지 확인하여 `"duplicate"` 반환.
+3. `"duplicate"`을 받으면 `"이미 등록된 ID입니다."` 메시지를 출력함.
+
+✅ **이제 중복된 ID일 때 정확한 메시지를 출력할 수 있어!**  
+✅ **PostgreSQL이 아닌 다른 DBMS를 쓴다면 `SQLState` 코드를 맞춰줘야 해!**
