@@ -1,0 +1,89 @@
+네 환경이 **Java 21 + WildFly 31**이라면, **Jakarta Faces 4.0.x** 또는 **4.1.x** 버전을 사용할 수 있어.  
+
+---
+
+## **✔ WildFly 31에서 사용할 수 있는 Jakarta Faces 버전**
+### **✅ Jakarta EE 버전별 Jakarta Faces 대응표**
+| Jakarta EE 버전 | Jakarta Faces 버전 | WildFly 버전 |
+|---------------|----------------|-------------|
+| Jakarta EE 10 | Jakarta Faces 4.0.x | WildFly 27~30 |
+| Jakarta EE 11 | Jakarta Faces 4.1.x | WildFly 31 이상 |
+
+**➡ 결론:**  
+- WildFly 31은 **Jakarta EE 11을 지원**하므로, **Jakarta Faces 4.1.x** 버전을 사용해야 함.  
+- 하지만 WildFly 자체에 이미 **JSF 4.1 모듈이 포함**되어 있으므로,  
+  별도로 `jakarta.faces` 라이브러리를 추가할 필요가 없음.  
+
+---
+
+## **✔ WildFly 31에서 Jakarta Faces 4.1.x 설정 방법**
+### **1️⃣ `pom.xml`에서 `jakarta.faces` 제거**
+기본적으로 WildFly 31에는 Jakarta Faces 4.1.x가 포함되어 있기 때문에,  
+Maven의 `pom.xml`에서 **별도의 `jakarta.faces` 의존성을 추가하지 말 것.**  
+```xml
+<!-- Jakarta Faces를 별도로 추가하지 않음 -->
+```
+
+---
+
+### **2️⃣ `web.xml`에서 FacesServlet 확인**
+`web.xml`에서 FacesServlet이 정상적으로 등록되어 있는지 확인  
+```xml
+<servlet>
+    <servlet-name>FacesServlet</servlet-name>
+    <servlet-class>jakarta.faces.webapp.FacesServlet</servlet-class>
+    <load-on-startup>1</load-on-startup>
+</servlet>
+
+<servlet-mapping>
+    <servlet-name>FacesServlet</servlet-name>
+    <url-pattern>*.xhtml</url-pattern>
+</servlet-mapping>
+```
+이 설정이 없으면 **XHTML 페이지가 실행되지 않을 수 있음.**
+
+---
+
+### **3️⃣ `faces-config.xml` 수정 (`4.0` 또는 `4.1` 설정)**
+WildFly 31에서 Jakarta Faces 4.1.x를 사용하려면 `faces-config.xml`의 네임스페이스를 **Jakarta EE 11에 맞게 수정**해야 함.  
+
+```xml
+<faces-config version="4.0"
+    xmlns="https://jakarta.ee/xml/ns/jakartaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee 
+    https://jakarta.ee/xml/ns/jakartaee/web-facesconfig_4_0.xsd">
+</faces-config>
+```
+- **version="4.0"**  
+  → Jakarta Faces 4.1도 **faces-config.xml에서는 4.0을 유지해야 함.**  
+- **xmlns를 `javaee` → `jakartaee`로 변경**해야 함.  
+- **schemaLocation도 `jakarta.ee` 네임스페이스로 수정**해야 함.  
+
+---
+
+### **4️⃣ WildFly 31 기본 JSF 모듈 사용 설정**
+WildFly 31에서는 **기본 제공하는 JSF 4.1 모듈을 그대로 사용**하면 됨.  
+따라서 **별도의 JSF 모듈을 비활성화하지 않아도 됨.**  
+하지만 만약 JSF 모듈을 비활성화한 상태라면, `jboss-deployment-structure.xml`을 수정해야 함.  
+
+```xml
+<jboss-deployment-structure>
+    <deployment>
+        <dependencies>
+            <module name="jakarta.faces.api" />
+        </dependencies>
+    </deployment>
+</jboss-deployment-structure>
+```
+이 설정을 추가하면 **WildFly의 기본 Jakarta Faces 4.1 모듈을 사용하도록 설정됨.**  
+
+---
+
+## **✔ 최종 정리**
+✅ **Java 21 + WildFly 31 환경에서는 Jakarta Faces 4.1.x 사용 가능**  
+✅ **WildFly 31에는 기본적으로 JSF 4.1이 포함되어 있으므로, Maven에 `jakarta.faces` 추가 필요 없음**  
+✅ **`faces-config.xml`에서 `xmlns`와 `schemaLocation`을 올바르게 설정해야 함**  
+✅ **JSF 4.1 모듈을 사용하려면 `jboss-deployment-structure.xml`에서 JSF 모듈을 활성화해야 함**  
+
+➡ **위 설정을 적용하고 `mvn clean package` 후 WildFly 31에 배포하면 문제 해결 가능!**
