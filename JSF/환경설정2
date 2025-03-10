@@ -1,0 +1,103 @@
+Java EE 8에서 Jakarta EE 10으로 업그레이드하면서 발생한 문제로 보입니다. 특히, `javax` 네임스페이스에서 `jakarta` 네임스페이스로 변경되면서 발생한 호환성 문제입니다. 아래에서 문제의 원인과 해결 방법을 설명드리겠습니다.
+
+---
+
+### 1. **문제 원인**
+- **네임스페이스 변경**: Java EE 8에서는 `javax.*` 패키지를 사용했지만, Jakarta EE 9부터는 `jakarta.*` 패키지로 변경되었습니다. 이로 인해 `javax.faces.component.UIComponent`와 같은 클래스가 `jakarta.faces.component.UIComponent`로 변경되었습니다.
+- **호환성 문제**: `ExtendedBodyComponent` 클래스가 `javax.faces.component.UIComponent`를 상속받도록 작성되었다면, Jakarta EE 10에서는 `jakarta.faces.component.UIComponent`를 상속받도록 수정해야 합니다.
+- **환경 설정 문제**: 프로젝트의 빌드 경로나 의존성 설정이 Jakarta EE 10에 맞게 업데이트되지 않았을 가능성이 있습니다.
+
+---
+
+### 2. **해결 방법**
+
+#### 1) **`ExtendedBodyComponent` 클래스 수정**
+- `javax`를 `jakarta`로 변경한 것이 맞지만, 모든 `javax` 패키지를 `jakarta`로 변경했는지 다시 확인하세요.
+- 예를 들어:
+  ```java
+  // 변경 전
+  import javax.faces.component.UIComponent;
+
+  // 변경 후
+  import jakarta.faces.component.UIComponent;
+  ```
+
+- `ExtendedBodyComponent` 클래스가 `jakarta.faces.component.UIComponent`를 상속받는지 확인하세요:
+  ```java
+  public class ExtendedBodyComponent extends jakarta.faces.component.UIComponent {
+      // 클래스 구현
+  }
+  ```
+
+#### 2) **의존성 업데이트**
+- 프로젝트의 의존성을 Jakarta EE 10에 맞게 업데이트하세요.
+- Maven을 사용하는 경우, `pom.xml` 파일에서 Jakarta EE 10 의존성을 추가하세요:
+  ```xml
+  <dependency>
+      <groupId>jakarta.platform</groupId>
+      <artifactId>jakarta.jakartaee-api</artifactId>
+      <version>10.0.0</version>
+      <scope>provided</scope>
+  </dependency>
+  ```
+- Gradle을 사용하는 경우, `build.gradle` 파일에 다음을 추가하세요:
+  ```groovy
+  dependencies {
+      implementation 'jakarta.platform:jakarta.jakartaee-api:10.0.0'
+  }
+  ```
+
+#### 3) **빌드 도구 설정 확인**
+- Maven 또는 Gradle 빌드 도구가 Jakarta EE 10을 사용하도록 설정되었는지 확인하세요.
+- IDE(예: Eclipse, IntelliJ)에서 프로젝트의 빌드 경로가 Jakarta EE 10으로 설정되었는지 확인하세요.
+
+#### 4) **서버 설정 확인**
+- WildFly 서버가 Jakarta EE 10을 지원하는 버전인지 확인하세요.
+  - WildFly 27 이상은 Jakarta EE 10을 지원합니다.
+- 서버의 `standalone.xml` 또는 `domain.xml` 설정 파일에서 Jakarta EE 10 관련 서브시스템이 활성화되어 있는지 확인하세요.
+
+#### 5) **XHTML 파일 수정**
+- XHTML 파일에서 `javax` 네임스페이스를 사용하는 부분이 있다면 `jakarta`로 변경하세요.
+- 예를 들어:
+  ```xml
+  <!-- 변경 전 -->
+  <html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:h="http://xmlns.jcp.org/jsf/html"
+        xmlns:f="http://xmlns.jcp.org/jsf/core">
+
+  <!-- 변경 후 -->
+  <html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:h="https://jakarta.ee/xml/ns/jakartaee"
+        xmlns:f="https://jakarta.ee/xml/ns/jakartaee">
+  ```
+
+#### 6) **라이브러리 충돌 확인**
+- 프로젝트에 `javax`와 `jakarta` 라이브러리가 혼재되어 있지 않은지 확인하세요.
+- `javax` 라이브러리가 남아 있다면 제거하세요.
+
+---
+
+### 3. **추가적인 문제 해결**
+
+#### 1) **IDE 캐시 초기화**
+- IDE의 캐시가 이전 설정을 유지하고 있을 수 있습니다. IDE를 재시작하거나 캐시를 초기화하세요.
+  - Eclipse: `Project > Clean` 실행.
+  - IntelliJ: `File > Invalidate Caches / Restart` 실행.
+
+#### 2) **서버 재시작**
+- WildFly 서버를 완전히 종료한 후 다시 시작하세요.
+
+#### 3) **로그 확인**
+- WildFly 서버 로그(`standalone/log/server.log`)에서 추가적인 오류 메시지가 있는지 확인하세요.
+- `ClassNotFoundException` 또는 `NoClassDefFoundError`와 같은 오류가 있는지 확인하세요.
+
+---
+
+### 4. **요약**
+1. `ExtendedBodyComponent` 클래스가 `jakarta.faces.component.UIComponent`를 상속받도록 수정하세요.
+2. 프로젝트의 의존성을 Jakarta EE 10에 맞게 업데이트하세요.
+3. XHTML 파일에서 `javax` 네임스페이스를 `jakarta`로 변경하세요.
+4. WildFly 서버가 Jakarta EE 10을 지원하는 버전인지 확인하세요.
+5. IDE 캐시를 초기화하고 서버를 재시작하세요.
+
+위의 단계를 따라 문제를 해결해 보세요. 추가적인 도움이 필요하면 언제든지 문의해 주세요!
