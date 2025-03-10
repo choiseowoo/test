@@ -1,0 +1,92 @@
+**Java EE 8 → Jakarta EE 9 이상으로 업그레이드하면서 `javax` 패키지를 사용하라는 경고가 표시된다면, 다음과 같은 원인일 가능성이 큽니다.**  
+
+---
+
+### **🔎 1. `javax` → `jakarta` 변환이 일부 누락된 경우**
+Jakarta EE 9부터는 **모든 `javax.*` 패키지가 `jakarta.*`로 변경**되었습니다.  
+✅ **수정해야 할 부분:**  
+- `import javax.faces.*;` → `import jakarta.faces.*;`
+- `import javax.servlet.*;` → `import jakarta.servlet.*;`
+- `import javax.el.*;` → `import jakarta.el.*;`
+- `import javax.validation.*;` → `import jakarta.validation.*;`  
+**(※ 모든 `javax` 패키지를 `jakarta`로 변경해야 함.)**
+
+📌 **확인 방법:**  
+❌ `import javax.`로 시작하는 코드가 남아 있는지 확인  
+❌ `pom.xml`이나 `module-info.java`에서 `javax` 관련 의존성이 남아 있는지 확인  
+
+---
+
+### **🔎 2. `web.xml` 또는 설정 파일이 이전 버전 형식인 경우**
+Jakarta EE에서는 **`web.xml` 등의 설정 파일이 최신 스펙과 맞지 않으면 경고가 발생**할 수 있음.  
+
+✅ **확인해야 할 부분:**  
+- `web.xml`의 XML 네임스페이스 확인  
+```xml
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                             https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+         version="5.0">
+```
+✔ `xmlns`가 `jakarta.ee`인지 확인 (`java.sun.com`이면 변경해야 함)  
+
+---
+
+### **🔎 3. `pom.xml` 또는 `dependencies` 설정에서 `javax` 라이브러리를 사용 중인 경우**
+**Jakarta EE 9 이상에서는 `javax` 관련 라이브러리를 사용하면 충돌이 발생할 수 있음.**  
+✅ `pom.xml`에서 `javax` 라이브러리를 `jakarta` 버전으로 변경해야 함.  
+
+**📌 예제 (변경 전, javax 사용)**
+```xml
+<dependency>
+    <groupId>javax.faces</groupId>
+    <artifactId>javax.faces-api</artifactId>
+    <version>2.3</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+**✅ 변경 후 (Jakarta 사용)**
+```xml
+<dependency>
+    <groupId>jakarta.faces</groupId>
+    <artifactId>jakarta.faces-api</artifactId>
+    <version>4.0</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+📌 **추가 확인할 의존성:**  
+- `javax.servlet-api` → `jakarta.servlet-api`  
+- `javax.faces-api` → `jakarta.faces-api`  
+- `javax.persistence-api` → `jakarta.persistence-api`  
+- `javax.validation-api` → `jakarta.validation-api`  
+
+---
+
+### **🔎 4. WildFly 31에서 Java EE (javax) 모듈을 로드하는 경우**
+**WildFly 31은 Jakarta EE를 지원하는 버전이므로, Java EE (javax) 모듈을 로드하면 충돌 발생** 가능.  
+✅ `standalone.xml` 또는 `module.xml`에서 `javax.*` 모듈이 포함되어 있는지 확인 후 제거.  
+✅ 또는 `WEB-INF/jboss-deployment-structure.xml`에서 `javax.*` 관련 모듈이 있는지 확인.
+
+---
+
+### **🔎 5. 커스텀 태그 파일 (`.tld`) 또는 JSF 태그 라이브러리가 `javax.faces`를 사용 중인 경우**
+✅ **`.tld` 파일 확인**  
+- `tlib-version="2.1"` → `tlib-version="4.0"`  
+- `<uri>` 네임스페이스가 `jakarta` 버전인지 확인  
+
+✅ **XHTML에서 JSF 네임스페이스 확인**
+- ❌ `xmlns:h="http://java.sun.com/jsf/html"` (이전)  
+- ✅ `xmlns:h="https://jakarta.ee/jsf/html"` (변경)  
+
+---
+
+### **✅ 결론**
+1️⃣ `javax.*` 패키지를 `jakarta.*`로 변환했는지 확인  
+2️⃣ `web.xml`, `.tld`, XHTML에서 `javax` 관련 설정이 남아 있는지 확인  
+3️⃣ `pom.xml`에서 `javax.*` 라이브러리를 제거하고 `jakarta.*` 버전으로 변경  
+4️⃣ WildFly에서 `javax.*` 모듈이 로드되지 않도록 설정  
+
+➡ **특정 파일이나 설정을 점검하면 해결될 가능성이 높음!**
