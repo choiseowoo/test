@@ -1,0 +1,67 @@
+`web.xml`에서 **커스텀 태그**를 사용할 때, 태그 라이브러리 파일명이 `md.xml`이라면 **태그 라이브러리(TLD) 파일로 인식되지 않음.**  
+
+### **✔ TLD 파일은 `.tld` 확장자를 사용해야 함**
+JSF에서 커스텀 태그를 정의하려면, **태그 라이브러리 파일(TLD, Tag Library Descriptor)**이 필요함.  
+하지만 `md.xml`은 **TLD 파일로 인식되지 않기 때문에** 태그가 제대로 동작하지 않을 가능성이 높음.  
+
+---
+
+### **✔ 해결 방법: `md.xml`을 `md.tld`로 변경**
+1. **커스텀 태그 정의 파일의 확장자를 `.tld`로 변경**  
+   - `md.xml` → `md.tld`
+   
+2. **TLD 파일의 위치를 `WEB-INF` 또는 `META-INF` 폴더에 배치**
+   - 일반적으로 `WEB-INF/tld/` 또는 `META-INF/`에 배치해야 함.
+   - 예시: `WEB-INF/tld/md.tld`
+
+3. **`web.xml`에 태그 라이브러리 등록 (`<taglib>` 설정)**  
+   ```xml
+   <taglib>
+       <taglib-uri>/WEB-INF/tld/md.tld</taglib-uri>
+       <taglib-location>/WEB-INF/tld/md.tld</taglib-location>
+   </taglib>
+   ```
+   또는, JSF 2.0 이상에서는 `web.xml`에 등록하지 않고,  
+   **`xmlns`를 사용해서 바로 참조** 가능함.
+
+4. **XHTML에서 커스텀 태그 사용**
+   ```xhtml
+   xmlns:md="http://example.com/md"
+   ```
+   - `md.tld` 파일에서 `<uri>`에 지정한 값을 참조해야 함.
+
+---
+
+### **✔ `md.tld` 파일 예제**
+아래는 `md.tld` 파일의 기본 구조 예제임.
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<taglib xmlns="http://java.sun.com/xml/ns/javaee"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+                            http://java.sun.com/xml/ns/javaee/web-jsptaglibrary_2_1.xsd"
+        version="2.1">
+    
+    <tlib-version>1.0</tlib-version>
+    <short-name>md</short-name>
+    <uri>http://example.com/md</uri>
+
+    <tag>
+        <name>hello</name>
+        <tag-class>com.example.HelloTag</tag-class>
+        <body-content>empty</body-content>
+    </tag>
+
+</taglib>
+```
+➡ 이렇게 `.tld` 파일을 올바르게 설정하면 커스텀 태그를 사용할 수 있음.
+
+---
+
+### **✔ 결론**
+✅ `md.xml`은 **TLD 파일로 인식되지 않으므로** → `md.tld`로 변경  
+✅ `WEB-INF/tld/md.tld` 또는 `META-INF/md.tld`에 배치  
+✅ `web.xml`에서 `<taglib>`를 설정하거나, `xmlns`로 직접 참조  
+✅ `.tld` 파일 내에서 `<uri>` 값을 정의하고, `<tag>` 설정  
+
+➡ **파일 확장자 변경(`.xml` → `.tld`)과 올바른 위치 설정이 필요!**
