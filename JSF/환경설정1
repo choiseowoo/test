@@ -1,0 +1,71 @@
+Java EE 8에서 Jakarta EE 10으로 변경한 후 `javax.faces.component.UIComponent` 관련 오류가 발생하는 원인은 **환경 설정 문제**일 가능성이 높아.  
+
+특히, **JSF(Jakarta Faces) 관련 라이브러리나 설정 파일이 Java EE 8 기준으로 남아 있을 경우** 이런 오류가 발생할 수 있어.  
+
+---
+
+## **✔ 1. 주요 원인 확인**
+### **✅ (1) `javax` → `jakarta` 패키지 변경 확인**
+- `ExtendedBodyComponent`에서 `javax.faces.component.UIComponent`를 `jakarta.faces.component.UIComponent`로 변경했는지 확인.
+- `pom.xml` 또는 `module.xml`에서 **JSF 관련 의존성**이 Java EE 8 버전(`javax.faces`)을 참조하고 있지 않은지 확인.
+
+```java
+import jakarta.faces.component.UIComponent;
+public class ExtendedBodyComponent extends UIComponent { 
+    // ...
+}
+```
+
+---
+
+### **✅ (2) `pom.xml`의 JSF(Jakarta Faces) 버전 확인**
+**Jakarta EE 10에서는 JSF 버전이 `4.x`여야 해.**  
+아래와 같이 `pom.xml`에서 올바른 `Jakarta Faces` 버전을 지정했는지 확인해 봐.
+
+```xml
+<dependency>
+    <groupId>jakarta.faces</groupId>
+    <artifactId>jakarta.faces-api</artifactId>
+    <version>4.0.2</version> <!-- 최신 4.x 버전 확인 필요 -->
+    <scope>provided</scope>
+</dependency>
+```
+
+그리고 **기존 `javax.faces` 관련 의존성이 남아 있다면 삭제해야 해.**  
+
+---
+
+### **✅ (3) WildFly 또는 애플리케이션 서버의 설정 확인**
+- `WildFly`나 `Payara` 같은 서버를 사용 중이라면 **기본 포함된 JSF 버전이 `Java EE 8`(`javax.faces`)일 가능성**이 있어.
+- `standalone.xml`에서 **JSF 모듈을 수동으로 변경해야 할 수도 있음.**
+
+🔹 **WildFly의 `modules/system/layers/base/jakarta/faces/main/module.xml`을 확인하고, JSF 4.x가 적용되어 있는지 확인.**  
+🔹 `standalone.xml`에서 **`jsf-impl` 버전을 Java EE 10과 맞추도록 변경.**
+
+---
+
+### **✅ (4) Xhtml에서도 예전 `Java EE 8` 설정이 보인다면?**
+- `faces-config.xml`이 여전히 **Java EE 8 기준(`2.x` 또는 `3.x`)으로 설정되어 있는지 확인**해야 해.
+
+✅ **Java EE 10 (Jakarta EE 10) 기준 faces-config.xml**:
+```xml
+<faces-config version="4.0"
+    xmlns="https://jakarta.ee/xml/ns/jakartaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee 
+    https://jakarta.ee/xml/ns/jakartaee/web-facesconfig_4_0.xsd">
+</faces-config>
+```
+
+만약 **여전히 `javax` 네임스페이스(`http://java.sun.com/xml/ns/javaee`)** 를 사용하고 있다면 **오류가 발생할 수 있음!**  
+**→ `jakarta` 네임스페이스로 변경해야 해.**
+
+---
+
+## **✔ 2. 해결 방법 정리**
+1. `ExtendedBodyComponent`에서 **`javax.faces.component.UIComponent` → `jakarta.faces.component.UIComponent`** 로 변경했는지 확인.  
+2. `pom.xml`에서 **JSF 버전(`jakarta.faces-api`)이 4.x인지 확인**하고, `javax.faces-api`가 남아 있다면 삭제.  
+3. WildFly 같은 서버에서 JSF 모듈(`standalone.xml`, `module.xml`)이 Java EE 10과 맞는지 확인.  
+4. `faces-config.xml`이 Java EE 10(Jakarta EE 10) 기준으로 되어 있는지 확인.  
+
+✅ **위 설정을 모두 변경한 후에도 문제 발생하면, `mvn clean package`로 프로젝트를 클린 빌드 후 다시 배포해 봐!**
