@@ -1,0 +1,126 @@
+아래는 **유저 정보 (User ID, Role), 토큰, 토큰 키**를 세션에 저장하고 가져올 수 있는 완성형 코드야.  
+
+---
+
+### **✔ `SessionBean.java` (세션 관리 Bean)**
+```java
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+
+@Named
+@SessionScoped
+public class SessionBean implements Serializable {
+    private String userId;
+    private String userRole;
+    private String token;
+    private String tokenKey;
+
+    // 기본 생성자
+    public SessionBean() {}
+
+    // Getter & Setter
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getUserRole() {
+        return userRole;
+    }
+
+    public void setUserRole(String userRole) {
+        this.userRole = userRole;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public String getTokenKey() {
+        return tokenKey;
+    }
+
+    public void setTokenKey(String tokenKey) {
+        this.tokenKey = tokenKey;
+    }
+    
+    // 유저 정보 및 토큰 설정하는 메서드
+    public void initializeSession(String userId, String userRole, String token, String tokenKey) {
+        this.userId = userId;
+        this.userRole = userRole;
+        this.token = token;
+        this.tokenKey = tokenKey;
+    }
+    
+    // 세션 초기화 (로그아웃 시 호출)
+    public void clearSession() {
+        this.userId = null;
+        this.userRole = null;
+        this.token = null;
+        this.tokenKey = null;
+    }
+}
+```
+
+---
+
+### **✔ `index.xhtml` (세션 정보 출력)**
+```xhtml
+<h:outputText value="User ID: #{sessionBean.userId}" /><br/>
+<h:outputText value="User Role: #{sessionBean.userRole}" /><br/>
+<h:outputText value="Token: #{sessionBean.token}" /><br/>
+<h:outputText value="Token Key: #{sessionBean.tokenKey}" /><br/>
+
+<!-- 버튼을 클릭하면 세션 초기화 -->
+<h:commandButton value="로그아웃" action="#{sessionBean.clearSession}" />
+```
+
+---
+
+### **✔ 특정 페이지에서 세션에 값 저장 (`LoginBean.java`)**
+```java
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+
+@Named
+@RequestScoped
+public class LoginBean {
+    @Inject
+    private SessionBean sessionBean;
+
+    public String login() {
+        // 로그인 후 세션에 정보 저장
+        sessionBean.initializeSession("testUser", "admin", "123456789", "TOKEN-KEY-ABC");
+        
+        // 로그인 후 이동할 페이지
+        return "home.xhtml?faces-redirect=true";
+    }
+}
+```
+
+---
+
+### **✔ 로그인 버튼 추가 (`login.xhtml`)**
+```xhtml
+<h:form>
+    <h:commandButton value="로그인" action="#{loginBean.login}" />
+</h:form>
+```
+
+---
+
+### **🚀 동작 흐름**
+1. **로그인 버튼 클릭** → `login()` 실행 → `SessionBean`에 `User ID`, `Role`, `Token`, `TokenKey` 저장  
+2. **다른 페이지에서 `sessionBean`을 통해 값 사용 가능**  
+3. **로그아웃 버튼 클릭 시 `clearSession()` 실행 → 세션 데이터 초기화**  
+
+이제 **유저 정보, 토큰, 토큰 키를 세션에 안전하게 저장하고 활용할 수 있어!**
