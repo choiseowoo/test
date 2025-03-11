@@ -1,0 +1,132 @@
+**JSF + MyBatis 환경에서 유저 검색 시, 검색 결과에 따라 특정 값을 리턴하면서 총 검색 건수를 함께 반환하는 방법**을 설명할게.  
+
+---
+
+## **📌 요구 사항 정리**
+1. 검색 결과가 **30건을 초과하면 "2" 리턴**  
+2. 검색 결과가 **0건이면 "1" 리턴**  
+3. **정상적으로 검색되면 "0" 리턴**  
+4. **총 검색 건수도 함께 반환**  
+
+---
+
+## **✅ 1. MyBatis Mapper 설정 (`UserMapper.xml`)**
+검색 결과의 총 개수를 조회하는 SQL을 작성해야 함.  
+```xml
+<select id="searchUsersCount" resultType="int">
+    SELECT COUNT(*) 
+    FROM users 
+    WHERE username LIKE #{username} 
+</select>
+
+<select id="searchUsers" resultType="User">
+    SELECT * 
+    FROM users 
+    WHERE username LIKE #{username}
+    LIMIT #{limit} OFFSET #{offset}
+</select>
+```
+---
+
+## **✅ 2. MyBatis 인터페이스 (`UserMapper.java`)**
+```java
+public interface UserMapper {
+    int searchUsersCount(@Param("username") String username);
+    List<User> searchUsers(@Param("username") String username, 
+                           @Param("limit") int limit, 
+                           @Param("offset") int offset);
+}
+```
+---
+
+## **✅ 3. 서비스 로직 (`UserService.java`)**
+```java
+public class UserService {
+    @Inject
+    private UserMapper userMapper; 
+
+    public Map<String, Object> searchUsers(String username, int page, int pageSize) {
+        Map<String, Object> result = new HashMap<>();
+
+        int totalCount = userMapper.searchUsersCount(username);
+        int offset = (page - 1) * pageSize;
+        
+        List<User> users = userMapper.searchUsers(username, pageSize, offset);
+
+        // 리턴값 설정
+        String status;
+        if (totalCount == 0) {
+            status = "1";  // 검색 결과 없음
+        } else if (totalCount > 30) {
+            status = "2";  // 30건 초과
+        } else {
+            status = "0";  // 정상 검색
+        }
+
+        // 결과 저장
+        result.put("status", status);
+        result.put("totalCount", totalCount);
+        result.put("users", users);
+
+        return result;
+    }
+}
+```
+---
+
+## **✅ 4. JSF Managed Bean (`UserBean.java`)**
+```java
+@ManagedBean
+@ViewScoped
+public class UserBean {
+    @Inject
+    private UserService userService;
+
+    private String searchKeyword;
+    private List<User> userList;
+    private int totalCount;
+    private String searchStatus;
+
+    public void search() {
+        Map<String, Object> result = userService.searchUsers(searchKeyword, 1, 30);
+        
+        this.userList = (List<User>) result.get("users");
+        this.totalCount = (int) result.get("totalCount");
+        this.searchStatus = (String) result.get("status");
+    }
+
+    // Getter & Setter
+}
+```
+---
+
+## **✅ 5. JSF XHTML (`userSearch.xhtml`)**
+```xml
+<h:form>
+    <h:inputText value="#{userBean.searchKeyword}" />
+    <h:commandButton value="검색" action="#{userBean.search}" />
+
+    <h:outputText value="검색 결과 없음" rendered="#{userBean.searchStatus eq '1'}" />
+    <h:outputText value="30건 이상 검색됨" rendered="#{userBean.searchStatus eq '2'}" />
+    <h:outputText value="총 검색 건수: #{userBean.totalCount}" />
+
+    <h:dataTable value="#{userBean.userList}" var="user">
+        <h:column>
+            <f:facet name="header">ID</f:facet>
+            #{user.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">이름</f:facet>
+            #{user.name}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+---
+
+## **✅ 결론**
+- `UserService`에서 검색 결과 수를 조회하고, 검색 상태 (`"0"`, `"1"`, `"2"`)를 결정  
+- 검색 상태 (`searchStatus`), 총 검색 건수 (`totalCount`), 검색 결과 (`userList`)를 JSF로 전달  
+- JSF 화면에서 `rendered` 속성을 활용하여 검색 상태에 따라 메시지를 출력  
+
+이렇게 하면 **검색 결과 개수에 따라 적절한 상태값을 리턴하면서 총 검색 건수도 함께 제공 가능**!
