@@ -1,0 +1,73 @@
+지금 **index.xhtml**이 특정 포탈 화면으로 자동 이동하는 구조라면, 세션 정보 및 토큰 정보는 **index.xhtml에서 직접 처리할 수도 있고, 이동하는 페이지에서 처리할 수도 있어**.  
+
+### ✅ **방법 1: index.xhtml에서 처리 (권장)**  
+**index.xhtml에서 미리 세션 및 토큰 정보를 설정**하고, 이후 페이지에서 이를 활용하는 방식.  
+1. `index.xhtml`에서 **JavaScript로 세션 값을 가져와** 넘길 수도 있고,  
+2. **백엔드(Managed Bean)에서 세션에 값을 미리 저장**해둘 수도 있어.  
+
+#### ✔ **예제 (Managed Bean에서 세션 설정, index.xhtml에서 사용)**  
+##### 📌 **1. Managed Bean (`SessionBean.java`)**  
+```java
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import jakarta.servlet.http.HttpSession;
+import jakarta.faces.context.FacesContext;
+import java.io.Serializable;
+
+@Named
+@SessionScoped
+public class SessionBean implements Serializable {
+    public void setTestSession() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(true);
+        session.setAttribute("USER_ID", "testUser");
+        session.setAttribute("USER_ROLE", "admin");
+        session.setAttribute("REQUEST_TOKENKEY", "test-token-123");
+    }
+
+    public String getToken() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+        return (session != null) ? (String) session.getAttribute("REQUEST_TOKENKEY") : "no-token";
+    }
+}
+```
+---
+
+##### 📌 **2. `index.xhtml`에서 세션 값 가져와서 자동 이동**  
+```xhtml
+<h:head>
+    <script type="text/javascript">
+        window.onload = function () {
+            var token = "#{sessionBean.token}";  // 서버에서 토큰 값 가져오기
+            var userId = "#{sessionScope.USER_ID}"; // JSF EL 표현식으로 세션 값 가져오기
+
+            if (token !== "no-token" && userId !== "") {
+                // 특정 포탈로 자동 이동
+                window.location.href = "https://portal.example.com?token=" + token + "&user=" + userId;
+            } else {
+                alert("세션 정보가 없습니다.");
+            }
+        };
+    </script>
+</h:head>
+<h:body>
+    <h1>자동 이동 중...</h1>
+</h:body>
+```
+---
+
+### ✅ **방법 2: 다음 페이지에서 처리**
+이동할 페이지에서 세션을 다시 확인하는 방식이야.  
+- `index.xhtml`에서는 그냥 `window.location.href`로 이동만 하고,  
+- 이동한 페이지에서 **백엔드에서 세션을 다시 확인**한 후, 토큰이 없으면 로그인 페이지로 리디렉트하는 방식.
+
+---
+
+### **정리**
+- **index.xhtml에서 JavaScript로 세션 값을 사용하여 자동 이동하는 방식**이 **가장 깔끔하고 빠름**.  
+- **세션 설정은 Java(Managed Bean)에서 하고, index.xhtml에서 가져와서 활용**하는 것이 **권장됨**.  
+- **이동하는 페이지에서 다시 한 번 세션 검증하는 것도 보안적으로 좋음**.  
+
+✔ **결론:**  
+세션 값과 토큰을 **index.xhtml에서 설정하고 사용**하는 것이 가장 좋은 방법이야!
