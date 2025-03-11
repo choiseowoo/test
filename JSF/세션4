@@ -1,0 +1,121 @@
+로그인 화면 없이 `index.xhtml`에서 **자바스크립트로 페이지 전환 시 세션 정보를 설정**하는 방식으로 코드 작성해줄게.  
+
+---
+
+### **✔ `SessionBean.java` (세션 관리 Bean)**
+```java
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+
+@Named
+@SessionScoped
+public class SessionBean implements Serializable {
+    private String userId;
+    private String userRole;
+    private String token;
+    private String tokenKey;
+
+    public SessionBean() {}
+
+    // Getter & Setter
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getUserRole() {
+        return userRole;
+    }
+
+    public void setUserRole(String userRole) {
+        this.userRole = userRole;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public String getTokenKey() {
+        return tokenKey;
+    }
+
+    public void setTokenKey(String tokenKey) {
+        this.tokenKey = tokenKey;
+    }
+
+    // 세션 정보 설정 메서드
+    public void initializeSession(String userId, String userRole, String token, String tokenKey) {
+        this.userId = userId;
+        this.userRole = userRole;
+        this.token = token;
+        this.tokenKey = tokenKey;
+    }
+}
+```
+
+---
+
+### **✔ `index.xhtml` (JS로 세션 설정 및 페이지 이동)**
+```xhtml
+<h:head>
+    <script type="text/javascript">
+        function setSessionAndRedirect() {
+            // 세션 정보를 JSF Managed Bean에 전달
+            fetch('setSession.xhtml?userId=testUser&userRole=admin&token=123456789&tokenKey=TOKEN-KEY-ABC')
+                .then(response => {
+                    // 페이지 이동
+                    window.location.href = "home.xhtml";
+                })
+                .catch(error => console.error("세션 설정 실패", error));
+        }
+    </script>
+</h:head>
+
+<h:body>
+    <h:form>
+        <h:commandButton value="세션 설정 후 이동" onclick="setSessionAndRedirect(); return false;" />
+    </h:form>
+</h:body>
+```
+
+---
+
+### **✔ `setSession.xhtml` (세션 값 설정)**
+```xhtml
+<f:metadata>
+    <f:viewParam name="userId" value="#{sessionBean.userId}" />
+    <f:viewParam name="userRole" value="#{sessionBean.userRole}" />
+    <f:viewParam name="token" value="#{sessionBean.token}" />
+    <f:viewParam name="tokenKey" value="#{sessionBean.tokenKey}" />
+</f:metadata>
+```
+- **역할**: `index.xhtml`에서 `fetch()`로 호출되면서 `sessionBean`에 값이 저장됨  
+- **URL 예시**: `setSession.xhtml?userId=testUser&userRole=admin&token=123456789&tokenKey=TOKEN-KEY-ABC`  
+- **이후 `home.xhtml`에서 세션 정보 사용 가능**  
+
+---
+
+### **✔ `home.xhtml` (세션 값 확인)**
+```xhtml
+<h:outputText value="User ID: #{sessionBean.userId}" /><br/>
+<h:outputText value="User Role: #{sessionBean.userRole}" /><br/>
+<h:outputText value="Token: #{sessionBean.token}" /><br/>
+<h:outputText value="Token Key: #{sessionBean.tokenKey}" /><br/>
+```
+
+---
+
+### **🚀 동작 흐름**
+1. **index.xhtml에서 버튼 클릭** → `setSession.xhtml` 호출하여 `sessionBean` 값 설정  
+2. **JS에서 `home.xhtml`로 이동**  
+3. **home.xhtml에서 세션 정보를 사용 가능**  
+
+이제 **로그인 화면 없이 JavaScript를 이용해 세션 정보를 설정하고 페이지 이동 후 사용할 수 있어!**
