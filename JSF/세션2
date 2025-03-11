@@ -1,0 +1,59 @@
+**맞아!**  
+세션 정보(`USER_ID`, `TOKENKEY` 등)나 토큰 정보를 **다른 페이지에서도 유지하면서 사용하려면 `@SessionScoped`를 사용해야 해.**  
+
+---
+
+### **🔹 `@ViewScoped` vs `@SessionScoped` 다시 정리하면**  
+
+|  | `@ViewScoped` | `@SessionScoped` |
+|------|----------------|----------------|
+| **데이터 유지 범위** | **현재 페이지에서만 유지** | **세션이 유지되는 동안(다른 페이지에서도 유지)** |
+| **초기화 시점** | 페이지 이동하면 **초기화** | 브라우저 종료 또는 세션 만료 전까지 유지 |
+| **사용 예시** | 검색 결과, 일회성 데이터 | 로그인 정보, 인증 토큰, 사용자 상태 |
+
+---
+
+### **🔹 `@SessionScoped`를 사용해야 하는 경우**  
+✅ **사용자가 로그인하면 `USER_ID`, `TOKENKEY` 같은 정보를 저장하고, 다른 페이지에서도 계속 유지해야 할 때**.  
+✅ **예를 들어, 사용자가 로그인한 상태에서 `index.xhtml`에서 `main.xhtml`로 이동해도 `USER_ID`가 유지되어야 할 때.**  
+
+✔ **예제 코드 (`@SessionScoped` 적용)**  
+```java
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+
+@Named
+@SessionScoped
+public class SessionBean implements Serializable {
+    private String userId;
+    private String tokenKey;
+
+    public void setSessionInfo(String userId, String tokenKey) {
+        this.userId = userId;
+        this.tokenKey = tokenKey;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getTokenKey() {
+        return tokenKey;
+    }
+}
+```
+- **이렇게 하면 세션이 유지되는 동안 `USER_ID`, `TOKENKEY`가 다른 페이지에서도 유지됨.**  
+- 즉, `index.xhtml`에서 값을 설정하고, `main.xhtml`에서도 그대로 가져올 수 있음.
+
+---
+
+### **🔹 만약 `@ViewScoped`를 사용하면?**  
+- `index.xhtml`에서 로그인 정보를 저장했어도,  
+- **다른 페이지(`main.xhtml` 등)로 이동하면 데이터가 사라져버려서 다시 로그인해야 하는 문제가 생김.**  
+- 즉, **세션 유지가 필요하다면 `@SessionScoped`가 정답!**  
+
+---
+
+## **✅ 결론**
+**👉 세션 정보나 토큰을 다른 페이지에서도 유지하려면 `@SessionScoped`를 사용해야 해!**
