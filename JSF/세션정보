@@ -1,0 +1,75 @@
+담당자의 답변을 정리하면, **테스트 환경에서는 로그인 화면이 없어서 사용자 세션 정보와 토큰을 가져올 수 없기 때문에, 세션을 하드코딩하여 테스트하라**는 의미야.  
+
+### **📌 해결 방법**
+1. **로그인 없이도 테스트할 수 있도록 사용자 세션을 임의로 설정해야 함**  
+   - 원래는 로그인 시 DB 조회 후 세션에 저장하는 방식이지만, 현재는 테스트 환경이라 DB 조회가 불가능함.  
+   - 따라서 **세션을 직접 하드코딩**해서 기본 값을 넣어야 함.  
+
+2. **"구현 세션 클래스"를 확인해서 어떤 데이터를 세션에 저장하는지 확인해야 함**  
+   - 프로젝트 내에서 `HttpSession`을 사용하는 클래스를 찾아보면, 어떤 데이터를 세션에 넣는지 확인할 수 있음.  
+   - 그 정보를 바탕으로 **필요한 값을 직접 세션에 저장하는 코드 추가**.  
+
+---
+
+## **✅ 1. HttpSession을 사용하여 테스트용 세션 데이터 저장**
+아래처럼 JSF의 `@ManagedBean`에서 테스트용 세션을 설정하면, 로그인 없이도 세션 값을 유지할 수 있어.
+
+```java
+@ManagedBean
+@SessionScoped
+public class TestSessionBean {
+    
+    public void setTestSession() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        ExternalContext externalContext = facesContext.getExternalContext();
+        HttpSession session = (HttpSession) externalContext.getSession(true);
+
+        // 임의의 세션 값 설정 (테스트용)
+        session.setAttribute("USER_ID", "testUser");
+        session.setAttribute("USER_ROLE", "admin");
+        session.setAttribute("REQUEST_TOKENKEY", "test-token-123");
+    }
+
+    public String getTestSessionValue() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        ExternalContext externalContext = facesContext.getExternalContext();
+        HttpSession session = (HttpSession) externalContext.getSession(false);
+        
+        if (session != null) {
+            return (String) session.getAttribute("REQUEST_TOKENKEY");
+        }
+        return "세션 없음";
+    }
+}
+```
+---
+## **✅ 2. 로그인 없이 테스트 실행하는 방법**
+위의 `setTestSession()` 메소드를 실행하면 **세션에 테스트 값을 강제 저장**할 수 있어.  
+테스트 환경에서는 **페이지가 로드될 때 자동으로 실행하도록 설정**하면 편함.  
+
+### **JSF에서 테스트 세션 자동 설정**
+```xml
+<f:metadata>
+    <f:event type="preRenderView" listener="#{testSessionBean.setTestSession}" />
+</f:metadata>
+```
+이렇게 하면 페이지가 로드될 때 자동으로 **`setTestSession()` 실행**돼서 세션 값이 설정됨.
+
+---
+
+## **✅ 3. 세션 값이 정상적으로 저장되었는지 확인하는 방법**
+**XHTML에서 출력해서 확인 가능**
+```xml
+<h:outputText value="저장된 토큰: #{testSessionBean.testSessionValue}" />
+```
+위 코드로 `testSessionBean.getTestSessionValue()`를 호출하면, `"저장된 토큰: test-token-123"`처럼 정상적으로 세션에 값이 들어갔는지 확인할 수 있음.
+
+---
+
+## **✅ 결론**
+1. **테스트 환경에서는 로그인 없이도 실행할 수 있도록 세션 값을 하드코딩해야 함**  
+2. `HttpSession`을 이용해 `"USER_ID"`, `"REQUEST_TOKENKEY"` 등의 값을 직접 저장  
+3. `preRenderView` 이벤트를 사용해 페이지 로드 시 자동으로 세션 설정  
+4. JSF 페이지에서 출력하여 세션 값이 정상적으로 들어갔는지 확인  
+
+이렇게 하면 **로그인 없이도 사용자 세션이 있는 것처럼 테스트 가능**할 거야!
