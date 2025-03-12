@@ -1,0 +1,71 @@
+네, **근본적으로 잘못된 방식**입니다.  
+`session.setAttribute(SESSIONKEY_SESSION, "userid");` 이 코드 때문에 **캐스팅 에러가 발생**합니다.  
+
+---
+
+### **📌 원인 분석**
+#### **1️⃣ `session.setAttribute(SESSIONKEY_SESSION, "userid")`의 문제**
+```java
+session.setAttribute(SESSIONKEY_SESSION, "userid");
+```
+이렇게 저장하면 `SESSIONKEY_SESSION` 키에 **문자열(String)** `"userid"`가 직접 저장됩니다.  
+하지만 이후에 아래 코드처럼 **Map으로 변환하려고 하면** 문제가 발생합니다.
+
+```java
+Map<String, Object> sessionData = (Map<String, Object>) session.getAttribute(SESSIONKEY_SESSION);
+```
+**🔥 에러 발생 이유**  
+- 세션에는 `"userid"`라는 단순 문자열(String)이 저장됨  
+- 하지만 꺼낼 때 `Map<String, Object>`으로 **잘못된 캐스팅을 시도함**  
+- `String`을 `Map<String, Object>`으로 변환할 수 없기 때문에 **ClassCastException 발생**  
+
+```bash
+java.lang.ClassCastException: java.lang.String cannot be cast to java.util.Map
+```
+
+---
+
+### **📌 해결 방법**
+#### ✅ **방법 1) 세션에 `Map`을 저장하기**
+세션에 값을 저장할 때 **항상 `Map` 형태로 저장해야 합니다.**  
+```java
+Map<String, Object> sessionData = new HashMap<>();
+sessionData.put("USER_ID", "testUser");
+sessionData.put("USER_ROLE", "admin");
+sessionData.put("USER_TOKEN", "sampleToken");
+
+// 세션에 Map을 저장
+session.setAttribute(SESSIONKEY_SESSION, sessionData);
+```
+이렇게 하면, 나중에 `session.getAttribute(SESSIONKEY_SESSION)`을 호출할 때 **올바르게 `Map` 타입으로 캐스팅 가능**합니다.
+
+---
+
+#### ✅ **방법 2) 세션에서 꺼낼 때 `instanceof` 검사하기**
+혹시 기존 코드에서 문자열로 저장되었을 가능성이 있다면, 가져올 때 `instanceof` 검사를 추가하여 **안전하게 변환**해야 합니다.
+```java
+Object sessionObj = session.getAttribute(SESSIONKEY_SESSION);
+
+Map<String, Object> sessionData;
+if (sessionObj instanceof Map) {
+    sessionData = (Map<String, Object>) sessionObj;
+} else {
+    sessionData = new HashMap<>();
+}
+
+// 이제 sessionData를 안전하게 사용 가능
+sessionData.put("USER_ID", "testUser");
+session.setAttribute(SESSIONKEY_SESSION, sessionData);
+```
+이렇게 하면, **세션에 저장된 데이터가 잘못된 타입일 경우에도 안전하게 초기화할 수 있음**.
+
+---
+
+### **📌 결론**
+- `session.setAttribute(SESSIONKEY_SESSION, "userid");` ❌ **(잘못된 방식)**
+  - `SESSIONKEY_SESSION` 키에 `String`을 저장하면 `ClassCastException` 발생  
+- `session.setAttribute(SESSIONKEY_SESSION, Map<String, Object>);` ✅ **(올바른 방식)**
+  - `Map`을 저장하고 꺼낼 때 `Map`으로 변환해야 함  
+- `instanceof`를 사용해서 타입 검사 후 변환하면 **기존 데이터와 충돌 없이 동작 가능**  
+
+이제 `ClassCastException` 문제 없이 동작할 거야!
