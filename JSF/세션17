@@ -1,0 +1,150 @@
+`index.xhtml`에서 자바스크립트로 값을 넘기지 않으면, `portalPage.xhtml`에서는 그 값을 사용할 수 없습니다. 세션 데이터나 페이지 파라미터는 서버 사이드에서 관리되므로, 클라이언트 사이드인 자바스크립트로 값을 넘기지 않으면 서버에서 그 데이터를 알 수 없습니다.
+
+### 방법 1: 자바스크립트에서 값을 URL 파라미터로 넘기고, 서버에서 이를 받아서 세션에 저장하기
+
+`index.xhtml`에서 자바스크립트로 값을 URL 파라미터로 넘기고, `portalPage.xhtml`에서 이 값을 받아 세션에 저장하는 방식입니다.
+
+#### 1. `index.xhtml`: 자바스크립트에서 URL 파라미터로 값 넘기기
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:h="http://java.sun.com/jsf/html" xmlns:f="http://java.sun.com/jsf/core">
+    <h:head>
+        <title>Index Page</title>
+    </h:head>
+    <h:body onload="redirectToPortal();">
+
+        <h:form>
+            <h:outputText value="Redirecting to portal..." />
+        </h:form>
+
+        <h:outputScript>
+            function redirectToPortal() {
+                // 자바스크립트로 URL에 파라미터를 추가하여 포털 페이지로 리다이렉트
+                var userId = 'testUser';
+                var token = 'testToken';
+                window.location.href = 'portalPage.xhtml?userId=' + userId + '&token=' + token;
+            }
+        </h:outputScript>
+
+    </h:body>
+</html>
+```
+
+#### 2. `portalPage.xhtml`: URL 파라미터로 받은 값을 세션에 저장하고 사용하기
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:h="http://java.sun.com/jsf/html" xmlns:f="http://java.sun.com/jsf/core">
+    <h:head>
+        <title>Portal Page</title>
+    </h:head>
+    <h:body>
+
+        <h:form>
+            <!-- 사용자 세션에 저장된 값을 출력 -->
+            <h:outputText value="User ID: #{sessionBean.userId}" /><br/>
+            <h:outputText value="Token: #{sessionBean.token}" /><br/>
+        </h:form>
+
+        <!-- 페이지 파라미터로 받은 값을 세션에 저장 -->
+        <f:metadata>
+            <f:viewParam name="userId" value="#{sessionBean.userId}" />
+            <f:viewParam name="token" value="#{sessionBean.token}" />
+            <f:event type="preRenderView" listener="#{sessionBean.saveToSession}" />
+        </f:metadata>
+
+    </h:body>
+</html>
+```
+
+#### 3. `SessionBean` 코드
+
+`SessionBean`에서는 URL 파라미터로 전달받은 값을 세션에 저장하고, 이후 페이지에서 이를 사용할 수 있도록 합니다.
+
+```java
+import jakarta.faces.bean.SessionScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+
+@Named
+@SessionScoped
+public class SessionBean implements Serializable {
+
+    private String userId;
+    private String token;
+
+    // 세션에 값을 저장
+    public void saveToSession() {
+        // 세션에 값 저장 (JSF에 의한 자동 처리)
+        System.out.println("Session Saved: " + userId + ", " + token);
+    }
+
+    // Getter & Setter
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+}
+```
+
+### 방법 2: 자바스크립트로 값 넘기지 않고, 서버에서 세션 값을 사용
+
+만약 `index.xhtml`에서 자바스크립트로 값을 넘기지 않고, 서버에서 세션 값을 사용할 경우, `@SessionScoped` 빈을 사용하여 로그인 상태나 다른 정보를 세션에 저장하고, 이를 페이지에서 사용하면 됩니다.
+
+#### 1. `SessionBean`에서 직접 값 설정
+
+서버에서 직접 세션을 설정하고 사용하도록 할 수 있습니다.
+
+```java
+@Named
+@SessionScoped
+public class SessionBean implements Serializable {
+    private String userId;
+    private String token;
+
+    public void setUserInfo(String userId, String token) {
+        this.userId = userId;
+        this.token = token;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getToken() {
+        return token;
+    }
+}
+```
+
+#### 2. `index.xhtml`에서 `SessionBean`을 통해 세션 값 설정
+
+`index.xhtml`에서 `SessionBean`을 통해 세션 값 설정 후, 다른 페이지에서 값을 사용합니다.
+
+```xml
+<h:body>
+    <h:form>
+        <h:commandButton value="Set User Info" action="#{sessionBean.setUserInfo('testUser', 'testToken')}" />
+    </h:form>
+</h:body>
+```
+
+이렇게 하면, `index.xhtml`에서 버튼 클릭 시 서버에서 세션 값을 설정하고, 다른 페이지에서 이를 사용할 수 있습니다.
+
+### 결론
+- **자바스크립트로 값 넘기기**: `index.xhtml`에서 자바스크립트로 URL 파라미터를 넘기고, `portalPage.xhtml`에서 이를 받아 세션에 저장하여 사용할 수 있습니다.
+- **서버에서 직접 세션 설정**: `@SessionScoped` 빈을 사용하여 세션에 값을 저장하고, 페이지에서 이를 바로 사용할 수 있습니다.
+
+따라서, **자바스크립트에서 값을 넘기지 않으면**, `portalPage.xhtml`에서는 그 값을 세션에서 읽을 수 없으며, 서버에서 세션을 설정해야 합니다.
