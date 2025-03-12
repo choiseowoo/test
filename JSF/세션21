@@ -1,0 +1,129 @@
+에러 메시지 **"java.lang.Integer and java.lang.String are in module java.base of loader 'bootstrap'"**는 **Map에 저장된 데이터 타입이 서로 충돌할 때** 발생하는 문제입니다.  
+
+### **📌 원인 분석**
+```java
+Map<String, Object> sessionData = new HashMap<>();
+sessionData.put("USER_TOKEN", "testToken");
+sessionData.put("USER_ID", "testUser");
+sessionData.put("USER_ROLE", "admin");
+```
+✅ 위 코드에서 `sessionData`는 `Map<String, Object>` 타입이며, `String` 값을 저장하고 있음.  
+✅ 그런데 기존의 `MsSession` 클래스에서 **다른 타입(예: `Integer`)로 캐스팅하려는 부분이 존재할 가능성**이 있음.
+
+---
+
+### **📌 해결 방법**
+#### ✅ **1) 세션에서 값을 꺼낼 때, `String`으로 변환하여 사용하기**
+세션에 저장된 값이 `Object` 타입이므로, **꺼낼 때 `String`으로 변환**하면 타입 충돌을 방지할 수 있음.
+
+##### **🔹 `SessionManager` 수정 (데이터 꺼낼 때 `String.valueOf()` 사용)**
+```java
+import jakarta.faces.context.FacesContext;
+import jakarta.servlet.http.HttpSession;
+import java.util.HashMap;
+import java.util.Map;
+
+public class SessionManager {
+    private static final String SESSIONKEY_SESSION = "framework.session";
+
+    // 세션에 하드코딩된 값 저장
+    public static void saveToSession() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(true);
+
+            Map<String, Object> sessionData = new HashMap<>();
+            sessionData.put("USER_TOKEN", "testToken");
+            sessionData.put("USER_ID", "testUser");
+            sessionData.put("USER_ROLE", "admin");
+
+            session.setAttribute(SESSIONKEY_SESSION, sessionData);
+            System.out.println("세션 저장 완료: " + sessionData);
+        }
+    }
+
+    // 세션에서 값 가져오기 (타입 변환 추가)
+    public static String getUserToken() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+            if (session != null) {
+                Map<String, Object> sessionData = (Map<String, Object>) session.getAttribute(SESSIONKEY_SESSION);
+                if (sessionData != null) {
+                    return String.valueOf(sessionData.get("USER_TOKEN")); // 🔥 String 변환 추가
+                }
+            }
+        }
+        return null;
+    }
+
+    public static String getUserId() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+            if (session != null) {
+                Map<String, Object> sessionData = (Map<String, Object>) session.getAttribute(SESSIONKEY_SESSION);
+                if (sessionData != null) {
+                    return String.valueOf(sessionData.get("USER_ID")); // 🔥 String 변환 추가
+                }
+            }
+        }
+        return null;
+    }
+
+    public static String getUserRole() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+            if (session != null) {
+                Map<String, Object> sessionData = (Map<String, Object>) session.getAttribute(SESSIONKEY_SESSION);
+                if (sessionData != null) {
+                    return String.valueOf(sessionData.get("USER_ROLE")); // 🔥 String 변환 추가
+                }
+            }
+        }
+        return null;
+    }
+}
+```
+✅ **변경 내용**  
+- `String.valueOf(sessionData.get("USER_TOKEN"))`을 사용하여 **객체(Object)를 안전하게 `String`으로 변환**  
+- `MsSession`에서 값을 꺼낼 때 **데이터 타입 충돌을 방지**  
+
+---
+
+#### ✅ **2) `index.xhtml`에서 `preRenderView` 실행**
+```xml
+<f:metadata>
+    <f:event type="preRenderView" listener="#{sessionBean.saveToSession}" />
+</f:metadata>
+
+<h:body>
+    <h:outputScript>
+        window.onload = function() {
+            window.location.href = 'xxxx01.xhtml';
+        };
+    </h:outputScript>
+</h:body>
+```
+✅ `sessionBean.saveToSession()`에서 **세션 값을 저장한 후, `xxxx01.xhtml`로 자동 이동**  
+
+---
+
+#### ✅ **3) `xxxx01.xhtml`에서 세션 값 사용**
+```xml
+<h:outputText value="User Token: #{sessionBean.userToken}" />
+<h:outputText value="User ID: #{sessionBean.userId}" />
+<h:outputText value="User Role: #{sessionBean.userRole}" />
+```
+✅ `sessionBean.userToken`, `sessionBean.userId`, `sessionBean.userRole` 값이 정상적으로 표시됨  
+
+---
+
+### **📌 결론**
+- **기존 `MsSession`에서 `Integer` 또는 다른 타입으로 변환하려는 과정에서 타입 충돌 발생**
+- **세션에서 값을 꺼낼 때 `String.valueOf()`로 변환하여 해결**
+- **JSF `preRenderView` 이벤트로 `SESSIONKEY_SESSION` 값을 저장 후 이동**
+- **다음 페이지(`xxxx01.xhtml`)에서 정상적으로 세션 값을 사용 가능**
+
+이제 실행하면 **타입 충돌 없이 정상 작동**할 거야!
