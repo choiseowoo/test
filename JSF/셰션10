@@ -1,0 +1,93 @@
+맞아! `SESSIONKEY_SESSION`은 **유저 세션 정보를 저장하는 키**이기 때문에, 토큰과 함께 `HttpSession` 객체에 저장하면 돼.  
+
+### **🚀 `SESSIONKEY_SESSION`에 토큰 및 유저 정보 저장하는 방법**  
+
+#### **✅ 1. `SessionBean.java`에서 `SESSIONKEY_SESSION` 사용**
+```java
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import jakarta.faces.context.FacesContext;
+import jakarta.servlet.http.HttpSession;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+
+@Named
+@SessionScoped
+public class SessionBean implements Serializable {
+    private static final String SESSIONKEY_SESSION = "framework.session"; // 세션 키
+    private String token;
+    private String userId = "testUser";   // 예제 사용자 ID
+    private String userRole = "admin";    // 예제 역할
+
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
+
+    // 세션에 토큰과 유저 정보를 저장하는 메서드
+    public void saveToSession() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(true);
+            
+            // 기존 세션 정보 가져오기 (없으면 새로 생성)
+            Map<String, Object> sessionData = (Map<String, Object>) session.getAttribute(SESSIONKEY_SESSION);
+            if (sessionData == null) {
+                sessionData = new HashMap<>();
+            }
+
+            // 토큰 및 유저 정보 저장
+            sessionData.put("USER_TOKEN", token);
+            sessionData.put("USER_ID", userId);
+            sessionData.put("USER_ROLE", userRole);
+            
+            // 세션에 저장
+            session.setAttribute(SESSIONKEY_SESSION, sessionData);
+
+            System.out.println("세션 저장 완료: " + sessionData);
+        }
+    }
+
+    // 세션에서 값 가져오기
+    public Map<String, Object> getSessionData() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+            if (session != null) {
+                return (Map<String, Object>) session.getAttribute(SESSIONKEY_SESSION);
+            }
+        }
+        return null;
+    }
+}
+```
+
+---
+
+#### **✅ 2. `setSession.xhtml`에서 세션에 저장하도록 설정**
+```xml
+<f:metadata>
+    <f:viewParam name="token" value="#{sessionBean.token}" />
+    <f:event type="preRenderView" listener="#{sessionBean.saveToSession}" />
+</f:metadata>
+```
+→ `setSession.xhtml`에 접근하면 자동으로 `saveToSession()`이 실행되어 세션에 토큰과 유저 정보를 저장함.
+
+---
+
+#### **✅ 3. 세션 값 확인 (`portal.xhtml`)**
+```xml
+<h:body>
+    <h:outputText value="세션에 저장된 토큰: #{sessionBean.getSessionData()['USER_TOKEN']}" /><br/>
+    <h:outputText value="세션에 저장된 유저 ID: #{sessionBean.getSessionData()['USER_ID']}" /><br/>
+    <h:outputText value="세션에 저장된 역할: #{sessionBean.getSessionData()['USER_ROLE']}" /><br/>
+</h:body>
+```
+
+---
+
+### **📌 정리**
+- `SESSIONKEY_SESSION`에 **Map<String, Object> 구조로 토큰과 유저 정보 저장**  
+- `saveToSession()`에서 세션 데이터를 가져와서 `SESSIONKEY_SESSION`에 업데이트  
+- `portal.xhtml`에서 `sessionBean.getSessionData()`로 값 확인 가능  
+
+이제 **세션 값이 유지되면서 다른 페이지에서도 유저 정보를 활용할 수 있어!**
