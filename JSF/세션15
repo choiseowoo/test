@@ -1,0 +1,204 @@
+세션 데이터를 저장하고 이를 관리하기 위한 `XHTML` 파일 작성 예제를 보여드리겠습니다. 이 예제에서는 `index.xhtml`에서 세션에 사용자 정보를 저장하고, 이후 다른 페이지로 전환할 때 이를 확인하는 과정을 포함하고 있습니다.
+
+### 1. `index.xhtml` - 세션에 데이터 저장하기
+`index.xhtml`에서는 사용자 정보(`userId`, `tokenKey`, `token`)를 세션에 저장하고, 다른 페이지로 이동할 수 있도록 처리하는 예제를 보여드립니다.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:h="http://java.sun.com/jsf/html" xmlns:f="http://java.sun.com/jsf/core">
+    <h:head>
+        <title>Index Page</title>
+        <h:outputScript name="jquery.js"/>
+        <h:outputScript name="custom.js"/>
+    </h:head>
+    <h:body onload="redirectToPortal();">
+
+        <h:form>
+            <h:outputText value="Welcome to the Index page!" />
+        </h:form>
+
+        <!-- 세션에 값을 저장하는 JSF EL -->
+        <f:metadata>
+            <f:viewParam name="token" value="#{sessionBean.token}" />
+            <f:viewParam name="userId" value="#{sessionBean.userId}" />
+            <f:viewParam name="userRole" value="#{sessionBean.userRole}" />
+            <f:event type="preRenderView" listener="#{sessionBean.saveToSession}" />
+        </f:metadata>
+
+        <h:outputScript>
+            // 자바스크립트에서 세션에 사용자 데이터를 저장하고 포탈 페이지로 리디렉션
+            function redirectToPortal() {
+                var userId = "testUser";
+                var tokenKey = "testTokenKey";
+                var token = "testToken";
+
+                // 세션에 값을 저장하는 방식 (세션 관리 메서드 호출)
+                saveToSession(userId, tokenKey, token);
+                
+                // 다른 포탈 화면으로 리디렉션
+                window.location.href = "portalPage.xhtml";
+            }
+        </h:outputScript>
+
+    </h:body>
+</html>
+```
+
+### 2. `sessionBean.java` - 세션에 저장하는 JavaBean
+JSF에서 세션에 데이터를 저장하고 관리하기 위해 `@SessionScoped`로 선언된 `sessionBean`을 사용할 수 있습니다. 이 클래스에서 세션에 데이터를 저장하는 로직을 구현합니다.
+
+```java
+import jakarta.faces.bean.SessionScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+
+@Named
+@SessionScoped
+public class SessionBean implements Serializable {
+
+    private String token;
+    private String userId;
+    private String userRole;
+
+    // 세션에 값을 저장하는 메서드
+    public void saveToSession() {
+        SessionManager.saveToSession(userId, token, userRole);
+    }
+
+    // Getter and Setter
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getUserRole() {
+        return userRole;
+    }
+
+    public void setUserRole(String userRole) {
+        this.userRole = userRole;
+    }
+}
+```
+
+### 3. `SessionManager.java` - 세션 관리
+`SessionManager` 클래스에서는 실제로 세션에 데이터를 저장하는 메서드들이 정의되어 있습니다. 이 클래스는 `index.xhtml`에서 사용자 정보가 세션에 저장되도록 처리합니다.
+
+```java
+import jakarta.faces.context.FacesContext;
+import jakarta.servlet.http.HttpSession;
+
+public class SessionManager {
+
+    // 세션에 데이터를 저장하는 메서드
+    public static void saveToSession(String userId, String tokenKey, String token) {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(true);
+
+            // 세션에 개별 데이터를 저장
+            session.setAttribute("user.session", userId);
+            session.setAttribute("tokenKey.session", tokenKey);
+            session.setAttribute("token.session", token);
+
+            System.out.println("세션 저장 완료: user.session=" + userId + ", tokenKey.session=" + tokenKey + ", token.session=" + token);
+        }
+    }
+
+    // 세션에서 데이터를 가져오는 메서드
+    public static String getUserFromSession() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+            if (session != null) {
+                return (String) session.getAttribute("user.session");
+            }
+        }
+        return null;
+    }
+
+    public static String getTokenKeyFromSession() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+            if (session != null) {
+                return (String) session.getAttribute("tokenKey.session");
+            }
+        }
+        return null;
+    }
+
+    public static String getTokenFromSession() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+            if (session != null) {
+                return (String) session.getAttribute("token.session");
+            }
+        }
+        return null;
+    }
+}
+```
+
+### 4. `portalPage.xhtml` - 세션에서 데이터 가져오기
+`portalPage.xhtml`에서는 세션에 저장된 데이터를 가져와서 표시하는 페이지입니다.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:h="http://java.sun.com/jsf/html" xmlns:f="http://java.sun.com/jsf/core">
+    <h:head>
+        <title>Portal Page</title>
+    </h:head>
+    <h:body>
+
+        <h:form>
+            <h:outputText value="Welcome to the Portal page!" /><br/>
+            <h:outputText value="User ID: #{sessionBean.userId}" /><br/>
+            <h:outputText value="Token Key: #{sessionBean.tokenKey}" /><br/>
+            <h:outputText value="Token: #{sessionBean.token}" /><br/>
+        </h:form>
+
+    </h:body>
+</html>
+```
+
+### 5. `faces-config.xml` - 필요에 따라 세션 스코프 설정
+`faces-config.xml`에서 `sessionBean`이 `@SessionScoped`로 동작하도록 설정할 수 있습니다. 하지만 `@SessionScoped`가 기본적으로 동작하므로 이 부분은 필요에 따라 추가하시면 됩니다.
+
+```xml
+<faces-config>
+    <managed-bean>
+        <managed-bean-name>sessionBean</managed-bean-name>
+        <managed-bean-class>com.example.SessionBean</managed-bean-class>
+        <managed-bean-scope>session</managed-bean-scope>
+    </managed-bean>
+</faces-config>
+```
+
+### 설명:
+1. **`index.xhtml`:**
+   - `redirectToPortal()` 자바스크립트 함수에서 세션에 `userId`, `tokenKey`, `token` 값을 저장하고 `portalPage.xhtml`으로 리디렉션합니다.
+   - `f:metadata` 태그에서 `sessionBean`의 `saveToSession` 메서드를 호출하여 세션에 데이터를 저장합니다.
+
+2. **`sessionBean.java`:**
+   - `@SessionScoped`로 세션 데이터를 관리하며, `saveToSession()` 메서드를 호출하여 세션에 값을 저장합니다.
+
+3. **`SessionManager.java`:**
+   - 세션에 사용자 정보를 저장하고, 필요한 데이터를 가져오는 기능을 제공합니다.
+
+4. **`portalPage.xhtml`:**
+   - `sessionBean`의 값을 가져와서 화면에 출력합니다.
+
+이 방법을 통해 `index.xhtml`에서 사용자의 세션 정보를 저장하고, 다른 페이지로 넘어가면서 세션에 저장된 값을 사용할 수 있습니다.
