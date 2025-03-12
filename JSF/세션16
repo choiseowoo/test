@@ -1,0 +1,109 @@
+네, `@SessionScoped` 어노테이션을 사용하면, JSF에서 세션 범위로 관리되는 데이터에 접근할 수 있습니다. 즉, 한 페이지에서 세션에 저장한 데이터를 다른 페이지에서도 사용할 수 있습니다.
+
+### `@SessionScoped`란?
+- **`@SessionScoped`**는 해당 Bean이 HTTP 세션 동안 유지된다는 것을 의미합니다. 즉, 사용자가 세션을 종료하거나 브라우저를 닫을 때까지 이 Bean의 인스턴스는 살아있고, 세션에 저장된 데이터는 여러 페이지에서 공유됩니다.
+- **`@SessionScoped`** Bean은 세션에 데이터를 저장하고, 이 데이터는 다른 페이지에서 계속해서 사용이 가능합니다.
+
+### 예시
+
+1. **세션에 값 저장하기 (`@SessionScoped` 사용)**
+
+   `SessionBean`에서 `@SessionScoped` 어노테이션을 사용하여 세션에 데이터를 저장할 수 있습니다.
+
+   ```java
+   import jakarta.faces.bean.SessionScoped;
+   import jakarta.inject.Named;
+   import java.io.Serializable;
+
+   @Named
+   @SessionScoped
+   public class SessionBean implements Serializable {
+       private String userId;
+       private String token;
+
+       // 세션에 값을 저장
+       public void saveToSession(String userId, String token) {
+           this.userId = userId;
+           this.token = token;
+       }
+
+       // Getter & Setter
+       public String getUserId() {
+           return userId;
+       }
+
+       public void setUserId(String userId) {
+           this.userId = userId;
+       }
+
+       public String getToken() {
+           return token;
+       }
+
+       public void setToken(String token) {
+           this.token = token;
+       }
+   }
+   ```
+
+2. **`index.xhtml` 페이지에서 세션에 데이터 저장**
+
+   `index.xhtml`에서는 자바스크립트를 사용하거나 서버측에서 `SessionBean`을 통해 데이터를 세션에 저장할 수 있습니다.
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <html xmlns="http://www.w3.org/1999/xhtml" xmlns:h="http://java.sun.com/jsf/html" xmlns:f="http://java.sun.com/jsf/core">
+       <h:head>
+           <title>Index Page</title>
+       </h:head>
+       <h:body onload="saveSessionData();">
+
+           <h:form>
+               <h:outputText value="User is logging in..." />
+           </h:form>
+
+           <h:outputScript>
+               function saveSessionData() {
+                   // 자바스크립트로 세션 데이터 저장
+                   // 예: 세션 저장 처리 (여기서는 jsf-EL을 이용하여 처리할 수 있음)
+                   window.location.href = 'portalPage.xhtml?userId=testUser&token=testToken';
+               }
+           </h:outputScript>
+
+       </h:body>
+   </html>
+   ```
+
+3. **세션에서 값 읽기 (`portalPage.xhtml` 페이지)**
+
+   `portalPage.xhtml`에서는 이미 저장된 세션 데이터를 읽어서 사용할 수 있습니다.
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <html xmlns="http://www.w3.org/1999/xhtml" xmlns:h="http://java.sun.com/jsf/html">
+       <h:head>
+           <title>Portal Page</title>
+       </h:head>
+       <h:body>
+
+           <h:form>
+               <h:outputText value="User ID: #{sessionBean.userId}" /><br/>
+               <h:outputText value="Token: #{sessionBean.token}" /><br/>
+           </h:form>
+
+       </h:body>
+   </html>
+   ```
+
+### 흐름
+1. **`index.xhtml`에서 `SessionBean`에 사용자 정보 (`userId`, `token`)를 저장**:
+   - 사용자가 페이지를 로드하면, 자바스크립트나 서버에서 `SessionBean`에 데이터를 저장합니다. 이 값은 HTTP 세션에 저장됩니다.
+
+2. **`portalPage.xhtml`에서 세션 데이터에 접근**:
+   - `portalPage.xhtml` 페이지에서는 `sessionBean`에 저장된 값을 `#{sessionBean.userId}`와 `#{sessionBean.token}`과 같이 EL(Expression Language)을 사용하여 화면에 출력할 수 있습니다.
+
+### 세션에 저장된 데이터 공유
+- **`@SessionScoped`**로 선언된 `SessionBean`의 데이터를 한 페이지에서 저장하고 다른 페이지에서도 같은 세션 데이터를 사용할 수 있게 됩니다.
+- 사용자가 여러 페이지를 이동할 때마다 세션에 저장된 값은 계속해서 유지되므로, 로그인 정보나 인증 토큰 같은 데이터를 여러 페이지에서 공유할 수 있습니다.
+
+따라서, `@SessionScoped`를 사용하면 다른 페이지에서 세션에 저장된 값을 정상적으로 읽고 사용할 수 있습니다.
