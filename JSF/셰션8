@@ -1,0 +1,91 @@
+### **🚀 로그인 화면 없이 `index.xhtml`에서 자동으로 포털 화면으로 이동하면서 세션에 토큰 및 정보 저장하는 방법**
+
+#### **✅ 1. `index.xhtml`에서 JavaScript로 자동 이동 + 토큰 요청**
+로그인 화면이 없기 때문에, `index.xhtml`에서 JavaScript로 토큰을 생성하거나 요청한 후, **서버에 전달하여 세션에 저장**하고, 자동으로 포털 화면으로 이동하도록 하면 돼.
+
+```xml
+<h:body onload="redirectToPortal()">
+    <script>
+        function redirectToPortal() {
+            // 1. 토큰 생성 (예제)
+            let token = "default-token-" + new Date().getTime();  // 간단한 예제 토큰 생성
+
+            // 2. 서버에 토큰 전달하여 세션에 저장 요청
+            fetch('setSession.xhtml?token=' + token, {
+                method: 'GET'
+            }).then(response => {
+                // 3. 세션 저장 후 포털 페이지로 자동 이동
+                window.location.href = "portal.xhtml";
+            }).catch(error => console.error("세션 저장 실패", error));
+        }
+    </script>
+</h:body>
+```
+
+---
+
+#### **✅ 2. `setSession.xhtml`에서 서버에 토큰 저장**
+위에서 `fetch('setSession.xhtml?token=...')`를 호출했기 때문에, 이 요청을 처리하는 `setSession.xhtml`을 만들고, **Managed Bean에서 토큰을 세션에 저장**하면 돼.
+
+##### **📌 `setSession.xhtml` (비즈니스 로직 호출)**
+```xml
+<f:metadata>
+    <f:viewParam name="token" value="#{sessionBean.token}" />
+    <f:event type="preRenderView" listener="#{sessionBean.saveToSession}" />
+</f:metadata>
+```
+
+##### **📌 `SessionBean.java` (토큰을 세션에 저장하는 Managed Bean)**
+```java
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import jakarta.faces.context.FacesContext;
+import jakarta.servlet.http.HttpSession;
+import java.io.Serializable;
+
+@Named
+@SessionScoped
+public class SessionBean implements Serializable {
+    private String token;
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    // 세션에 토큰 저장
+    public void saveToSession() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(true);
+            session.setAttribute("USER_TOKEN", token);
+            System.out.println("세션에 토큰 저장 완료: " + token);
+        }
+    }
+}
+```
+
+---
+
+#### **✅ 3. `portal.xhtml`에서 세션 정보 확인**
+포털 페이지(`portal.xhtml`)에서는 세션에 저장된 토큰을 다시 가져와서 확인할 수 있어.
+
+##### **📌 `portal.xhtml`**
+```xml
+<h:body>
+    <h:outputText value="세션에 저장된 토큰: #{sessionBean.token}" />
+</h:body>
+```
+
+---
+
+### **📌 정리**
+1. **`index.xhtml`에서 JavaScript로 토큰을 생성** → `setSession.xhtml?token=...`으로 전달
+2. **`setSession.xhtml`에서 Managed Bean이 토큰을 세션에 저장**
+3. **세션 정보가 저장된 후 자동으로 `portal.xhtml`로 이동**
+4. **`portal.xhtml`에서 세션 값을 확인 가능**
+
+이렇게 하면 로그인 없이 **자동으로 세션에 토큰을 저장하고 포털 화면으로 이동**할 수 있어!
