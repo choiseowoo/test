@@ -1,0 +1,108 @@
+이 문제는 **JavaServer Faces(JSF) 2.3**과 **Jakarta Faces 4.1**이 서로 호환되지 않기 때문에 발생하는 문제입니다.  
+
+---
+
+### **문제 원인**  
+1. **JSF 2.3은 `javax.faces` 네임스페이스를 사용**  
+   - JSF 2.3 이하 버전에서는 `javax.faces` 패키지를 사용합니다.
+  
+2. **Jakarta Faces 4.1은 `jakarta.faces` 네임스페이스를 사용**  
+   - JSF 3.0부터 `javax.faces`가 `jakarta.faces`로 변경되었습니다.
+   - Jakarta Faces 4.1을 사용하면 모든 코드와 설정에서 `javax.faces` 대신 `jakarta.faces`를 사용해야 합니다.
+
+---
+
+### **해결 방법**
+#### ✅ **방법 1: JSF 2.3을 유지하면서 Jakarta Faces 4.1을 제거**
+- 만약 **기존 코드(JSF 2.3 기반)를 유지하고 싶다면**, Jakarta Faces 4.1을 **제거하고 JSF 2.3을 그대로 사용**하면 됩니다.
+- Eclipse에서 **JSF 2.3 라이브러리를 추가**하고 `pom.xml`을 수정하세요.
+
+##### **pom.xml (JSF 2.3 사용)**
+```xml
+<dependencies>
+    <dependency>
+        <groupId>javax.faces</groupId>
+        <artifactId>javax.faces-api</artifactId>
+        <version>2.3</version>
+        <scope>provided</scope>
+    </dependency>
+</dependencies>
+```
+
+> **⚠ 주의:** Jakarta Faces 4.1이 프로젝트에 남아 있으면 충돌이 발생할 수 있으므로, **Jakarta Faces 관련 라이브러리는 제거해야 합니다.**
+
+---
+
+#### ✅ **방법 2: JSF 2.3을 JSF 4.1로 업그레이드 (권장)**
+**Jakarta Faces 4.1을 계속 사용하고 싶다면**, 프로젝트에서 **모든 `javax.faces`를 `jakarta.faces`로 변경**해야 합니다.
+
+##### **1. `pom.xml`에서 JSF 4.1 설정**
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.glassfish</groupId>
+        <artifactId>jakarta.faces</artifactId>
+        <version>4.1.2</version> <!-- 최신 버전에 맞게 변경 -->
+    </dependency>
+</dependencies>
+```
+
+##### **2. `faces-config.xml` 수정**
+- 기존 `faces-config.xml`에서 **`javax.faces`를 `jakarta.faces`로 변경**해야 합니다.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<faces-config xmlns="https://jakarta.ee/xml/ns/jakartaee"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+              https://jakarta.ee/xml/ns/jakartaee/web-facesconfig_4_0.xsd"
+              version="4.0">
+    <application>
+        <locale-config>
+            <default-locale>en</default-locale>
+        </locale-config>
+    </application>
+</faces-config>
+```
+
+##### **3. `xhtml`에서 네임스페이스 변경**
+- 기존 `javax.faces` 네임스페이스가 있다면 **모두 `jakarta.faces`로 변경**합니다.
+
+```xml
+<html xmlns:h="http://jakarta.faces/html"
+      xmlns:f="http://jakarta.faces/core">
+    <h:head>
+        <title>My JSF Page</title>
+    </h:head>
+    <h:body>
+        <h:outputText value="Hello, JSF 4.1!" />
+    </h:body>
+</html>
+```
+
+##### **4. Java 코드 수정**
+- `import javax.faces.*;` → `import jakarta.faces.*;` 로 변경
+
+```java
+import jakarta.faces.bean.ManagedBean;
+import jakarta.faces.bean.SessionScoped;
+import jakarta.faces.context.FacesContext;
+
+@ManagedBean
+@SessionScoped
+public class MyBean {
+    private String message = "Hello, Jakarta Faces 4.1!";
+
+    public String getMessage() {
+        return message;
+    }
+}
+```
+
+---
+
+### **결론**
+- **JSF 2.3을 계속 사용하고 싶다면**: Jakarta Faces 4.1을 제거하고 기존의 `javax.faces`를 유지해야 합니다.
+- **Jakarta Faces 4.1을 사용하고 싶다면**: 프로젝트 전체를 `javax.faces` → `jakarta.faces`로 마이그레이션해야 합니다.
+
+> ⚠ **현재 Eclipse에서 `javax.faces` 관련 경고가 뜨는 이유는 `faces-config.xml`이나 `xhtml`이 JSF 2.3 기준으로 작성되어 있기 때문**입니다. Jakarta Faces 4.1을 사용하려면 반드시 모든 코드를 `jakarta.faces`로 변환해야 합니다.
