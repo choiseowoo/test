@@ -1,0 +1,146 @@
+### **🚀 `SESSIONKEY_SESSION`에 값 넣는 다른 방법 & `msSession` 관련 오류 분석**  
+
+#### **🔍 `msSession` 관련 `bootstrap` 에러 원인 분석**
+1. **세션 관리 클래스 (`MsSession` 같은) 존재 여부**  
+   - 기존 프로젝트에서 `SESSIONKEY_SESSION`을 `MsSession`이라는 클래스를 통해 관리하는 방식일 가능성이 큼.  
+   - `session.getAttribute(SESSIONKEY_SESSION)`을 호출할 때, `MsSession` 클래스를 찾지 못하거나 잘못된 초기화가 되어 `bootstrap` 관련 오류가 발생하는 것일 수 있음.
+
+2. **WildFly의 Bootstrap 문제**
+   - `bootstrap` 에러는 **클래스 로딩** 또는 **Bean 초기화 문제**에서 자주 발생함.  
+   - `MsSession`이 제대로 로드되지 않거나, `bootstrap` 과정에서 인스턴스가 생성되지 않는다면 오류가 발생할 수 있음.
+
+3. **세션 클래스의 변경 또는 재등록 필요**
+   - 프로젝트에서 `MsSession`이 세션을 관리하는데, `SESSIONKEY_SESSION`을 직접 `Map` 형태로 저장하는 방식과 충돌할 수도 있음.
+   - 또는 `MsSession`의 `Serializable` 구현이 빠져서 세션 복원 시 문제가 생길 수도 있음.
+
+---
+
+### **✅ `SESSIONKEY_SESSION`에 값 넣는 다른 방법**  
+
+#### **① 기존의 `MsSession` 클래스를 활용하는 방법**
+- `MsSession`이 세션을 관리한다면, **기존 클래스를 활용**하여 `SESSIONKEY_SESSION`에 값을 넣는 것이 가장 안전함.
+- `MsSession`이 `Serializable`을 구현하는지 확인 필요.  
+
+```java
+import jakarta.faces.context.FacesContext;
+import jakarta.servlet.http.HttpSession;
+import java.io.Serializable;
+
+public class MsSession implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
+    private String token;
+    private String userId;
+    private String userRole;
+
+    // Getter & Setter
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
+    
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+    
+    public String getUserRole() { return userRole; }
+    public void setUserRole(String userRole) { this.userRole = userRole; }
+
+    // 세션에 저장
+    public static void saveToSession(String token, String userId, String userRole) {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(true);
+            MsSession msSession = new MsSession();
+            msSession.setToken(token);
+            msSession.setUserId(userId);
+            msSession.setUserRole(userRole);
+
+            session.setAttribute("framework.session", msSession);
+            System.out.println("세션 저장 완료: " + msSession);
+        }
+    }
+
+    // 세션에서 가져오기
+    public static MsSession getFromSession() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+            if (session != null) {
+                return (MsSession) session.getAttribute("framework.session");
+            }
+        }
+        return null;
+    }
+}
+```
+
+**✅ `MsSession` 활용 방식**
+- 기존 프로젝트에서 `MsSession`을 사용하고 있다면, 위처럼 `SESSIONKEY_SESSION` (`framework.session`)에 `MsSession` 객체를 저장.
+- `saveToSession()` 메서드를 통해 토큰, 유저 정보를 `MsSession` 객체에 저장하고, 세션에 등록.
+- `getFromSession()`을 사용해서 다른 페이지에서도 세션 데이터 조회 가능.
+
+---
+
+#### **② `Map<String, Object>` 형태로 저장하는 방법**
+만약 `MsSession`이 필요 없다면, `Map<String, Object>`을 세션에 직접 저장하는 방법도 가능.
+
+```java
+import jakarta.faces.context.FacesContext;
+import jakarta.servlet.http.HttpSession;
+import java.util.HashMap;
+import java.util.Map;
+
+public class SessionManager {
+    private static final String SESSIONKEY_SESSION = "framework.session";
+
+    // 세션에 값 저장
+    public static void saveToSession(String token, String userId, String userRole) {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(true);
+
+            Map<String, Object> sessionData = (Map<String, Object>) session.getAttribute(SESSIONKEY_SESSION);
+            if (sessionData == null) {
+                sessionData = new HashMap<>();
+            }
+
+            sessionData.put("USER_TOKEN", token);
+            sessionData.put("USER_ID", userId);
+            sessionData.put("USER_ROLE", userRole);
+
+            session.setAttribute(SESSIONKEY_SESSION, sessionData);
+            System.out.println("세션 저장 완료: " + sessionData);
+        }
+    }
+
+    // 세션에서 값 가져오기
+    public static Map<String, Object> getSessionData() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(false);
+            if (session != null) {
+                return (Map<String, Object>) session.getAttribute(SESSIONKEY_SESSION);
+            }
+        }
+        return null;
+    }
+}
+```
+
+**✅ `Map<String, Object>` 방식**
+- `SESSIONKEY_SESSION` (`framework.session`)에 `Map<String, Object>` 형태로 저장.
+- `saveToSession()`을 호출하면 세션에 토큰, 유저 정보 저장.
+- `getSessionData()`를 호출하면 세션에서 해당 데이터 가져옴.
+
+---
+
+### **💡 해결책 정리**
+| 방법 | 장점 | 단점 |
+|------|------|------|
+| `MsSession` 클래스 활용 | 기존 코드 유지 가능 | `bootstrap` 오류가 발생하면 디버깅 필요 |
+| `Map<String, Object>` 활용 | 단순한 Key-Value 방식으로 관리 가능 | 기존 `MsSession`과 충돌할 가능성 있음 |
+
+---
+
+### **📌 최종 결론**
+- **기존 코드가 `MsSession`을 사용하는지 확인 후**, `MsSession`을 유지하는 것이 좋음.  
+- `bootstrap` 오류가 발생하는 원인을 찾기 위해 **`MsSession` 클래스가 `Serializable`을 구현했는지 확인**하고, WildFly 로그에서 **정확한 오류 메시지**를 확인해야 함.  
+- `MsSession`을 제거하고 `Map<String, Object>` 방식으로 변경할 수도 있음.
