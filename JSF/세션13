@@ -1,0 +1,53 @@
+`preRenderView` 이벤트에서 `MsSession` 클래스와 관련된 에러가 발생하는 이유는 여러 가지가 있을 수 있습니다. 이 문제는 `MsSession` 클래스나 세션 저장 관련된 코드에서의 설정 문제일 수 있습니다.
+
+### 가능한 원인과 해결 방법:
+
+1. **`MsSession` 클래스의 종속성 문제:**
+   - `preRenderView` 이벤트는 JSF 라이프사이클 중 하나로, 뷰가 렌더링되기 전에 호출됩니다. 이때, 만약 `MsSession` 클래스가 특정 시점에 초기화되거나 세션에 접근하려고 시도하는데, 해당 객체가 올바르게 초기화되지 않았거나 필요한 의존성(예: 필수 값이나 객체)이 설정되지 않았을 경우 오류가 발생할 수 있습니다.
+
+2. **세션에 대한 처리 중 충돌:**
+   - `MsSession` 클래스가 세션 데이터를 관리하는 클래스라면, `preRenderView`에서 세션을 읽거나 수정하는 과정에서 이전에 저장된 세션 정보와 충돌이 발생할 수 있습니다.
+   - 예를 들어, `preRenderView` 이벤트가 발생하기 전에 세션 데이터가 제대로 설정되지 않거나, 기존 세션에 저장된 값이 `MsSession` 클래스에서 예상한 값과 다르면 오류가 발생할 수 있습니다.
+
+3. **`MsSession` 객체 초기화 문제:**
+   - `MsSession` 클래스가 제대로 초기화되지 않거나 `null` 값을 다루는 과정에서 예외가 발생할 수 있습니다. 예를 들어, 세션에 `MsSession` 객체가 저장되었는데 `preRenderView`에서 이를 가져올 때 해당 객체가 `null`이거나 초기화되지 않은 상태일 수 있습니다.
+
+4. **세션 관련 오류 (세션이 만료되었거나 잘못된 값이 저장된 경우):**
+   - 세션에 잘못된 값이 저장되었거나 세션이 만료되었을 경우, 세션에서 값을 가져오는 과정에서 오류가 발생할 수 있습니다.
+
+### 해결 방법:
+
+1. **`MsSession` 클래스가 제대로 초기화되었는지 확인:**
+   - `MsSession` 클래스가 세션에 저장될 때 제대로 초기화되고, 그 클래스가 세션에 저장되었는지 확인합니다. 특히 세션에 저장될 객체가 `null`이거나 초기화되지 않았을 경우 오류가 발생할 수 있습니다.
+
+2. **세션 데이터가 존재하는지 확인:**
+   - `preRenderView`에서 세션을 조회하기 전에, 해당 세션에 필요한 값이 존재하는지, 혹은 세션이 초기화되었는지 확인합니다.
+
+```java
+public void saveToSession() {
+    FacesContext facesContext = FacesContext.getCurrentInstance();
+    HttpSession session = (HttpSession) facesContext.getExternalContext().getSession(true);
+
+    // 세션에서 MsSession 객체를 가져오는 코드
+    MsSession msSession = (MsSession) session.getAttribute("framework.session");
+
+    if (msSession == null) {
+        msSession = new MsSession();
+        session.setAttribute("framework.session", msSession);
+    }
+
+    // 필요한 세션 데이터 저장
+    msSession.setUserId(this.userId);
+    msSession.setToken(this.token);
+    session.setAttribute("framework.session", msSession);
+}
+```
+
+3. **에러 로그를 확인하여 원인 파악:**
+   - `MsSession` 클래스와 관련된 에러 메시지를 확인하고, 에러가 발생한 구체적인 원인(예: `null` 객체 참조, 잘못된 세션 데이터 등)을 파악합니다. 로그를 통해 `MsSession` 클래스의 어디에서 문제가 발생하는지 확인하는 것이 중요합니다.
+
+4. **세션이 올바르게 관리되고 있는지 확인:**
+   - 세션이 만료되거나 값이 삭제되지 않았는지, `MsSession` 객체가 정상적으로 세션에 저장되고 불러오는 과정이 오류 없이 진행되는지 점검합니다.
+
+### 요약:
+`preRenderView` 이벤트에서 `MsSession` 클래스를 다룰 때 발생하는 에러는 주로 객체 초기화 문제, 세션에 저장된 값의 불일치, 또는 세션 데이터가 제대로 로드되지 않은 경우에 발생할 수 있습니다. 로그를 분석하고, 세션 데이터가 올바르게 설정되고 있는지 확인하여 문제를 해결할 수 있습니다.
