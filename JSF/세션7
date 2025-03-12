@@ -1,0 +1,39 @@
+`SESSIONKEY_SESSION`은 **세션에 저장된 객체를 가져올 때 사용하는 키**야.   
+현재 `session.getAttribute(SESSIONKEY_SESSION);`을 호출하면 **세션에서 "framework.session" 키로 저장된 `MsSession` 객체**를 가져오는 거지.  
+
+---
+
+### **🚀 세션에 값을 저장하는 방법**
+세션에 값을 넣으려면 **`session.setAttribute(SESSIONKEY_SESSION, msSession);`**을 사용하면 돼.  
+
+#### **✔ 예제 코드 (MsSession 저장)**
+```java
+HttpSession session = request.getSession();
+MsSession msSession = new MsSession();
+msSession.setUserId("testUser");
+msSession.setUserRole("admin");
+
+// 세션에 저장
+session.setAttribute(SESSIONKEY_SESSION, msSession);
+```
+이렇게 하면 `"framework.session"` 키로 `MsSession` 객체가 세션에 저장돼.  
+
+---
+
+### **🚀 세션에서 값을 가져오는 방법**
+```java
+MsSession msSession = (MsSession) session.getAttribute(SESSIONKEY_SESSION);
+if (msSession != null) {
+    System.out.println("User ID: " + msSession.getUserId());
+    System.out.println("User Role: " + msSession.getUserRole());
+}
+```
+세션에 값이 있다면 `msSession.getUserId()` 등을 사용해서 값을 가져올 수 있어.  
+
+---
+
+### **📌 정리**
+- `"framework.session"` 키는 **세션에 저장된 `MsSession` 객체를 찾을 때 사용**  
+- `session.setAttribute("framework.session", msSession);` → **저장**  
+- `session.getAttribute("framework.session");` → **불러오기**  
+- 만약 값이 `null`이면, 세션에 저장된 적이 없는 거니까 먼저 `setAttribute`를 해야 함.
