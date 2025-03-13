@@ -1,0 +1,134 @@
+네, **MyBatis Generator (MBG)**를 사용하려면 **`generatorConfig.xml`을 생성**한 후 **MBG를 실행하여 코드**를 자동 생성하면 됩니다.  
+
+초기에 **`generatorConfig.xml`은 직접 작성해야 하며**, 실행하면 **Java 모델 클래스, Mapper 인터페이스, Mapper XML 파일**이 자동으로 생성됩니다.  
+
+---
+
+### **1. `generatorConfig.xml` 생성 방법**
+1. **`src/main/resources` 폴더에 `generatorConfig.xml` 파일 생성**
+2. 다음과 같은 내용을 작성 (DB 설정은 환경에 맞게 변경)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+<generatorConfiguration>
+    <context id="defaultContext" targetRuntime="MyBatis3">
+        
+        <!-- DB 연결 설정 -->
+        <jdbcConnection driverClass="org.postgresql.Driver"
+                        connectionURL="jdbc:postgresql://localhost:5432/mydb"
+                        userId="your_username"
+                        password="your_password"/>
+
+        <!-- Java 모델 (VO, DTO) 생성 위치 -->
+        <javaModelGenerator targetPackage="com.example.model" targetProject="./src/main/java"/>
+
+        <!-- Mapper XML 파일 생성 위치 -->
+        <sqlMapGenerator targetPackage="com.example.mapper" targetProject="./src/main/resources"/>
+
+        <!-- Mapper 인터페이스 (DAO) 생성 위치 -->
+        <javaClientGenerator type="XMLMAPPER" targetPackage="com.example.dao" targetProject="./src/main/java"/>
+
+        <!-- 테이블 매핑 -->
+        <table tableName="users" domainObjectName="User"/>
+    </context>
+</generatorConfiguration>
+```
+
+---
+
+### **2. MyBatis Generator 실행 방법**
+#### **① Maven을 사용할 경우 (추천)**
+1. **`pom.xml`에 MyBatis Generator 플러그인 추가**
+```xml
+<plugin>
+    <groupId>org.mybatis.generator</groupId>
+    <artifactId>mybatis-generator-maven-plugin</artifactId>
+    <version>1.4.1</version>
+    <dependencies>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.33</version>
+        </dependency>
+    </dependencies>
+</plugin>
+```
+2. **Maven 실행**
+```sh
+mvn mybatis-generator:generate
+```
+
+---
+
+#### **② 직접 실행할 경우**
+1. MyBatis Generator JAR 다운로드  
+   [MyBatis Generator 공식 사이트](https://mybatis.org/generator/)에서 JAR 파일 다운로드
+2. 실행 명령어 입력
+```sh
+java -jar mybatis-generator-core-1.4.1.jar -configfile generatorConfig.xml -overwrite
+```
+
+---
+
+### **3. 자동 생성되는 파일 예시**
+위 설정대로 실행하면 다음 파일들이 자동 생성됩니다.
+
+#### **1) `User.java` (Model, VO)**
+```java
+public class User {
+    private Integer id;
+    private String name;
+    private String email;
+
+    // Getter & Setter
+}
+```
+
+#### **2) `UserMapper.java` (DAO 인터페이스)**
+```java
+public interface UserMapper {
+    User selectByPrimaryKey(int id);
+    int insert(User user);
+    int updateByPrimaryKey(User user);
+    int deleteByPrimaryKey(int id);
+}
+```
+
+#### **3) `UserMapper.xml` (SQL Mapper)**
+```xml
+<mapper namespace="com.example.dao.UserMapper">
+    <select id="selectByPrimaryKey" parameterType="int" resultType="com.example.model.User">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+    <insert id="insert" parameterType="com.example.model.User">
+        INSERT INTO users (name, email) VALUES (#{name}, #{email})
+    </insert>
+    <update id="updateByPrimaryKey" parameterType="com.example.model.User">
+        UPDATE users SET name = #{name}, email = #{email} WHERE id = #{id}
+    </update>
+    <delete id="deleteByPrimaryKey" parameterType="int">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+</mapper>
+```
+
+---
+
+### **4. 자동 생성 vs 직접 작성**
+| 비교 항목 | **자동 생성 (MBG 사용)** | **직접 작성 (수동 개발)** |
+|---------|--------------------|----------------|
+| 개발 속도 | 빠름 | 느림 |
+| SQL 제어 | 기본적인 CRUD만 지원 | 복잡한 SQL 작성 가능 |
+| 유지보수 | 필요 최소한만 수정 | 직접 유지보수 필요 |
+| 사용 예시 | 단순한 CRUD | 복잡한 쿼리 필요 시 |
+
+---
+
+### **결론**
+- **기본적인 CRUD만 필요하면 MBG를 사용하여 자동 생성**
+- **복잡한 SQL이 필요하면 직접 XML과 인터페이스 작성**
+- **둘을 혼용 가능** → 자동 생성 후 일부 SQL만 직접 수정 가능  
+
+➡ **대부분의 프로젝트에서는 "MyBatis 자동 생성 후 일부 SQL을 직접 작성하는 방식"을 사용**합니다.
