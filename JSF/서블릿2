@@ -1,0 +1,81 @@
+네, 정확합니다.  
+
+**`@WebListener`는 WildFly가 서블릿 컨텍스트를 초기화할 때 실행되므로, JSF가 아직 완전히 기동되지 않은 상태에서 실행됩니다.**  
+이 시점에서는 **JSF의 라이프사이클이 시작되지 않았기 때문에 `FacesContext.getCurrentInstance()`를 호출해도 `null`만 반환**됩니다.  
+
+### **📌 정리하면:**
+1. **`@WebListener`는 서블릿 컨텍스트 초기화 단계에서 실행됨**  
+   - WildFly가 애플리케이션을 배포할 때 서블릿 컨텍스트를 초기화하면서 실행됨.
+   - 하지만 이 시점에는 JSF가 아직 기동되지 않았기 때문에 **JSF 요청 컨텍스트(`FacesContext` 등)에 접근할 수 없음**.
+
+2. **JSF의 `FacesContext.getCurrentInstance()`는 JSF 요청이 있을 때만 유효함**  
+   - JSF 페이지(`.xhtml`)가 브라우저에서 요청될 때, JSF 라이프사이클이 실행됨.
+   - 이때 `FacesContext`가 생성되며, `FacesContext.getCurrentInstance()`를 정상적으로 호출할 수 있음.
+   - **서블릿 초기화 시점에서는 JSF 요청이 없으므로 `null`이 반환됨**.
+
+3. **해결책: `ServletContext`를 활용하여 값 저장 후, JSF에서 가져오기**  
+   - `@WebListener`에서 **초기값을 `ServletContext`에 저장**.
+   - JSF가 기동된 후, `FacesContext.getCurrentInstance()`를 이용해 `ServletContext`에서 값을 가져옴.
+
+---
+
+### **📌 예제: `@WebListener`에서 초기값 설정 후 JSF에서 가져오기**
+#### ✅ `@WebListener`에서 값 저장
+```java
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
+import jakarta.servlet.annotation.WebListener;
+
+@WebListener
+public class AppStartupListener implements ServletContextListener {
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        ServletContext context = sce.getServletContext();
+        
+        // 초기값을 ServletContext에 저장
+        context.setAttribute("globalSetting", "초기값 설정 완료");
+
+        System.out.println("🔹 [WebListener] WildFly 서블릿 컨텍스트 초기화 완료");
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        System.out.println("🔹 [WebListener] 애플리케이션 종료");
+    }
+}
+```
+
+---
+
+#### ✅ JSF Bean에서 값 가져오기
+```java
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.faces.context.FacesContext;
+import jakarta.inject.Named;
+import jakarta.servlet.ServletContext;
+
+@Named
+@RequestScoped
+public class ConfigBean {
+    public String getGlobalSetting() {
+        ServletContext context = (ServletContext) FacesContext.getCurrentInstance()
+                .getExternalContext().getContext();
+        return (String) context.getAttribute("globalSetting");
+    }
+}
+```
+
+---
+
+#### ✅ JSF 페이지에서 출력 (`index.xhtml`)
+```xml
+<h:outputText value="Global Setting: #{configBean.globalSetting}" />
+```
+
+---
+
+### **📌 결론**
+- **`@WebListener`에서 `FacesContext.getCurrentInstance()`는 사용할 수 없음** (`null` 반환).  
+- **서블릿 컨텍스트 초기화 단계에서 필요한 값은 `ServletContext.setAttribute()`를 사용해서 저장**.  
+- **JSF 요청이 발생한 후, `FacesContext.getCurrentInstance()`를 통해 `ServletContext`에서 값을 가져와야 함**.
