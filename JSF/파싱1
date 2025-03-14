@@ -1,0 +1,172 @@
+`@WebListener`를 유지하면서도 `FacesContext.getCurrentInstance()`를 사용할 수 있도록 수정하는 방법이 필요하군요.  
+
+`@WebListener`는 **서블릿 컨텍스트 초기화 단계에서 실행**되기 때문에, JSF의 `FacesContext`가 **아직 생성되지 않은 상태**입니다. 따라서 `contextInitialized()`에서 직접 `FacesContext`를 호출하면 **무조건 `null`이 반환**됩니다.  
+
+하지만 **서블릿이 기동된 후, JSF 요청이 들어왔을 때 FacesContext를 사용**하도록 하면 해결할 수 있습니다.  
+
+---
+
+### ✅ **해결 방법: JSF 요청이 발생한 이후에 FacesContext 사용하기**
+`@WebListener`에서 직접 `FacesContext`를 호출하는 것이 불가능하므로,  
+**1. `@WebListener`에서 `ServletContext`에 XML 파일 경로를 저장하고,**  
+**2. JSF 요청이 발생한 후(`FacesContext`가 활성화된 후)에 XML을 파싱하도록 변경**합니다.  
+
+---
+
+### 🔹 **방법 1: `ServletContext`에 XML 경로 저장 후 JSF에서 사용**
+#### **1️⃣ `@WebListener`에서 XML 파일 경로 저장**
+```java
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
+import jakarta.servlet.annotation.WebListener;
+
+@WebListener
+public class AppConfigListener implements ServletContextListener {
+
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        ServletContext context = sce.getServletContext();
+        
+        // XML 파일 경로를 서블릿 컨텍스트에 저장
+        String xmlPath = context.getRealPath("/WEB-INF/config.xml");
+        context.setAttribute("XML_FILE_PATH", xmlPath);
+
+        System.out.println("XML 파일 경로 저장 완료: " + xmlPath);
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+    }
+}
+```
+✅ **서블릿 컨텍스트가 초기화될 때 XML 경로를 저장.**  
+✅ **JSF 요청이 들어오기 전까지는 FacesContext를 사용하지 않음.**  
+
+---
+
+#### **2️⃣ JSF에서 FacesContext를 사용하여 XML 파싱**
+```java
+import jakarta.annotation.PostConstruct;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.faces.context.FacesContext;
+import jakarta.faces.context.ExternalContext;
+import jakarta.inject.Named;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import java.io.File;
+
+@Named
+@ApplicationScoped
+public class XmlParserBean {
+
+    private String xmlFilePath;
+
+    @PostConstruct
+    public void init() {
+        try {
+            FacesContext context = FacesContext.getCurrentInstance();
+            ExternalContext extContext = context.getExternalContext();
+
+            // ServletContext에서 XML 경로 가져오기
+            xmlFilePath = (String) extContext.getApplicationMap().get("XML_FILE_PATH");
+
+            if (xmlFilePath != null) {
+                SAXParserFactory factory = SAXParserFactory.newInstance();
+                SAXParser parser = factory.newSAXParser();
+                parser.parse(new File(xmlFilePath), new CustomHandler());
+
+                System.out.println("XML Parsing 완료!");
+            } else {
+                System.out.println("XML 파일 경로를 찾을 수 없음.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+✅ **이제 `FacesContext.getCurrentInstance()`가 `null`이 아님.**  
+✅ **JSF 요청이 발생한 후(`@PostConstruct`)에만 실행됨.**  
+✅ **`ServletContextListener`에서 저장한 XML 경로를 가져와 파싱할 수 있음.**  
+
+---
+
+### 🔹 **방법 2: `ServletContext`에서 직접 XML을 파싱한 후 결과를 저장**
+만약 **JSF에서 XML을 파싱하는 것이 아니라, `@WebListener`에서 파싱한 결과를 저장하고 싶다면**,  
+아래와 같이 `@WebListener`에서 XML을 파싱한 결과를 `ServletContext`에 저장할 수도 있습니다.  
+
+#### **🔹 `@WebListener`에서 XML을 파싱한 후 결과를 `ServletContext`에 저장**
+```java
+@WebListener
+public class AppConfigListener implements ServletContextListener {
+
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        ServletContext context = sce.getServletContext();
+
+        try {
+            String xmlPath = context.getRealPath("/WEB-INF/config.xml");
+            SAXParserFactory factory = SAXParserFactory.newInstance();
+            SAXParser parser = factory.newSAXParser();
+
+            CustomHandler handler = new CustomHandler();
+            parser.parse(new File(xmlPath), handler);
+
+            // 파싱한 결과를 ServletContext에 저장
+            context.setAttribute("PARSED_XML_DATA", handler.getParsedData());
+
+            System.out.println("XML 파싱 완료 후 데이터 저장: " + handler.getParsedData());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+    }
+}
+```
+✅ **서블릿 컨텍스트 초기화 시 XML을 파싱하고, 결과를 저장.**  
+✅ **JSF에서 `FacesContext` 없이도 데이터를 가져올 수 있음.**  
+
+---
+
+#### **🔹 JSF에서 파싱된 데이터를 가져오는 코드**
+```java
+@Named
+@ApplicationScoped
+public class XmlDataBean {
+    
+    private Object parsedXmlData;
+
+    @PostConstruct
+    public void init() {
+        FacesContext context = FacesContext.getCurrentInstance();
+        ExternalContext extContext = context.getExternalContext();
+
+        // 파싱된 데이터를 ServletContext에서 가져옴
+        parsedXmlData = extContext.getApplicationMap().get("PARSED_XML_DATA");
+
+        System.out.println("XML 데이터 로드 완료: " + parsedXmlData);
+    }
+
+    public Object getParsedXmlData() {
+        return parsedXmlData;
+    }
+}
+```
+✅ **JSF에서 FacesContext가 활성화된 후 `ServletContext`에서 XML 데이터를 가져올 수 있음.**  
+✅ **XML 파싱이 JSF 요청 없이도 `@WebListener`에서 실행됨.**  
+
+---
+
+### **🚀 결론**
+| 방법  | 해결 방법 | 특징 |
+|-------|---------|-------------------|
+| 🔹 방법 1 | `ServletContext`에 XML 경로 저장 후 JSF에서 읽어오기 | JSF에서 XML을 직접 파싱해야 함 |
+| 🔹 방법 2 | `ServletContext`에서 XML을 미리 파싱 후 결과 저장 | JSF에서 바로 데이터 사용 가능 |
+
+**💡 `@WebListener`를 유지하면서도 `FacesContext.getCurrentInstance()`를 사용하려면, 방법 1 또는 방법 2를 적용해야 함.**  
+**가장 추천하는 방법은, XML 데이터가 자주 변경되지 않는다면 `방법 2`를 적용하는 것이 좋음!**
