@@ -1,0 +1,70 @@
+서블릿이 가동할 때 **JSF 라이프사이클이 활성화되지 않아서** `FacesContext.getCurrentInstance()`를 사용할 수 없는 것이 문제죠?  
+
+**💡 해결 방법:**  
+1. **JSF 페이지가 요청될 때 자동 실행되도록 `@ManagedBean` + `@PostConstruct` 사용**  
+2. **JSF 요청을 발생시키지 않고 수동으로 `FacesContext`를 생성하는 것은 불가능**  
+3. **서블릿 초기화 시, JSF 환경을 직접 건드리는 대신 `ExternalContext`를 활용하는 방법 고려**  
+
+---
+
+## **✅ 방법 1: `@ManagedBean` + `@PostConstruct`를 사용하여 JSF 요청 시 자동 실행**
+JSF 페이지가 요청될 때, 특정 코드를 자동으로 실행할 수 있습니다.  
+
+🔹 **방법:**  
+- `@SessionScoped`를 사용해 세션을 유지  
+- `@PostConstruct`를 사용해 JSF 페이지가 실행될 때 특정 작업 수행  
+
+🔹 **예제 코드:**  
+```java
+import jakarta.annotation.PostConstruct;
+import jakarta.faces.context.ExternalContext;
+import jakarta.faces.context.FacesContext;
+import jakarta.inject.Named;
+import jakarta.enterprise.context.SessionScoped;
+import java.io.Serializable;
+
+@Named
+@SessionScoped
+public class InitBean implements Serializable {
+    
+    @PostConstruct
+    public void init() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        if (facesContext != null) {
+            ExternalContext externalContext = facesContext.getExternalContext();
+            System.out.println("✅ JSF 페이지가 요청되어 FacesContext 활성화됨!");
+            // 여기서 필요한 초기화 작업 수행
+        } else {
+            System.out.println("❌ FacesContext가 null, JSF 요청이 아직 발생하지 않음");
+        }
+    }
+}
+```
+📌 **설명:**  
+- JSF 페이지(`.xhtml`)가 실행될 때 `@PostConstruct`가 실행되며 `FacesContext`를 사용할 수 있음.  
+- **서블릿 초기화(`@WebListener`) 단계에서는 실행되지 않지만**, JSF 요청이 발생하면 정상 동작.  
+- **JSF 요청 없이 강제로 FacesContext를 활성화하는 것은 불가능.**
+
+---
+
+## **✅ 방법 2: 외부 XML 설정 활용 (`web.xml`)**
+`web.xml`에서 JSF 요청을 강제할 수 있도록 **초기화 파라미터를 설정**하는 방법도 있음.  
+
+🔹 **예제 코드 (`web.xml`)**
+```xml
+<context-param>
+    <param-name>javax.faces.PROJECT_STAGE</param-name>
+    <param-value>Development</param-value>
+</context-param>
+```
+📌 **이 방법은 직접 `FacesContext`를 활성화하는 것이 아니라, JSF가 정상적으로 실행될 수 있도록 환경을 설정하는 것**.  
+
+---
+
+## **🚨 결론 (핵심 요약)**  
+✅ **서블릿 초기화 시(`@WebListener`) `FacesContext`를 직접 활성화할 수 없음.**  
+✅ **JSF 페이지가 요청될 때(`.xhtml` 실행) `@ManagedBean` + `@PostConstruct`를 사용하면 자동으로 `FacesContext`가 활성화됨.**  
+✅ **`web.xml` 설정을 통해 JSF 환경을 올바르게 설정하면 문제를 최소화할 수 있음.**  
+✅ **어떤 방식으로든 강제로 `FacesContext`를 활성화하는 방법은 없음.** (JSF 요청이 필요함)  
+
+**👉 결론적으로, JSF 페이지가 실행될 때 자동으로 `FacesContext`를 활용하도록 `@PostConstruct`를 사용하는 것이 가장 현실적인 해결책입니다.**
