@@ -1,0 +1,68 @@
+### **📌 현재 문제 정리**  
+1. **페이징 클래스를 수정할 수 없음**.  
+2. **맨 뒤 이동 버튼을 누르면 `현재 페이지 = 0`이 되어 null 리턴**.  
+3. **DAO에서 검색한 레코드 수를 count해서 `현재 페이지` 값을 다시 설정했지만, 맨앞 페이지가 나오는 문제 발생**.  
+
+---
+
+## **🔍 문제 원인**
+### **1️⃣ `맨 뒤 이동 버튼`이 `현재 페이지 = 0`으로 설정됨**
+- 현재 로직에서는 **맨 뒤 이동 버튼을 누르면 `현재 페이지 = 0`이 설정됨**.  
+- 하지만 현행 코드에서는 **`현재 페이지 == 0`이면 `null`을 반환**하기 때문에 문제가 발생함.  
+- **DAO에서 total count를 가져와서 `현재 페이지`를 재설정했지만, 여전히 맨앞 페이지가 표시됨**.
+
+---
+
+## **✅ 해결 방법**
+### **1️⃣ DAO에서 `현재 페이지`가 0이면 `맨 뒤 페이지 값`을 설정**
+- `count(*)`로 전체 페이지 개수를 구하고,  
+- **현재 페이지가 0이면 `totalPageCount`로 변경**.
+
+```java
+// 전체 레코드 수 가져오기
+int totalRecords = yourDao.getTotalCount();
+int totalPageCount = (int) Math.ceil((double) totalRecords / pageSize); 
+
+// 현재 페이지가 0이면 totalPageCount로 설정
+if (dto.getPage() == 0) { 
+    dto.setPage(totalPageCount - 1); // 맨 뒤 페이지로 설정
+}
+```
+✅ **이렇게 하면 `현재 페이지 = 0`인 경우 마지막 페이지로 변경됨.**  
+
+---
+
+### **2️⃣ `OFFSET` 값을 제대로 계산**
+만약 **페이지 번호가 1부터 시작하는 경우**, `totalPageCount`를 그대로 설정.
+
+```java
+if (dto.getPage() == 0) { 
+    dto.setPage(totalPageCount); // 1부터 시작하는 경우
+}
+```
+
+---
+
+### **3️⃣ SQL 쿼리에서 `LIMIT`과 `OFFSET`이 정확한지 확인**
+만약 **OFFSET이 0으로 설정되면 첫 페이지가 나옴**, 따라서 `dto.getPage()` 값이 올바르게 계산되었는지 확인 필요.
+
+```xml
+<select id="getPagedData" resultType="YourDTO">
+    SELECT * FROM your_table
+    ORDER BY id
+    LIMIT #{pageSize} OFFSET #{offset}
+</select>
+```
+```java
+// OFFSET 계산
+int offset = (dto.getPage() - 1) * pageSize;
+```
+
+---
+
+## **📌 최종 정리**
+1. **DAO에서 `현재 페이지 == 0`이면 `totalPageCount - 1`로 설정**.  
+2. **페이지 번호가 1부터 시작하는 경우 `totalPageCount`를 그대로 설정**.  
+3. **SQL 쿼리의 `LIMIT`과 `OFFSET`이 정상적으로 동작하는지 확인**.  
+
+✅ **이렇게 하면 맨 뒤 이동 버튼을 눌렀을 때 마지막 페이지로 정상 이동할 것!**
