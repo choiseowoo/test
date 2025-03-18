@@ -1,0 +1,122 @@
+### **📌 문제 정리**  
+- `bean = new ManagedBeanInterface() { ... }` 방식으로 **익명 클래스(Anonymous Class)** 를 만들려 하니 빨간 줄(컴파일 에러) 발생  
+- **이유:** `ManagedBeanInterface`는 인터페이스이므로 직접 인스턴스를 만들 수 없음  
+- **목표:** `bean`이 `null`이 되지 않도록 초기화  
+
+---
+
+## **✅ 해결 방법**
+### **🔹 해결 방법 1: `ManagedBeanInterface`의 구현 클래스 만들기**
+인터페이스는 인스턴스를 직접 생성할 수 없으므로 **구체적인 구현 클래스**가 필요함.  
+```java
+import jakarta.enterprise.context.ViewScoped;
+import jakarta.inject.Named;
+import java.io.InputStream;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+
+@Named("text")  // JSF에서 "text"라는 이름으로 등록
+@ViewScoped     // View 범위에서 유지됨
+public class ManagedBeanImpl implements ManagedBeanInterface, Serializable {
+    
+    private Map<String, Object> form = new HashMap<>();
+    private String downloadFileName;
+    private InputStream downloadData;
+
+    @Override
+    public Map<String, Object> getForm() {
+        return form;
+    }
+
+    @Override
+    public void baseinit(MdSession sessionParam) {
+        // 세션 초기화 로직
+    }
+
+    @Override
+    public String init() throws Exception {
+        return "initialized";
+    }
+
+    @Override
+    public String start() throws Exception {
+        return "started";
+    }
+
+    @Override
+    public String end() throws Exception {
+        return "ended";
+    }
+
+    @Override
+    public void setDownloadData(String fileName, InputStream inputStream) {
+        this.downloadFileName = fileName;
+        this.downloadData = inputStream;
+    }
+
+    @Override
+    public String getDownloadFileName() {
+        return downloadFileName;
+    }
+
+    @Override
+    public InputStream getDownloadData() {
+        return downloadData;
+    }
+}
+```
+✅ **이제 `ManagedBeanImpl`을 `ManagedBeanInterface`의 인스턴스로 사용 가능**
+
+---
+
+### **🔹 해결 방법 2: `@Inject`로 빈 자동 주입**
+이제 `bean`을 사용할 클래스에서 **자동으로 주입**할 수 있음.
+```java
+import jakarta.inject.Inject;
+
+public class BClass {
+    @Inject
+    private ManagedBeanInterface bean;
+
+    public void someMethod() {
+        try {
+            String result = bean.init(); // 여기서 NullPointerException 발생하지 않음
+            System.out.println(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+✅ **이제 `bean.init()` 호출 시 `NullPointerException`이 발생하지 않음!**  
+
+---
+
+### **🔹 해결 방법 3: 직접 객체 생성 (CDI 사용 불가능할 경우)**
+만약 **CDI를 사용할 수 없는 환경**이라면 직접 객체를 생성해야 함.
+```java
+public class BClass {
+    private ManagedBeanInterface bean = new ManagedBeanImpl(); // 직접 객체 생성
+
+    public void someMethod() {
+        try {
+            String result = bean.init();
+            System.out.println(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+✅ **CDI를 못 쓰는 환경에서는 직접 인스턴스를 만들어 해결할 수 있음.**
+
+---
+
+## **✨ 최종 정리**
+- **`ManagedBeanInterface`는 인터페이스라 직접 인스턴스화 불가** → 구현 클래스(`ManagedBeanImpl`)가 필요  
+- **해결 방법:**  
+  1. `ManagedBeanImpl` 구현 클래스 생성 후 `@Named("text")`와 `@ViewScoped` 설정  
+  2. `@Inject`를 사용하여 자동 주입  
+  3. CDI가 불가능한 경우 `new ManagedBeanImpl()`로 직접 객체 생성  
+- **이제 `bean`을 사용할 때 `NullPointerException` 발생 안 함!**
