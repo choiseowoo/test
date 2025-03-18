@@ -1,0 +1,75 @@
+### **📌 문제 정리**  
+- **A, B 클래스 수정 불가**  
+- **로그인 관리 클래스에서 `UserInfo`를 세션에 저장**  
+- **A, B에서 기존 방식대로 `UserInfo`를 읽어서 C 클래스에서 출력**  
+
+---
+
+## **✅ 해결 방법 (로그인 관리 클래스에서 세션에 `UserInfo` 저장)**  
+### **1️⃣ 로그인 관리 클래스에서 세션에 `UserInfo` 저장**  
+```java
+public void saveUserInfoToSession(HttpServletRequest request, String id, String name, String email) {
+    // 세션 가져오기
+    HttpSession session = request.getSession();
+    
+    // MsSession 가져오기
+    MsSession msSession = (MsSession) session.getAttribute("SESSIONKEY"); // B클래스에서 가져오는 키와 동일해야 함
+    if (msSession == null) {
+        msSession = new MsSession();  // 없으면 새로 생성 (필요한 경우)
+        session.setAttribute("SESSIONKEY", msSession);
+    }
+
+    // UserInfo 객체 생성 및 값 설정
+    UserInfo userInfo = new UserInfo();
+    userInfo.setId(id);
+    userInfo.setName(name);
+    userInfo.setEmail(email);
+
+    // 세션에 저장할 맵 가져오기
+    Map<String, Object> userSession = (Map<String, Object>) msSession.getBean(COMMON_SCOPE, USER_SESSION);
+    if (userSession == null) {
+        userSession = new HashMap<>();
+    }
+
+    // UserInfo 저장
+    userSession.put(USER_INFO, userInfo);
+    msSession.setBean(COMMON_SCOPE, USER_SESSION, userSession);
+
+    System.out.println("UserInfo 저장 완료: " + userInfo.getId());
+}
+```
+✅ **로그인 성공 후 이 메서드를 호출하면 `UserInfo`가 세션에 저장됨.**  
+
+---
+
+### **2️⃣ 로그인 후 `saveUserInfoToSession()` 호출**
+로그인 성공 후, 아래처럼 `UserInfo`를 세션에 저장하면 됨.
+```java
+saveUserInfoToSession(request, "user123", "John Doe", "john@example.com");
+```
+✅ **이제 A, B 클래스는 기존 방식대로 `UserInfo`를 읽을 수 있음.**  
+
+---
+
+### **3️⃣ `Cクラス`에서 `UserInfo` 출력**
+A, B 클래스는 기존 코드 그대로 두고, `Cクラス`에서 출력 가능.
+```java
+UserInfo userInfo = Util.getUserInfo(); // 기존 Aクラス의 getUserInfo() 호출
+if (userInfo != null) {
+    System.out.println("User ID: " + userInfo.getId());
+    System.out.println("User Name: " + userInfo.getName());
+    System.out.println("User Email: " + userInfo.getEmail());
+} else {
+    System.out.println("UserInfo가 세션에 없음.");
+}
+```
+✅ **이제 `Cクラス`에서 정상적으로 `UserInfo`를 가져올 수 있음.**  
+
+---
+
+## **🚀 최종 정리**
+1. **로그인 성공 후 `saveUserInfoToSession()`을 호출하여 `UserInfo`를 세션에 저장**  
+2. **A, B 클래스는 기존 방식대로 `UserInfo`를 읽음**  
+3. **C 클래스에서 `Util.getUserInfo()`를 통해 `UserInfo`를 출력**  
+
+✅ **A, B 클래스 수정 없이 `UserInfo`를 정상적으로 전달하는 방식!**
