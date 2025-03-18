@@ -1,0 +1,90 @@
+### **🚨 초기화 `null` 발생 가능성 및 원인 분석**  
+
+**구버전(AP 송수신 JSON 방식)과 신버전(JSF + MyBatis DB 연동 방식)의 차이점** 때문에 초기화 시 `null` 에러가 발생할 가능성이 높아.  
+
+---
+
+## **1️⃣ 구버전(AP 송수신 JSON)에서는 왜 null이 발생하지 않았을까?**  
+✔ **서버에서 JSON 데이터를 주고받기 때문에** `DTO` 객체가 항상 존재했음.  
+✔ `AP`에서 데이터를 받아 `DTO`에 바로 넣어줬기 때문에 **초기화가 자동으로 됨**.  
+✔ `DTO`가 항상 채워진 상태에서 getter 호출 → `null` 문제 없음.  
+
+---
+
+## **2️⃣ 신버전(JSF + MyBatis)에서는 왜 null이 발생할까?**  
+1. **초기 데이터가 없음 (Lazy Initialization 문제)**  
+   - JSF에서 페이지가 처음 로딩될 때 MyBatis에서 데이터를 가져오지 않으면 `DTO`가 `null` 상태.  
+   - 기존 JSON 방식과 다르게 **"데이터를 명시적으로 가져오는 과정이 필요"**.  
+
+2. **세션/스코프 문제**  
+   - 구버전은 **AP에서 데이터를 받을 때 DTO가 세션에 저장됨**, 그래서 JSF 화면에서도 유지됨.  
+   - 신버전에서는 DB에서 가져오지 않으면 **빈 값(null)** → `DTO` 초기화 없이 getter 호출 시 `NullPointerException` 발생.  
+
+3. **의존성 주입 (@Inject) 시점 차이**  
+   - JSF에서 `@ViewScoped` 또는 `@RequestScoped`를 사용하면 **페이지가 리로드될 때마다 새 객체가 생성됨**.  
+   - 구버전처럼 **한 번 초기화된 DTO를 계속 유지하는 구조가 아님**.  
+
+---
+
+## **3️⃣ 해결 방법**  
+### **✅ 1. DTO 초기화 보장하기 (생성자에서 기본값 설정)**  
+**기본 생성자에서 null 방지 처리**  
+```java
+@ViewScoped
+@Named
+public class UserBean implements Serializable {
+    private UserInfo userInfo = new UserInfo(); // 기본값 설정
+
+    @PostConstruct
+    public void init() {
+        // DB에서 가져오지 않으면 기본값 유지됨 (null 방지)
+        userInfo = myBatisMapper.getUserInfo();
+        if (userInfo == null) {
+            userInfo = new UserInfo(); // 기본 객체 생성하여 null 방지
+        }
+    }
+
+    public UserInfo getUserInfo() {
+        return userInfo;
+    }
+}
+```
+
+---
+
+### **✅ 2. `getUserInfo()` 호출 시 null 체크 추가**
+```java
+public UserInfo getUserInfo() {
+    if (userInfo == null) {
+        userInfo = new UserInfo(); // null이면 빈 객체 반환
+    }
+    return userInfo;
+}
+```
+
+---
+
+### **✅ 3. 세션에 값 저장해서 유지**
+✔ 기존 시스템은 **AP에서 받은 JSON을 세션에 저장했기 때문에** 유지됐음.  
+✔ MyBatis에서 가져온 데이터를 세션에 저장해서 유지할 수도 있음.  
+```java
+HttpSession session = (HttpSession) FacesContext.getCurrentInstance()
+        .getExternalContext().getSession(true);
+
+session.setAttribute("userInfo", userInfo);
+```
+
+#### **다시 불러올 때**
+```java
+UserInfo userInfo = (UserInfo) session.getAttribute("userInfo");
+```
+
+---
+
+### **🔥 결론**
+1️⃣ **구버전(JSON API 방식)은 AP에서 DTO를 자동으로 채워줘서 null이 발생 안 했음.**  
+2️⃣ **신버전(MyBatis DB 연동)은 초기화 없이 getter 호출하면 `null` 에러가 발생함.**  
+3️⃣ **DTO를 생성자에서 기본값으로 초기화하거나, DB에서 데이터를 가져올 때 `null` 방지를 위한 체크가 필요함.**  
+4️⃣ **세션을 활용하면 기존처럼 DTO 데이터를 유지할 수 있음.**  
+
+이 방법대로 처리하면 **null 문제 없이 안정적으로 동작할 거야!**
