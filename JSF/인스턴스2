@@ -1,0 +1,48 @@
+**그렇지!**  
+
+인터페이스(`ManagedBeanInterface`)는 **구체적인 구현이 없는 추상적인 개념**이기 때문에  
+`@ViewScoped`, `@Named` 같은 **CDI 어노테이션을 직접 사용할 수 없음**.  
+
+---
+
+### **📌 이유 정리**
+1. `@ViewScoped`는 **클래스 인스턴스의 생명 주기(View 범위)를 관리**해야 함.  
+   → 하지만 인터페이스는 인스턴스를 만들 수 없으므로 사용 불가.  
+
+2. `@Named("text")`는 **JSF에서 빈 이름을 설정하는 어노테이션**  
+   → 인터페이스에는 **이름을 부여할 수 없고**, **구현 클래스에 부여해야 함**.
+
+---
+
+### **✅ 해결 방법**
+#### **구현 클래스에 `@ViewScoped`와 `@Named` 설정**
+```java
+import jakarta.enterprise.context.ViewScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+
+@Named("text")  // JSF에서 "text"라는 이름으로 등록
+@ViewScoped     // View 범위에서 유지됨
+public class ManagedBeanImpl implements ManagedBeanInterface, Serializable {
+    // 인터페이스의 모든 메서드 구현
+}
+```
+✅ **이제 `@Inject`를 사용해서 인터페이스로 주입 가능**
+```java
+import jakarta.inject.Inject;
+
+public class BClass {
+    @Inject
+    private ManagedBeanInterface bean; // 실제로는 ManagedBeanImpl이 주입됨
+
+    public void someMethod() {
+        System.out.println(bean.init()); // NullPointerException 발생 안 함
+    }
+}
+```
+
+---
+
+### **🔥 결론**
+- **인터페이스에는 `@ViewScoped`와 `@Named`를 사용할 수 없음.**  
+- **구현 클래스(`ManagedBeanImpl`)에 어노테이션을 붙이면 해결 가능!**
