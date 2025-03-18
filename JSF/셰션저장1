@@ -1,0 +1,49 @@
+페이지 이동 시 URL이나 세션에 `tokenKey`와 `token` 값을 저장하려면 아래와 같은 방법을 사용할 수 있습니다.
+
+### 1. **세션에 저장하는 방법**
+
+세션에 값을 저장하면, 클라이언트가 페이지를 이동할 때 해당 값이 지속되므로 **`HttpSession`을 사용**하여 값을 저장할 수 있습니다. `FacesContext`를 사용하여 `ExternalContext`를 통해 세션에 접근합니다.
+
+```java
+// 세션에 tokenKey와 token 값을 저장
+FacesContext context = FacesContext.getCurrentInstance();
+ExternalContext extContext = context.getExternalContext();
+HttpSession session = (HttpSession) extContext.getSession(true);
+
+// 세션에 값 저장
+session.setAttribute("tokenKey", "main");
+session.setAttribute("token", "main");
+```
+
+이렇게 하면 세션에 `tokenKey`와 `token` 값을 저장하여 페이지를 이동할 때 해당 값에 접근할 수 있습니다.
+
+### 2. **URL에 저장하는 방법 (쿼리 파라미터 사용)**
+
+URL에 `tokenKey`와 `token` 값을 쿼리 파라미터로 추가하여 페이지 이동 시 저장할 수도 있습니다. 예를 들어, URL에 쿼리 파라미터로 추가하여 이동하려면:
+
+```java
+// URL에 tokenKey와 token을 쿼리 파라미터로 추가하여 페이지 이동
+String url = "nextPage.xhtml?tokenKey=main&token=main";
+FacesContext.getCurrentInstance().getExternalContext().redirect(url);
+```
+
+이렇게 하면 URL에 `tokenKey`와 `token`이 포함되어 이동합니다. 페이지가 로드될 때 URL에서 파라미터를 읽을 수 있습니다.
+
+### 3. **URL에서 파라미터를 읽는 방법**
+
+`FacesContext`와 `ExternalContext`를 사용하여 페이지 로드 시 URL 파라미터를 읽을 수 있습니다. 예를 들어, `tokenKey`와 `token` 값을 읽으려면:
+
+```java
+// URL에서 파라미터 읽기
+ExternalContext extContext = FacesContext.getCurrentInstance().getExternalContext();
+Map<String, String> requestParams = extContext.getRequestParameterMap();
+
+String tokenKey = requestParams.get("tokenKey");
+String token = requestParams.get("token");
+```
+
+### 요약:
+- **세션에 저장**: `HttpSession`을 사용하여 서버 측에서 값을 저장하고, 페이지 이동 후에도 값이 지속됩니다.
+- **URL에 저장**: 쿼리 파라미터를 사용하여 페이지 이동 시 `tokenKey`와 `token` 값을 URL에 포함시켜 전달할 수 있습니다.
+
+**세션에 저장하는 방법이 일반적으로 값의 지속성을 보장하기 때문에 더 자주 사용됩니다.** URL에 저장하는 방법은 **한 번의 이동 후에만 필요할 때 사용**하는 경우가 많습니다.
