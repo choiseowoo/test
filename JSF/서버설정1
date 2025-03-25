@@ -1,0 +1,51 @@
+Jakarta EE 10에서는 `FacesServlet`의 설정이 이전 버전과 유사하지만, 몇 가지 중요한 변경 사항이 있습니다.
+
+**1. 패키지 네임스페이스 변경**
+
+Jakarta EE 9부터는 모든 패키지의 네임스페이스가 `javax.*`에서 `jakarta.*`로 변경되었습니다. 따라서 `FacesServlet`의 클래스 경로는 이제 `jakarta.faces.webapp.FacesServlet`입니다. citeturn0search6
+
+**2. `FacesServlet` 매핑 설정**
+
+`web.xml`에서 `FacesServlet`을 등록하고 URL 패턴을 매핑하는 방법은 이전과 유사하지만, 클래스 경로의 네임스페이스를 변경해야 합니다:
+
+
+```xml
+<servlet>
+    <servlet-name>Faces Servlet</servlet-name>
+    <servlet-class>jakarta.faces.webapp.FacesServlet</servlet-class>
+    <load-on-startup>1</load-on-startup>
+</servlet>
+
+<servlet-mapping>
+    <servlet-name>Faces Servlet</servlet-name>
+    <url-pattern>*.xhtml</url-pattern>
+</servlet-mapping>
+```
+
+
+이 설정은 `.xhtml` 확장자를 가진 모든 요청을 `FacesServlet`이 처리하도록 지정합니다. citeturn0search6
+
+**3. 확장자 없는 매핑 지원**
+
+Jakarta Faces 4.0(Jakarta EE 10의 일부)에서는 확장자 없는 URL 매핑을 지원합니다. 이를 활성화하려면 `web.xml`에 다음과 같은 컨텍스트 파라미터를 추가합니다:
+
+
+```xml
+<context-param>
+    <param-name>jakarta.faces.AUTOMATIC_EXTENSIONLESS_MAPPING</param-name>
+    <param-value>true</param-value>
+</context-param>
+```
+
+
+이렇게 설정하면 `.xhtml` 확장자를 명시하지 않아도 해당 페이지에 접근할 수 있습니다. citeturn0search5
+
+**4. `faces-config.xml` 설정 시 주의사항**
+
+`faces-config.xml`을 생성할 때, 일부 도구나 IDE가 여전히 `javax.faces.webapp.FacesServlet` 클래스를 `web.xml`에 추가할 수 있습니다. 이 경우 수동으로 `jakarta.faces.webapp.FacesServlet`으로 수정해야 합니다. citeturn0search3
+
+**5. 애플리케이션 서버의 지원 확인**
+
+사용 중인 애플리케이션 서버가 Jakarta EE 10과 Jakarta Faces 4.0을 지원하는지 확인해야 합니다. 예를 들어, WildFly 27.x 버전은 Jakarta EE 10을 지원합니다. citeturn0search4
+
+이러한 변경 사항을 반영하여 `FacesServlet`을 설정하면 Jakarta EE 10 환경에서 `FacesContext.getCurrentInstance()`가 `null`을 반환하는 문제를 해결할 수 있습니다. 
