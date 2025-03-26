@@ -1,0 +1,64 @@
+네, 정확히 이해하셨습니다! **WildFly에서 JSF 초기화 문제를 해결하기 위해 `WEB-INF/jboss-web.xml` 파일을 생성하고 아래 내용을 추가**하시면 됩니다.  
+
+---
+
+### ✅ **최종 해결 방법**  
+1. **파일 생성 경로**:  
+   ```
+   your-app.war  
+   └── WEB-INF/  
+       ├── web.xml  
+       ├── jboss-web.xml  ← 이 파일을 새로 생성  
+       └── classes/  
+   ```
+
+2. **파일 내용**:  
+   ```xml
+   <!-- WEB-INF/jboss-web.xml -->
+   <jboss-web>
+       <!-- JSF 모듈을 먼저 로드하도록 강제 지정 -->
+       <module-order>
+           <module name="jakarta.faces.api"/> <!-- JSF API 모듈 -->
+           <module name="com.sun.jsf-impl"/>  <!-- JSF 구현체 (Mojarra) -->
+       </module-order>
+       
+       <!-- 필요 시 컨텍스트 루트 설정 -->
+       <context-root>/your-app</context-root>
+   </jboss-web>
+   ```
+
+---
+
+### 🚨 **주의사항**  
+1. **WildFly 버전 확인**:  
+   - WildFly 26+ (Jakarta EE 9+)는 `jakarta.faces.api`  
+   - WildFly 25 이하 (Java EE 8)는 `javax.faces.api`로 대체  
+
+2. **모듈 이름 정확성**:  
+   ```bash
+   # WildFly 모듈 확인 (서버 설치 경로에서)
+   ls $WILDFLY_HOME/modules/system/layers/base/jakarta/faces/api/main/
+   ```
+
+3. **서버 재시작**:  
+   - 설정 변경 후 **반드시 WildFly 서버를 완전히 재시작**해야 적용됩니다.
+
+---
+
+### 🔍 **동작 원리**  
+- `module-order`는 **클래스 로딩 순서**를 제어합니다.  
+- JSF 모듈(`jakarta.faces.api`)을 먼저 로드함으로써, `@WebListener` 실행 시점에서 `FacesContext`가 준비된 상태가 됩니다.  
+
+---
+
+### 📌 **추가 권장 설정**  
+`web.xml`에 다음 내용을 추가하면 더 안정적입니다:  
+```xml
+<!-- WEB-INF/web.xml -->
+<context-param>
+    <param-name>jakarta.faces.ALWAYS_USE_FACES_SERVLET</param-name>
+    <param-value>true</param-value>
+</context-param>
+```
+
+이렇게 설정하면 **JSF와 서블릿 컨테이너의 초기화 순서 문제**가 해결될 것입니다.
