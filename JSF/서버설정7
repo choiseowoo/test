@@ -1,0 +1,119 @@
+# `@WebListener`와 JSF를 동시에 초기화하는 방법
+
+`@WebListener`에서 `FacesContext`가 null인 문제를 해결하기 위해 JSF와 서블릿 컨테이너를 동기화하는 방법을 설명드립니다.
+
+## 1. `FacesServlet`을 먼저 로드하도록 강제 설정 (가장 효과적인 방법)
+
+### `web.xml` 설정:
+```xml
+<!-- FacesServlet을 가장 먼저 로드하도록 설정 -->
+<absolute-ordering>
+  <name>jakarta.faces.webapp.FacesServlet</name>
+  <name>your.listener.Class</name>
+  <!-- 다른 서블릿/리스너들 -->
+</absolute-ordering>
+
+<!-- JSF 초기화 파라미터 추가 -->
+<context-param>
+  <param-name>jakarta.faces.ALWAYS_USE_FACES_SERVLET</param-name>
+  <param-value>true</param-value>
+</context-param>
+```
+
+## 2. 서버별 초기화 순서 조정 방법
+
+### Tomcat의 경우 `context.xml` 추가:
+```xml
+<Context>
+  <Loader delegate="true"/> <!-- 클래스 로딩 순서 변경 -->
+  <JarScanner>
+    <JarScanFilter defaultPluggabilityScan="false"/>
+  </JarScanner>
+</Context>
+```
+
+### WildFly/JBoss의 경우 `jboss-all.xml`:
+```xml
+<jboss umlns="urn:jboss:1.0">
+  <deployment>
+    <dependencies>
+      <module name="jakarta.faces.api" export="true"/>
+    </dependencies>
+  </deployment>
+</jboss>
+```
+
+## 3. JSF 초기화 후 리스너 실행을 보장하는 커스텀 솔루션
+
+### `FacesInitializerListener` 구현:
+```java
+@WebListener
+public class FacesInitializerListener implements ServletContextListener {
+    
+    private volatile boolean jsfInitialized = false;
+
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        // JSF 초기화 대기
+        while(!jsfInitialized) {
+            try {
+                FacesContext context = FacesContext.getCurrentInstance();
+                if(context != null) {
+                    jsfInitialized = true;
+                    break;
+                }
+                Thread.sleep(100); // 100ms 대기
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        
+        // 실제 리스너 로직 실행
+        if(jsfInitialized) {
+            // FacesContext 사용 가능
+            FacesContext context = FacesContext.getCurrentInstance();
+            // 작업 수행...
+        }
+    }
+}
+```
+
+## 4. OSGi 환경에서의 강제 초기화 (Felix/Karaf)
+
+`MANIFEST.MF`에 다음 추가:
+```
+Require-Capability: osgi.extender;filter:="(&(osgi.extender=jakarta.faces)(version>=4.1))"
+Eclipse-ExtensibleAPI: true
+```
+
+## 5. 대체 아키텍처 (가장 안정적인 방법)
+
+```java
+// JSF PhaseListener를 이용한 접근
+public class JsfBootstrapListener implements PhaseListener {
+    
+    @Override
+    public void beforePhase(PhaseEvent event) {
+        if(event.getPhaseId() == PhaseId.RENDER_RESPONSE) {
+            // 애플리케이션 초기화 코드 실행
+        }
+    }
+    
+    // 다른 필수 메서드 구현...
+}
+
+// web.xml에 등록
+<context-param>
+  <param-name>jakarta.faces.LIFECYCLE_ID</param-name>
+  <param-value>Production</param-value>
+</context-param>
+```
+
+## 주의사항
+
+1. **서버 종속성**: 위 방법들은 서버 구현에 따라 다르게 동작할 수 있음
+2. **성능 영향**: 강제 대기 방식은 서버 시작 시간을 지연시킬 수 있음
+3. **권장 아키텍처**: JSF 생명주기 외부에서 `FacesContext`에 의존하지 않는 것이 가장 안정적
+
+이러한 방법들 중 `absolute-ordering`을 사용한 첫 번째 접근 방식이 가장 일반적으로 적용 가능하며, 서버 호환성 문제가 적습니다.
