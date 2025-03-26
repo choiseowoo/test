@@ -1,0 +1,62 @@
+# `@WebListener` 클래스 경로에 대한 설명
+
+`<name>your.listener.Class</name>` 부분은 **`@WebListener`가 붙은 클래스의 전체 경로(풀 네임)를 지정해야 합니다**. 
+
+## 정확한 사용 방법
+
+1. **`@WebListener` 클래스 확인**:
+   ```java
+   package com.your.app.listeners; // 패키지 경로
+
+   @WebListener
+   public class MyCustomListener implements ServletContextListener {
+       // 리스너 구현 내용...
+   }
+   ```
+
+2. **web.xml에 등록할 때**:
+   ```xml
+   <absolute-ordering>
+     <name>jakarta.faces.webapp.FacesServlet</name>
+     <name>com.your.app.listeners.MyCustomListener</name>
+     <!-- 다른 필요한 서블릿/리스너들 -->
+   </absolute-ordering>
+   ```
+
+## 주의사항
+
+- **풀 패키지 경로 포함**:
+  - 클래스가 `com.example.web` 패키지에 있다면:
+    ```xml
+    <name>com.example.web.MyListener</name>
+    ```
+
+- **인터페이스 구현 확인**:
+  ```java
+  // 올바른 리스너 인터페이스 구현 필수
+  public class MyListener implements ServletContextListener { ... }
+  ```
+
+- **배포 환경 검증**:
+  ```bash
+  # 최종 WAR/JAR 파일 내 클래스 위치 확인
+  unzip -l your-app.war | grep Listener
+  ```
+
+## 대체 방법 (어노테이션만 사용 시)
+
+`web.xml` 대신 어노테이션으로만 등록한 경우:
+```java
+@WebListener(
+    value = "myListener", 
+    description = "Custom JSF Listener"
+)
+public class MyListener implements ServletContextListener {
+    //...
+}
+```
+
+> ⚠️ **문제 발생 시 확인사항**  
+> 1. 클래스가 실제로 배포 파일(.war/.jar) 내에 존재하는지  
+> 2. `@WebListener` 어노테이션이 제대로 적용되었는지  
+> 3. 서버 로그에서 클래스 로딩 오류가 없는지 확인
