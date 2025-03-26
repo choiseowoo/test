@@ -1,0 +1,87 @@
+# `web.xml` 및 서버 설정을 통한 `FacesContext` 초기화 문제 해결
+
+`@WebListener`에서 `FacesContext`가 null인 문제를 `web.xml`이나 서버 설정으로 해결하는 방법을 설명드립니다.
+
+## 1. 리스너 실행 순서 조정 (서버별 설정)
+
+### Tomcat/WildFly/Jetty에서의 처리
+```xml
+<!-- web.xml -->
+<absolute-ordering>
+  <!-- JSF 관련 리스너/서블릿이 먼저 로드되도록 설정 -->
+  <name>jakarta.faces.webapp.FacesServlet</name>
+  <name>com.your.package.YourListener</name>
+</absolute-ordering>
+```
+
+## 2. JSF 초기화 강제 설정
+
+```xml
+<!-- web.xml -->
+<context-param>
+  <param-name>jakarta.faces.ALWAYS_USE_FACES_SERVLET</param-name>
+  <param-value>true</param-value>
+</context-param>
+
+<context-param>
+  <param-name>jakarta.faces.LIFECYCLE_ID</param-name>
+  <param-value>Production</param-value>
+</context-param>
+```
+
+## 3. 서블릿/리스너 의존성 설정 (서버별)
+
+### WildFly/JBoss의 경우 `jboss-web.xml`
+```xml
+<jboss-web>
+  <load-order>1</load-order>
+  <context-root>your-app</context-root>
+  <module-order strict="true">
+    <module name="jakarta.faces.api"/>
+    <module name="jakarta.servlet.api"/>
+    <module name="your.app.module"/>
+  </module-order>
+</jboss-web>
+```
+
+## 4. OSGi 환경에서의 해결 (Felix/Karaf)
+
+`MANIFEST.MF`에 추가:
+```
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=11))"
+Import-Package: jakarta.faces;version="[4.1,5)",jakarta.servlet;version="[5.0,6)"
+```
+
+## 5. 대체 솔루션 (web.xml 기반)
+
+```xml
+<!-- 리스너 대신 서블릿 필터 사용 -->
+<filter>
+  <filter-name>facesContextFilter</filter-name>
+  <filter-class>com.your.package.FacesContextInitializerFilter</filter-class>
+</filter>
+<filter-mapping>
+  <filter-name>facesContextFilter</filter-name>
+  <url-pattern>/*</url-pattern>
+</filter-mapping>
+```
+
+## 주의사항
+
+1. **서버 호환성 확인**:
+   - Tomcat 10.1+ 또는 WildFly 27+ 권장
+   - `WEB-INF/lib`에 중복 라이브러리가 없는지 확인
+
+2. **실행 순서 보장 불가능**:
+   - `web.xml` 설정만으로는 완벽한 실행 순서 보장이 어려울 수 있음
+   - 안정적인 해결을 위해서는 "지연 초기화" 패턴 적용 권장
+
+3. **대체 아키텍처 고려**:
+   ```java
+   // CDI 이벤트 활용 (JSF 2.3+)
+   public void init(@Observes @Initialized(ApplicationScoped.class) Object event) {
+       // 애플리케이션 시작 시 실행
+   }
+   ```
+
+이 설정들은 서버 환경에 따라 다르게 동작할 수 있으므로, 적용 전에 테스트 환경에서 검증이 필요합니다. 가장 확실한 해결책은 JSF 생명주기 밖에서 `FacesContext`에 의존하지 않는 구조로 리팩토링하는 것입니다.
