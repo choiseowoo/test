@@ -1,0 +1,147 @@
+JSF에서 `outputLink`, `outputText`, `commandButton`을 조합해 특정 구조를 만드는 방법과 클릭 시 `goPage()` 메서드를 실행하는 전체 구현 방식을 설명드리겠습니다.
+
+---
+
+### 📌 **요구사항 분석**
+- **현재 구조**:
+  ```xhtml
+  <h:outputLink>
+      <h:outputText/>
+      <h:commandButton/>
+  </h:outputLink>
+  ```
+- **기대 동작**:
+  - `commandButton` 클릭 시 Bean의 `goPage()` 메서드 호출
+  - `goPage()`에서 파라미터(`pageId`)를 받아 다음 페이지로 이동
+
+---
+
+### 🚨 **문제점 인식**
+1. **잘못된 중첩 구조**:
+   - JSF에서는 `<h:commandButton>`을 `<h:outputLink>` 안에 넣을 수 없습니다.
+   - 이는 HTML 표준 위반(`<a>` 태그 내에 `<button>` 태그 불가능)이며, JSF 컴포넌트 트리에서도 허용되지 않습니다.
+
+2. **기능 충돌**:
+   - `outputLink`는 GET 방식의 링크 생성
+   - `commandButton`은 POST 액션 처리
+
+---
+
+### ✅ **해결 방법 1: commandButton 스타일링으로 링크처럼 보이게 하기**
+```xhtml
+<h:form>
+    <!-- CSS로 버튼을 링크처럼 스타일링 -->
+    <h:commandButton value="페이지 이동" 
+                    styleClass="link-style-button"
+                    action="#{yourBean.goPage('nextPageId')}"/>
+</h:form>
+
+<style>
+    .link-style-button {
+        background: none;
+        border: none;
+        color: blue;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+        font: inherit;
+    }
+</style>
+```
+
+---
+
+### ✅ **해결 방법 2: outputLink와 commandButton 분리 + JavaScript 통합**
+```xhtml
+<!-- 링크 영역 -->
+<h:outputLink id="navLink" style="display:none;">
+    <h:outputText value="이동할 페이지"/>
+</h:outputLink>
+
+<!-- 실제 동작 버튼 (보이지 않게 처리) -->
+<h:form>
+    <h:commandButton id="hiddenBtn" 
+                    action="#{yourBean.goPage('nextPageId')}"
+                    style="display:none;"/>
+</h:form>
+
+<!-- JavaScript로 연결 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // outputLink 클릭 시 commandButton 트리거
+        document.getElementById('navLink').onclick = function(e) {
+            e.preventDefault();
+            document.getElementById('hiddenBtn').click();
+        };
+    });
+</script>
+```
+
+---
+
+### ✅ **해결 방법 3: 가장 권장하는 방식 (PrimeFaces 사용)**
+```xhtml
+<p:commandLink action="#{yourBean.goPage('nextPageId')}" 
+               styleClass="no-decoration">
+    <h:outputText value="페이지 이동"/>
+</p:commandLink>
+
+<style>
+    .no-decoration {
+        text-decoration: none;
+        color: inherit;
+    }
+</style>
+```
+> ⚠️ PrimeFaces가 없을 경우 **해결 방법 1**을 추천합니다.
+
+---
+
+### 🛠️ **Bean 구현 예시**
+```java
+@Named
+@RequestScoped
+public class YourBean {
+    public String goPage(String pageId) {
+        // 파라미터 검증
+        if (!isValidPageId(pageId)) {
+            return "error.xhtml?faces-redirect=true";
+        }
+        
+        // 페이지 ID에 따른 라우팅
+        return switch(pageId) {
+            case "page01" -> "page01.xhtml?faces-redirect=true";
+            case "page02" -> "page02.xhtml?faces-redirect=true";
+            default -> "home.xhtml?faces-redirect=true";
+        };
+    }
+    
+    private boolean isValidPageId(String id) {
+        return id != null && id.matches("[a-zA-Z0-9]+");
+    }
+}
+```
+
+---
+
+### 🔍 **동작 원리**
+1. 사용자가 "페이지 이동" 텍스트/버튼 클릭
+2. `commandButton` 또는 `commandLink`가 POST 요청 발생
+3. Bean의 `goPage()` 메서드에서 `pageId` 처리
+4. `faces-redirect=true`로 새로운 페이지 로드
+
+---
+
+### ⚠️ **주의사항**
+1. **보안**:
+   - 반드시 `pageId` 파라미터 검증 필요
+   - Redirect 시 `ExternalContext#redirect()` 사용 가능
+
+2. **스코프**:
+   - `@RequestScoped` 사용 시 리다이렉트 후 파라미터 소멸
+   - 유지 필요 시 `Flash` 스코프 또는 `f:param` 활용
+
+3. **CSS**:
+   - 버튼을 링크처럼 보이게 할 때 `cursor: pointer` 필수
+
+이 중 **해결 방법 1**이 가장 간단하면서도 표준 JSF만으로 구현 가능한 방식입니다.
