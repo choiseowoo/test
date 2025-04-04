@@ -1,0 +1,134 @@
+# IE의 `showModalDialog` 대체 코드 (Edge/Chrome/Firefox 대응)
+
+IE에서 사용하던 `window.showModalDialog`는 현대 브라우저에서 지원되지 않습니다. 대신 `window.open()`과 메시지 통신(postMessage)을 조합하거나, 모달 다이얼로그 라이브러리를 사용해야 합니다.
+
+## 최신 브라우저 호환 버전
+
+### 1. **Modal 대화상자 생성 방식 변경**
+
+```javascript
+// 기존 IE 코드 (사용 불가)
+// var message = [paganame, message, messagecode];
+// window.showModalDialog('message.html', message, option);
+// var result = window.dialogArguments[2];
+
+// 현대 브라우저 대체 코드
+function openModalDialog(paganame, message, messagecode) {
+    const dialogFeatures = `
+        width=500,
+        height=400,
+        top=${(screen.height - 400) / 2},
+        left=${(screen.width - 500) / 2},
+        modal=yes,
+        resizable=no
+    `;
+    
+    const messageData = { paganame, message, messagecode };
+    const dialogWindow = window.open('message.html', '_blank', dialogFeatures);
+    
+    // 데이터 전달
+    dialogWindow.postMessage(messageData, window.location.origin);
+    
+    // 결과 받기
+    window.addEventListener('message', (event) => {
+        if (event.origin !== window.location.origin) return;
+        const result = event.data;
+        console.log('Dialog result:', result);
+        // 결과 처리 로직...
+    });
+}
+```
+
+### 2. **message.html 측 코드**
+
+```javascript
+// 메시지 수신
+window.addEventListener('message', (event) => {
+    if (event.origin !== window.location.origin) return;
+    
+    const [paganame, message, messagecode] = event.data;
+    console.log('Received data:', paganame, message, messagecode);
+    
+    // 결과 반환 예시
+    const returnResult = 'processed_data';
+    window.opener.postMessage(returnResult, window.location.origin);
+    window.close(); // 다이얼로그 닫기
+});
+```
+
+## 대체 솔루션 비교
+
+| 방법 | 장점 | 단점 | 호환성 |
+|------|------|------|--------|
+| **window.open + postMessage** | 네이티브 구현, 의존성 없음 | 보안 제약사항 많음 | 모든 브라우저 |
+| **Dialog Polyfill** | IE-like API 유지 | 추가 라이브러리 필요 | 크로스 브라우저 |
+| **Modal 라이브러리** | 풍부한 기능 | 학습 곡선 있음 | 해당 라이브러리 지원 범위 |
+
+## 권장 접근 방식
+
+1. **간단한 대화상자 필요시**:
+   ```javascript
+   // Modern dialog API (Chrome 37+, Edge 79+)
+   const result = confirm('메시지를 표시하시겠습니까?');
+   if (result) {
+       // 처리 로직
+   }
+   ```
+
+2. **복잡한 상호작용 필요시**:
+   ```javascript
+   // jQuery UI Dialog 예시
+   $('#dialog').dialog({
+       modal: true,
+       buttons: {
+           "확인": function() {
+               const result = processData();
+               $(this).dialog("close");
+           }
+       }
+   });
+   ```
+
+3. **React/Vue 등 프레임워크 사용시**:
+   ```jsx
+   // React 예시
+   const [showModal, setShowModal] = useState(false);
+   
+   return (
+       <>
+           <button onClick={() => setShowModal(true)}>열기</button>
+           <Modal show={showModal} onClose={() => setShowModal(false)}>
+               <p>메시지 내용</p>
+           </Modal>
+       </>
+   );
+   ```
+
+## 마이그레이션 주의사항
+
+1. **보안 정책**:
+   - `postMessage` 사용 시 반드시 `origin` 검증
+   ```javascript
+   if (event.origin !== 'https://yourdomain.com') return;
+   ```
+
+2. **폴리필 사용시**:
+   ```html
+   <!-- dialog-polyfill -->
+   <link rel="stylesheet" href="dialog-polyfill.css">
+   <script src="dialog-polyfill.js"></script>
+   <script>
+       const dialog = document.querySelector('dialog');
+       dialogPolyfill.registerDialog(dialog);
+   </script>
+   ```
+
+3. **IE 지원 필요시**:
+   ```javascript
+   // IE 감지
+   if (window.showModalDialog) {
+       // IE용 레거시 코드 유지
+   } else {
+       // 모던 브라우저 코드 실행
+   }
+   ```
