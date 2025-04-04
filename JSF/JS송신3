@@ -1,0 +1,108 @@
+네, 정확히 맞습니다! **`window.dialogArguments[2]`**는 `window.showModalDialog()`로 전달한 **두 번째 인자 `message`의 세 번째 요소**를 가져오기 위한 것입니다. (JavaScript 배열은 0부터 시작하므로 `[2]`는 3번째 항목)
+
+---
+
+### 📌 **구체적인 동작 원리**
+
+#### 1. 기존 IE 코드 흐름
+```javascript
+// 부모 창에서 실행
+var message = ['param1', 'param2', '전달할 메시지']; // 배열 전달
+var option = 'dialogWidth:300px;dialogHeight:200px';
+
+window.showModalDialog('message.html', message, option);
+```
+
+```javascript
+// 자식 창(message.html)에서 접근
+var receivedData = window.dialogArguments; // 전체 배열 수신
+var specificValue = window.dialogArguments[2]; // '전달할 메시지' 추출
+
+document.getElementById('message').textContent = specificValue;
+```
+
+#### 2. 데이터 구조 해석
+| Index | 값 예시 | 용도 |
+|-------|---------|------|
+| `[0]` | `'param1'` | 페이지 이름 등 |
+| `[1]` | `'param2'` | 추가 파라미터 |
+| `[2]` | `'전달할 메시지'` | **실제 표시할 내용** |
+
+---
+
+### 🛠️ 현대 브라우저 대체 코드
+```javascript
+// 부모 창 (데이터 전송)
+const message = ['param1', 'param2', '새로운 메시지'];
+const dialogWindow = window.open('message.html', '', 'width=300,height=200');
+
+// 데이터 전송 (기존 dialogArguments 대체)
+dialogWindow.postMessage(message, window.location.origin);
+```
+
+```javascript
+// 자식 창 (데이터 수신)
+window.addEventListener('message', (event) => {
+    if (event.origin !== window.location.origin) return;
+    
+    // 기존 dialogArguments[2]에 해당하는 값 추출
+    const messageToShow = event.data[2]; 
+    document.getElementById('message').textContent = messageToShow;
+});
+```
+
+---
+
+### 🔍 **주요 변경 포인트**
+1. **전달 방식**  
+   - `showModalDialog` → `window.open()` + `postMessage()`
+
+2. **데이터 접근**  
+   - `window.dialogArguments[2]` → `event.data[2]`
+
+3. **보안 강화**  
+   - 반드시 `event.origin` 검증 필요
+
+---
+
+### 💡 **실제 적용 예시**
+```javascript
+// 부모 창에서 복합 데이터 전송
+const complexData = {
+    pageInfo: { id: 'page01', title: '메인' },
+    messages: ['안내', '저장 성공', 'SAVE_200'],
+    timestamp: Date.now()
+};
+
+dialogWindow.postMessage(complexData, origin);
+
+// 자식 창에서 사용
+const { messages } = event.data;
+document.getElementById('status').textContent = messages[2]; // 'SAVE_200'
+```
+
+---
+
+### ⚠️ **주의사항**
+1. **IE 지원 필요 시**  
+   ```javascript
+   if (window.showModalDialog) {
+       // IE 레거시 코드 유지
+   } else {
+       // 모던 브라우저 코드 실행
+   }
+   ```
+
+2. **오타 수정**  
+   - `documents` → `document`  
+   - `getelementbyid` → `getElementById`  
+   - `texline` → `textContent`/`value`
+
+3. **Null 체크**  
+   ```javascript
+   if (event.data && event.data.length >= 3) {
+       // 안전하게 접근
+   }
+   ```
+
+이 방식으로 기존 기능을 완벽히 대체할 수 있으며, 더욱 안전하고 현대적인 코드로 마이그레이션이 가능합니다. 🚀
