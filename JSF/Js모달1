@@ -1,0 +1,91 @@
+좋은 질문이에요. 상황을 정리해보면 이렇게 되죠:
+
+---
+
+### **상황 요약**
+1. `window.open()`으로 자식 창을 열고 메시지를 전달함.
+2. 자식 창에서 "확인", "취소" 버튼을 누르면 `true` 또는 `false`를 반환하고 싶음.
+3. 부모 페이지에서 `if (child != true) { child = false; }` 이런 방식으로 처리하려고 했지만,
+4. **아무런 이벤트가 발생하지 않음.**
+
+---
+
+### **문제의 핵심**
+`window.open()`은 **"동기적인 return 값"을 받는 구조가 아님**  
+즉, 자식 창에서 `true`를 return하거나 변수에 값을 설정해도 **부모 창에서 바로 그 값을 감지할 수 없음.**
+
+---
+
+### **대응 방법 1: `window.postMessage` 사용 (추천)**
+
+자식 창에서 부모 창으로 메시지를 보내는 안전한 방법.
+
+#### **부모 페이지**
+```javascript
+const child = window.open('child.html', 'popup', 'width=400,height=300');
+
+window.addEventListener('message', function(event) {
+    if (event.origin !== location.origin) return; // 보안 체크
+    if (event.data === true) {
+        console.log('확인 눌림');
+    } else if (event.data === false) {
+        console.log('취소 눌림');
+    }
+});
+```
+
+#### **자식 페이지 (child.html)**
+```javascript
+document.getElementById("okBtn").addEventListener("click", function() {
+    window.opener.postMessage(true, location.origin);
+    window.close();
+});
+
+document.getElementById("cancelBtn").addEventListener("click", function() {
+    window.opener.postMessage(false, location.origin);
+    window.close();
+});
+```
+
+---
+
+### **대응 방법 2: 부모에서 polling (비추천)**
+
+자식 창에서 전역 변수에 값을 설정하고 부모에서 주기적으로 체크하는 방식
+
+#### 부모 페이지
+```javascript
+const child = window.open('child.html');
+const interval = setInterval(() => {
+    try {
+        if (child.result !== undefined) {
+            console.log('결과:', child.result);
+            clearInterval(interval);
+            child.close();
+        }
+    } catch (e) {
+        // 보안 또는 접근 권한 오류
+    }
+}, 500);
+```
+
+#### 자식 페이지
+```javascript
+// 확인
+window.result = true;
+
+// 취소
+window.result = false;
+```
+
+이 방법은 자식 페이지가 동일 도메인이 아니면 **보안상 에러 발생**하므로 추천하지 않습니다.
+
+---
+
+### **결론**
+- **`if (child != true)` 방식은 동작하지 않음.** `window.open()`은 창 객체를 리턴할 뿐, 사용자가 누른 버튼의 결과를 포함하지 않음.
+- **`postMessage` 방식이 가장 안전하고 실무에서 많이 사용됨.**
+- 자식 페이지는 `window.opener`를 통해 부모에게 메시지를 보낼 수 있음.
+- 부모는 `message` 이벤트를 통해 응답을 처리해야 함.
+
+필요하면 전체 샘플 HTML 코드도 만들어줄게요.
