@@ -1,0 +1,128 @@
+# HTML 파일을 모달처럼 불러오는 방법
+
+HTML 파일을 모달 형식으로 불러오면서도 사용자가 이동할 수 없게 고정하는 방법을 몇 가지 소개드리겠습니다. `window.open`의 한계를 우회하는 방법들입니다.
+
+## 1. iframe을 이용한 모달 구현 (가장 추천)
+
+```javascript
+function showHtmlModal(url) {
+  // 모달 배경 생성
+  const modal = document.createElement('div');
+  modal.style.position = 'fixed';
+  modal.style.top = '0';
+  modal.style.left = '0';
+  modal.style.width = '100%';
+  modal.style.height = '100%';
+  modal.style.backgroundColor = 'rgba(0,0,0,0.7)';
+  modal.style.zIndex = '10000';
+  modal.id = 'custom-modal';
+  
+  // 모달 내용 컨테이너
+  const modalContent = document.createElement('div');
+  modalContent.style.position = 'absolute';
+  modalContent.style.top = '50%';
+  modalContent.style.left = '50%';
+  modalContent.style.transform = 'translate(-50%, -50%)';
+  modalContent.style.width = '80%';
+  modalContent.style.maxWidth = '800px';
+  modalContent.style.height = '80%';
+  modalContent.style.backgroundColor = 'white';
+  modalContent.style.borderRadius = '8px';
+  modalContent.style.overflow = 'hidden';
+  
+  // iframe으로 외부 HTML 로드
+  const iframe = document.createElement('iframe');
+  iframe.src = url;
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
+  iframe.frameBorder = '0';
+  
+  // 닫기 버튼
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.style.position = 'absolute';
+  closeBtn.style.right = '15px';
+  closeBtn.style.top = '10px';
+  closeBtn.style.background = 'none';
+  closeBtn.style.border = 'none';
+  closeBtn.style.fontSize = '24px';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.style.zIndex = '10001';
+  closeBtn.onclick = function() {
+    document.body.removeChild(modal);
+  };
+  
+  modalContent.appendChild(iframe);
+  modal.appendChild(closeBtn);
+  modal.appendChild(modalContent);
+  document.body.appendChild(modal);
+  
+  // ESC 키로 닫기
+  modal.tabIndex = 0;
+  modal.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.body.removeChild(modal);
+    }
+  });
+  modal.focus();
+}
+
+// 사용 예시
+showHtmlModal('external-content.html');
+```
+
+## 2. fetch + 모달 (HTML 내용만 로드)
+
+```javascript
+async function loadHtmlIntoModal(url) {
+  try {
+    const response = await fetch(url);
+    const html = await response.text();
+    
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed';
+    // ... (위와 동일한 모달 스타일링)
+    
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+    
+    // 닫기 기능 추가
+    const closeBtn = document.createElement('button');
+    // ... 닫기 버튼 설정
+  } catch (error) {
+    console.error('HTML 로드 실패:', error);
+  }
+}
+```
+
+## 3. 오버레이 + 객체 태그 사용 (덜 일반적)
+
+```javascript
+function showHtmlWithObjectTag(url) {
+  const overlay = document.createElement('div');
+  // ... 오버레이 스타일 설정 (위의 모달 스타일과 유사)
+  
+  const obj = document.createElement('object');
+  obj.data = url;
+  obj.type = 'text/html';
+  obj.style.width = '80%';
+  obj.style.height = '80%';
+  obj.style.border = 'none';
+  
+  overlay.appendChild(obj);
+  document.body.appendChild(overlay);
+}
+```
+
+## 주의사항
+
+1. **동일 출처 정책**: iframe이나 fetch로 로드하는 HTML 파일이 동일 도메인에 있어야 합니다.
+   - 다른 도메인의 경우 CORS 문제가 발생합니다.
+   - 서버 측에서 프록시 처리하거나 CORS 헤더를 설정해야 합니다.
+
+2. **스타일 충돌**: 로드된 HTML의 CSS가 현재 페이지와 충돌할 수 있으니 iframe을 사용하는 것이 더 안전합니다.
+
+3. **반응형 디자인**: 모달 크기를 반응형으로 조절하려면 CSS 미디어 쿼리를 추가하세요.
+
+위 방법 중 iframe을 이용한 첫 번째 방법이 가장 안정적이고 널리 사용되는 방식입니다.
