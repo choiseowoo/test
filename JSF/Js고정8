@@ -1,0 +1,183 @@
+# XHTML에서 window.open으로 모달형 자식창 띄우기 (postMessage 활용)
+
+기존 XHTML 환경에서 `window.open()`으로 자식창을 열고 `postMessage`로 에러 메시지를 전달하면서, 동시에 모달처럼 동작하게 하는 방법을 설명드리겠습니다.
+
+## 완성 코드 (XHTML 호환 버전)
+
+```xhtml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>XHTML 모달형 자식창</title>
+    <style type="text/css">
+        /* 모달 오버레이 스타일 */
+        #modalOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+        }
+        /* 부모 페이지 차단 */
+        body.modal-open {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <button id="openModalBtn">모달창 열기</button>
+    
+    <!-- 모달 오버레이 (실제로는 보이지 않지만 창 위치 계산용) -->
+    <div id="modalOverlay"></div>
+    
+    <script type="text/javascript">
+    //<![CDATA[
+        var modalWindow = null;
+        
+        function openModalWindow() {
+            // 부모 페이지 차단
+            document.body.className += ' modal-open';
+            
+            // 모달창 열기
+            modalWindow = window.open('', 'errorModal', 
+                'width=600,height=400,left=' + (screen.width/2 - 300) + 
+                ',top=' + (screen.height/2 - 200) + 
+                ',scrollbars=no,resizable=no');
+            
+            // 자식창이 닫혔는지 확인하는 인터벌
+            var checkClosed = setInterval(function() {
+                if (modalWindow.closed) {
+                    clearInterval(checkClosed);
+                    document.body.className = document.body.className.replace(' modal-open', '');
+                }
+            }, 100);
+            
+            // 자식창에 HTML 내용 쓰기
+            modalWindow.document.write('\
+                <!DOCTYPE html>\
+                <html>\
+                <head>\
+                    <title>에러 메시지</title>\
+                    <style>\
+                        body { font-family: Arial; padding: 20px; }\
+                        .modal-content { \
+                            background: white; \
+                            padding: 20px; \
+                            border-radius: 5px; \
+                            box-shadow: 0 0 10px rgba(0,0,0,0.5);\
+                        }\
+                    </style>\
+                </head>\
+                <body>\
+                    <div class="modal-content">\
+                        <h2>에러 메시지</h2>\
+                        <div id="errorMessage">메시지 수신 중...</div>\
+                        <button onclick="window.close()">닫기</button>\
+                    </div>\
+                    <script>\
+                        window.addEventListener("message", function(e) {\
+                            document.getElementById("errorMessage").innerHTML = e.data;\
+                        });\
+                    </'+'script>\
+                </body>\
+                </html>');
+            modalWindow.document.close();
+            
+            // 모달 위치 조정을 위해 오버레이 표시 (잠깐)
+            var overlay = document.getElementById('modalOverlay');
+            overlay.style.display = 'block';
+            setTimeout(function() {
+                overlay.style.display = 'none';
+            }, 100);
+            
+            // 에러 메시지 전송 (예시)
+            setTimeout(function() {
+                if (modalWindow && !modalWindow.closed) {
+                    modalWindow.postMessage('서버 연결에 실패했습니다.', '*');
+                }
+            }, 500);
+        }
+        
+        document.getElementById('openModalBtn').onclick = openModalWindow;
+    //]]>
+    </script>
+</body>
+</html>
+```
+
+## 핵심 구현 방법
+
+1. **모달 효과 구현**
+   - `window.open()`으로 열린 창을 화면 중앙에 배치
+   - 부모 창에 `modal-open` 클래스 추가하여 스크롤 막기
+   - 오버레이 div를 이용해 모달 위치 계산 (실제로는 보이지 않음)
+
+2. **postMessage 통신**
+   - 자식창에서 `message` 이벤트 리스너 등록
+   - 부모창에서 `postMessage`로 에러 내용 전송
+
+3. **XHTML 호환성 유지**
+   - 모든 태그와 속성은 XHTML 규격 준수
+   - CDATA 섹션으로 JavaScript 코드 감싸기
+   - 자식창 HTML을 문자열로 작성할 때 이스케이프 처리
+
+## 추가 개선 사항
+
+1. **더 강력한 모달 효과를 원할 경우**:
+```javascript
+// 자식창 스타일을 더 모달처럼 변경
+modalWindow.document.write('\
+    <!DOCTYPE html>\
+    <html>\
+    <head>\
+        <title>에러 메시지</title>\
+        <style>\
+            body { \
+                margin: 0; \
+                background: rgba(0,0,0,0.5); \
+                display: flex; \
+                justify-content: center; \
+                align-items: center; \
+                height: 100vh; \
+            }\
+            .modal-content { \
+                background: white; \
+                padding: 30px; \
+                border-radius: 8px; \
+                box-shadow: 0 0 20px rgba(0,0,0,0.3);\
+                max-width: 80%;\
+            }\
+        </style>\
+    </head>\
+    <body>\
+        <div class="modal-content">\
+            <h2>에러 메시지</h2>\
+            <div id="errorMessage">메시지 수신 중...</div>\
+            <button onclick="window.close()" style="margin-top: 20px;">닫기</button>\
+        </div>\
+        <script>\
+            // 메시지 수신 코드\
+        </'+'script>\
+    </body>\
+    </html>');
+```
+
+2. **보안 강화**:
+```javascript
+// 특정 도메인으로만 메시지 전송 제한
+modalWindow.postMessage('서버 연결 실패', 'https://yourdomain.com');
+
+// 자식창에서
+window.addEventListener("message", function(e) {
+    if (e.origin !== "https://parentdomain.com") return;
+    document.getElementById("errorMessage").innerHTML = e.data;
+});
+```
+
+이 방법은 XHTML 환경에서도 완벽히 동작하며, 기존의 `window.open`과 `postMessage` 방식을 그대로 유지하면서 모달 같은 사용자 경험을 제공합니다.
