@@ -1,0 +1,275 @@
+# XHTML에서 모달로 자식 HTML 표시 및 메시지 통신 (iframe과 dialog 방식)
+
+아래는 부모 XHTML 페이지에서 모달을 띄워 자식 HTML 내용을 표시하고, 메시지를 전송하는 두 가지 방법(iframe과 dialog 태그)을 보여드리겠습니다.
+
+## 1. iframe을 이용한 방법 (전통적 모달)
+
+```xhtml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>iframe 모달 예제</title>
+    <style type="text/css">
+        /* 모달 스타일 */
+        #modalOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+        }
+        #modalContainer {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 80%;
+            background: white;
+            z-index: 1001;
+            display: none;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1002;
+        }
+    </style>
+</head>
+<body>
+    <button id="openModal">모달 열기</button>
+    
+    <!-- 모달 구조 -->
+    <div id="modalOverlay"></div>
+    <div id="modalContainer">
+        <button class="close-btn" id="closeModal">×</button>
+        <iframe id="modalIframe" src="" style="width:100%; height:100%; border:none;"></iframe>
+    </div>
+    
+    <script type="text/javascript">
+    //<![CDATA[
+        // 모달 열기
+        document.getElementById('openModal').onclick = function() {
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('modalContainer').style.display = 'block';
+            document.getElementById('modalIframe').src = 'child.html';
+        };
+        
+        // 모달 닫기
+        document.getElementById('closeModal').onclick = function() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('modalContainer').style.display = 'none';
+            document.getElementById('modalIframe').src = '';
+        };
+        
+        // 자식 페이지에 메시지 보내기
+        function sendMessageToChild() {
+            var iframe = document.getElementById('modalIframe');
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({
+                    type: 'parentMessage',
+                    content: '부모에서 보낸 메시지',
+                    time: new Date().toLocaleTimeString()
+                }, '*');
+            }
+        }
+        
+        // 5초 후 자동으로 메시지 보내기 (테스트용)
+        setTimeout(sendMessageToChild, 5000);
+        
+        // 자식 페이지로부터 메시지 받기
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'childResponse') {
+                console.log('자식 페이지 응답:', event.data);
+            }
+        });
+    //]]>
+    </script>
+</body>
+</html>
+```
+
+## child.html (iframe용 자식 페이지)
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>자식 페이지</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+        #messageBox {
+            padding: 15px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h2>자식 페이지 내용</h2>
+    <div id="messageBox">메시지 대기중...</div>
+    <button id="responseBtn">응답 보내기</button>
+    
+    <script>
+        // 부모 페이지로부터 메시지 수신
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'parentMessage') {
+                document.getElementById('messageBox').innerHTML = 
+                    `받은 메시지: ${event.data.content}<br>
+                     수신 시간: ${event.data.time}`;
+            }
+        });
+        
+        // 부모 페이지에 응답 보내기
+        document.getElementById('responseBtn').onclick = function() {
+            window.parent.postMessage({
+                type: 'childResponse',
+                message: '자식 페이지에서 보낸 응답',
+                status: 'success'
+            }, '*');
+        };
+    </script>
+</body>
+</html>
+```
+
+## 2. `<dialog>` 태그를 이용한 현대적 방법 (HTML5)
+
+```xhtml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>dialog 태그 모달 예제</title>
+    <style type="text/css">
+        /* dialog 스타일 */
+        dialog {
+            width: 80%;
+            height: 80%;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            padding: 0;
+            overflow: hidden;
+        }
+        dialog::backdrop {
+            background-color: rgba(0,0,0,0.5);
+        }
+        .dialog-header {
+            padding: 10px;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .dialog-content {
+            height: calc(100% - 50px);
+        }
+    </style>
+</head>
+<body>
+    <button id="openDialog">모달 열기 (dialog 태그)</button>
+    
+    <dialog id="myDialog">
+        <div class="dialog-header">
+            <h2>자식 페이지 콘텐츠</h2>
+            <button id="closeDialog">닫기</button>
+        </div>
+        <div class="dialog-content">
+            <iframe id="dialogIframe" src="" style="width:100%; height:100%; border:none;"></iframe>
+        </div>
+    </dialog>
+    
+    <script type="text/javascript">
+    //<![CDATA[
+        var dialog = document.getElementById('myDialog');
+        
+        // 모달 열기
+        document.getElementById('openDialog').onclick = function() {
+            dialog.showModal();
+            document.getElementById('dialogIframe').src = 'child.html';
+        };
+        
+        // 모달 닫기
+        document.getElementById('closeDialog').onclick = function() {
+            dialog.close();
+            document.getElementById('dialogIframe').src = '';
+        };
+        
+        // ESC 키로 닫기 방지 (필요시)
+        dialog.addEventListener('cancel', function(event) {
+            event.preventDefault();
+        });
+        
+        // 자식 페이지에 메시지 보내기
+        function sendDialogMessage() {
+            var iframe = document.getElementById('dialogIframe');
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({
+                    type: 'dialogMessage',
+                    content: 'dialog에서 보낸 메시지',
+                    from: 'parent'
+                }, '*');
+            }
+        }
+        
+        // 3초 후 메시지 보내기 (테스트용)
+        setTimeout(sendDialogMessage, 3000);
+    //]]>
+    </script>
+</body>
+</html>
+```
+
+## 두 방식의 비교
+
+| 특징                | iframe 방식                     | dialog 태그 방식              |
+|---------------------|--------------------------------|-------------------------------|
+| 브라우저 지원       | 모든 브라우저                  | 최신 브라우저 (IE 지원 안함) |
+| 접근성              | 별도 구현 필요                 | 기본 제공                    |
+| 백드롭 처리         | 수동 구현 필요                 | ::backdrop으로 자동 지원     |
+| ESC 키 닫기         | 직접 구현 필요                 | 기본 제공 (취소 이벤트로 제어 가능) |
+| 모달 중첩           | 가능하지만 복잡함              | 쉬움 (showModal()으로 자연스럽게 처리) |
+| 스크롤 잠금         | 수동 구현 필요                 | 자동 처리                    |
+
+## 공통적으로 주의할 점
+
+1. **보안**: `postMessage` 사용 시 가능한 특정 origin 지정
+   ```javascript
+   // 안전한 방법
+   iframe.contentWindow.postMessage(message, 'https://yourdomain.com');
+   ```
+
+2. **로딩 완료 대기**: iframe/dialog가 완전히 로드된 후 메시지 전송
+   ```javascript
+   iframe.onload = function() {
+       // 이제 메시지 전송 가능
+   };
+   ```
+
+3. **XHTML 호환성**: 
+   - 모든 태그는 소문자로
+   - 속성값은 항상 따옴표로 감싸기
+   - 빈 요소는 `/`로 닫기 (`<br />`)
+
+4. **메시지 프로토콜**: 
+   - 메시지 객체에 `type` 필드를 포함시켜 메시지 구분
+   - 데이터 구조를 일관되게 유지
+
+두 방법 모두 부모 XHTML 페이지에서 자식 HTML을 모달로 표시하고 메시지를 주고받는 데 효과적입니다. 브라우저 지원 범위를 고려해 적절한 방식을 선택하시면 됩니다.
