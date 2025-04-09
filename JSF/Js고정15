@@ -1,0 +1,97 @@
+아, 오케이!  
+**`<dialog>` 태그 자체를 XHTML에 쓰는 게 아니라, JavaScript로 동적으로 생성해서 자식 HTML을 iframe으로 띄우고, 메시지를 전달하고 싶다**는 거지? 완전 가능해!
+
+---
+
+## **1. XHTML에서 JavaScript로 `<dialog>` 동적 생성하기**
+
+```xhtml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<h:head>
+    <title>동적 모달</title>
+</h:head>
+<h:body>
+    <h:form>
+        <h:inputText id="messageInput" value="#{yourBean.message}" />
+        <h:commandButton value="모달 열기" type="button" onclick="createAndShowDialog();" />
+    </h:form>
+
+    <script type="text/javascript">
+        function createAndShowDialog() {
+            // 기존 다이얼로그 있으면 제거
+            const oldDialog = document.getElementById('dynamicDialog');
+            if (oldDialog) oldDialog.remove();
+
+            // 입력 값 가져오기 (JSF 렌더된 ID 주의)
+            const message = document.getElementById('j_idt1:messageInput').value;
+
+            // 다이얼로그 생성
+            const dialog = document.createElement('dialog');
+            dialog.id = 'dynamicDialog';
+            dialog.style.width = '600px';
+            dialog.style.height = '400px';
+
+            // iframe 생성
+            const iframe = document.createElement('iframe');
+            iframe.src = 'child.html';
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+
+            // iframe 로드 후 메시지 전달
+            iframe.onload = function () {
+                iframe.contentWindow.postMessage(message, '*');
+            };
+
+            // 다이얼로그에 iframe 추가
+            dialog.appendChild(iframe);
+            document.body.appendChild(dialog);
+            dialog.showModal();
+
+            // ESC나 외부 클릭 시 닫기
+            dialog.addEventListener('click', function (e) {
+                if (e.target === dialog) dialog.close();
+            });
+        }
+    </script>
+</h:body>
+</html>
+```
+
+---
+
+## **2. 자식 HTML (child.html)**
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>모달 페이지</title>
+</head>
+<body>
+    <h2>부모로부터 받은 메시지:</h2>
+    <div id="msg">대기 중...</div>
+
+    <script>
+        window.addEventListener('message', function(event) {
+            document.getElementById('msg').textContent = event.data;
+        });
+    </script>
+</body>
+</html>
+```
+
+---
+
+## **요약**
+
+- `createElement('dialog')` → JavaScript로 태그 생성
+- `iframe`도 JS에서 동적으로 추가
+- `postMessage()`로 값 전달
+- 부모 → 자식 간 iframe 메시지 전달 가능
+
+---
+
+필요하면 자식이 부모에 메시지 보내는 것도 가능하고, 이 구조를 완전 XHTML -> XHTML 로도 확장 가능해. 계속 도와줄 테니 방향만 말해줘!
