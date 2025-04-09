@@ -1,0 +1,298 @@
+# JavaScript로 iframe 생성 및 모달 형태로 자식 HTML 표시하기
+
+네, JavaScript로 동적으로 iframe을 생성하고 이를 모달 형태로 표시하여 자식 HTML 내용을 보여주는 것이 가능합니다. 아래에 완벽한 구현 방법을 설명드리겠습니다.
+
+## 완전한 구현 코드
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동적 iframe 모달</title>
+    <style>
+        /* 모달 오버레이 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* 모달 컨테이너 */
+        .modal-container {
+            background-color: white;
+            width: 80%;
+            max-width: 800px;
+            height: 80%;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* 모달 헤더 */
+        .modal-header {
+            padding: 16px;
+            background-color: #f1f1f1;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* 모달 내용 영역 */
+        .modal-content {
+            flex-grow: 1;
+            position: relative;
+        }
+        
+        /* iframe 스타일 */
+        .modal-iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        /* 닫기 버튼 */
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #555;
+        }
+        
+        /* 부모 페이지 스크롤 막기 */
+        body.modal-open {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <button id="openModalBtn">모달 열기</button>
+    
+    <script>
+        // 모달 열기 함수
+        function openModal(url) {
+            // 부모 페이지 스크롤 막기
+            document.body.classList.add('modal-open');
+            
+            // 모달 오버레이 생성
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.style.display = 'flex';
+            
+            // 모달 컨테이너 생성
+            const modal = document.createElement('div');
+            modal.className = 'modal-container';
+            
+            // 모달 헤더 생성
+            const header = document.createElement('div');
+            header.className = 'modal-header';
+            header.innerHTML = '<h2>모달 제목</h2>';
+            
+            // 닫기 버튼 생성
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'close-btn';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = function() {
+                document.body.removeChild(overlay);
+                document.body.classList.remove('modal-open');
+            };
+            
+            // 모달 내용 영역 생성
+            const content = document.createElement('div');
+            content.className = 'modal-content';
+            
+            // 동적으로 iframe 생성
+            const iframe = document.createElement('iframe');
+            iframe.className = 'modal-iframe';
+            iframe.src = url;
+            
+            // iframe 로드 완료 이벤트
+            iframe.onload = function() {
+                console.log('iframe 로드 완료');
+                // iframe이 로드된 후 메시지 전송 예제
+                setTimeout(() => {
+                    iframe.contentWindow.postMessage({
+                        type: 'init',
+                        message: '부모 창에서 보낸 메시지'
+                    }, '*');
+                }, 500);
+            };
+            
+            // 조립
+            header.appendChild(closeBtn);
+            modal.appendChild(header);
+            content.appendChild(iframe);
+            modal.appendChild(content);
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+            
+            // ESC 키로 닫기
+            overlay.tabIndex = 0;
+            overlay.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.body.removeChild(overlay);
+                    document.body.classList.remove('modal-open');
+                }
+            });
+            overlay.focus();
+            
+            // 오버레이 클릭 시 닫기
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) {
+                    document.body.removeChild(overlay);
+                    document.body.classList.remove('modal-open');
+                }
+            });
+        }
+        
+        // 메시지 수신 리스너
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'fromChild') {
+                console.log('자식 창으로부터 메시지:', e.data);
+            }
+        });
+        
+        // 모달 열기 버튼 이벤트
+        document.getElementById('openModalBtn').addEventListener('click', function() {
+            openModal('child.html'); // 자식 HTML 파일 경로
+        });
+    </script>
+</body>
+</html>
+```
+
+## child.html (자식 페이지 예시)
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자식 페이지</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        #messageBox {
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>자식 페이지 콘텐츠</h1>
+    <div id="messageBox">부모 창의 메시지를 기다리는 중...</div>
+    <button id="sendBtn">부모 창에 응답 보내기</button>
+    
+    <script>
+        // 부모 창으로부터 메시지 수신
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'init') {
+                document.getElementById('messageBox').textContent = 
+                    '받은 메시지: ' + e.data.message;
+            }
+        });
+        
+        // 부모 창에 메시지 전송
+        document.getElementById('sendBtn').addEventListener('click', function() {
+            window.parent.postMessage({
+                type: 'fromChild',
+                message: '자식 창에서 보낸 응답 메시지',
+                time: new Date().toLocaleTimeString()
+            }, '*');
+        });
+    </script>
+</body>
+</html>
+```
+
+## 주요 기능 설명
+
+1. **동적 iframe 생성**:
+   - `document.createElement('iframe')`으로 iframe 동적 생성
+   - `iframe.src` 속성으로 자식 HTML 로드
+
+2. **모달 형태 구현**:
+   - 전체 화면을 덮는 오버레이 생성
+   - 중앙에 위치한 모달 컨테이너
+   - ESC 키와 외부 클릭으로 닫기 기능
+
+3. **메시지 통신**:
+   - `postMessage`로 부모→자식 메시지 전송
+   - `message` 이벤트 리스너로 자식→부모 메시지 수신
+
+4. **반응형 디자인**:
+   - 모달 크기가 화면에 맞게 자동 조정
+   - 모바일에서도 정상 작동
+
+## 추가 기능 구현 팁
+
+1. **로딩 인디케이터 추가**:
+```javascript
+const loader = document.createElement('div');
+loader.innerHTML = '로딩 중...';
+loader.style.position = 'absolute';
+loader.style.top = '50%';
+loader.style.left = '50%';
+loader.style.transform = 'translate(-50%, -50%)';
+content.appendChild(loader);
+
+iframe.onload = function() {
+    content.removeChild(loader);
+    // ... 기존 로드 핸들러 코드
+};
+```
+
+2. **iframe 크기 자동 조정**:
+```javascript
+// 자식 페이지에서 부모 창에 높이 정보 전송
+window.parent.postMessage({
+    type: 'resize',
+    height: document.body.scrollHeight
+}, '*');
+
+// 부모 창에서 수신
+window.addEventListener('message', function(e) {
+    if (e.data.type === 'resize') {
+        iframe.style.height = e.data.height + 'px';
+    }
+});
+```
+
+3. **다중 iframe 관리**:
+```javascript
+let currentModal = null;
+
+function closeModal() {
+    if (currentModal) {
+        document.body.removeChild(currentModal);
+        document.body.classList.remove('modal-open');
+        currentModal = null;
+    }
+}
+```
+
+이 방법은 순수 JavaScript만 사용하여 구현되었으며, jQuery나 다른 라이브러리 없이도 완벽히 동작합니다. 필요에 따라 스타일이나 기능을 확장할 수 있습니다.
