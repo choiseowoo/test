@@ -1,0 +1,199 @@
+# XHTML에서 자식 페이지 메시지 표시 문제 해결 및 다이얼로그 변경
+
+## 문제 원인: 자식 페이지에 메시지가 표시되지 않는 이유
+
+1. **메시지 전송 타이밍 문제**:
+   - `iframe.onload` 핸들러가 너무 늦게 설정되어 있어 메시지가 전송되지 않음
+   - `iframe`이 이미 로드된 후에 `onload` 핸들러를 설정하면 호출되지 않음
+
+2. **XHTML과 HTML 혼용 문제**:
+   - 부모 페이지는 XHTML, 자식 페이지는 HTML로 서로 다른 문서 타입
+
+3. **postMessage 대상 문제**:
+   - `contentWindow`가 완전히 준비되기 전에 메시지를 보내려고 함
+
+## 해결 방법 (수정된 코드)
+
+### 부모 페이지 (XHTML) 수정
+
+```xhtml
+<script type="text/javascript">
+//<![CDATA[
+    var modal = document.getElementById("modal");
+    var modalBackdrop = document.getElementById("modalBackdrop");
+    var openModalBtn = document.getElementById("openModalBtn");
+    var closeModalBtn = document.getElementById("closeModalBtn");
+    var modalIframe = document.getElementById("modalIframe");
+    var sendMessageBtn = document.getElementById("sendMessageBtn");
+
+    // iframe 로드 이벤트 핸들러 미리 설정
+    modalIframe.onload = function() {
+        // iframe이 로드될 때마다 초기 메시지 전송
+        sendMessageToChild("iframe 로드 완료");
+    };
+
+    // モーダルを開く
+    function openModal() {
+        modalIframe.src = "dialog.html";  // 子HTMLをモーダル内に読み込む
+        modal.style.display = "block";
+        modalBackdrop.style.display = "block";
+    }
+
+    // モーダルを閉じる
+    function closeModal() {
+        modal.style.display = "none";
+        modalBackdrop.style.display = "none";
+        modalIframe.src = "";  // モーダルを閉じる時にiframeのsrcを空にする
+    }
+
+    function sendMessageToChild(message) {
+        try {
+            if (modalIframe.contentWindow) {
+                modalIframe.contentWindow.postMessage({ 
+                    type: "parentMessage", 
+                    message: message || "こんにちは、子画面！"
+                }, "*");
+            }
+        } catch(e) {
+            console.error("메시지 전송 실패:", e);
+        }
+    }
+
+    // モーダルを開くボタンのクリックイベント
+    openModalBtn.onclick = openModal;
+
+    // モーダル閉じるボタンのクリックイベント
+    closeModalBtn.onclick = closeModal;
+
+    // 子ページにメッセージ送信ボタンのクリックイベント
+    sendMessageBtn.onclick = function() {
+        sendMessageToChild("ボタンから送信されたメッセージ");
+    };
+//]]>
+</script>
+```
+
+### 자식 페이지 (dialog.html) 수정
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>子画面</title>
+    <style type="text/css">
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h2 {
+            color: #4CAF50;
+        }
+        p {
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h2>子画面のコンテンツ</h2>
+    <p id="messageDisplay">メッセージ待機中...</p>
+
+    <script type="text/javascript">
+        // 親ページからのメッセージを受け取る
+        window.addEventListener("message", function(event) {
+            // 보안을 위해 origin 확인 (실제 구현시 특정 도메인으로 변경)
+            // if (event.origin !== "http://yourdomain.com") return;
+            
+            if (event.data && event.data.type === "parentMessage") {
+                var display = document.getElementById("messageDisplay");
+                display.textContent = event.data.message;
+                display.style.color = "blue";
+                display.style.fontWeight = "bold";
+                
+                // 부모 페이지에 응답 보내기
+                window.parent.postMessage({
+                    type: "childResponse",
+                    status: "received",
+                    receivedMessage: event.data.message
+                }, "*");
+            }
+        }, false);
+    </script>
+</body>
+</html>
+```
+
+## iframe 대신 window.open 다이얼로그로 변경하는 방법
+
+```xhtml
+<script type="text/javascript">
+//<![CDATA[
+    var dialogWindow = null;
+
+    // 다이얼로그 열기
+    function openDialog() {
+        dialogWindow = window.open('dialog.html', 'messageDialog', 
+            'width=600,height=400,left=' + (screen.width/2 - 300) + 
+            ',top=' + (screen.height/2 - 200) + 
+            ',scrollbars=no,resizable=yes');
+        
+        // 다이얼로그가 로드될 때까지 기다림
+        var checkLoaded = setInterval(function() {
+            if (dialogWindow && dialogWindow.document.readyState === 'complete') {
+                clearInterval(checkLoaded);
+                sendMessageToChild("初期メッセージ");
+                
+                // 다이얼로그 닫힘 감지
+                var checkClosed = setInterval(function() {
+                    if (dialogWindow.closed) {
+                        clearInterval(checkClosed);
+                        dialogWindow = null;
+                    }
+                }, 100);
+            }
+        }, 100);
+    }
+
+    function sendMessageToChild(message) {
+        if (dialogWindow && !dialogWindow.closed) {
+            dialogWindow.postMessage({
+                type: 'parentMessage',
+                message: message || "こんにちは、子画面！"
+            }, '*');
+        }
+    }
+
+    // 메시지 수신 리스너
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'childResponse') {
+            console.log('자식 페이지 응답:', event.data);
+        }
+    });
+
+    document.getElementById('openModalBtn').onclick = openDialog;
+//]]>
+</script>
+```
+
+## 주요 수정 사항
+
+1. **메시지 전송 타이밍 문제 해결**:
+   - `iframe.onload` 핸들러를 미리 설정
+   - `try-catch` 블록으로 안전한 메시지 전송 구현
+
+2. **양방향 통신 구현**:
+   - 자식 페이지에서 부모 페이지로 응답 메시지 전송 기능 추가
+
+3. **다이얼로그 버전 추가**:
+   - `window.open`을 사용한 대체 구현 제공
+   - 다이얼로그 창의 위치와 크기 조정
+
+4. **오류 처리 강화**:
+   - 메시지 전송 실패 시 콘솔에 오류 출력
+   - 다이얼로그 닫힘 상태 감지 로직 추가
+
+5. **UI 피드백 개선**:
+   - 메시지 수신 시 자식 페이지에서 시각적 변화 추가
+   - 초기 메시지 상태 표시
+
+이제 자식 페이지에 메시지가 정상적으로 표시될 것이며, 필요에 따라 iframe 대신 window.open 방식을 사용할 수도 있습니다.
