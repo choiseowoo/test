@@ -1,0 +1,168 @@
+# 다이얼로그 태그를 사용한 부모 → 자식 메시지 전송 방법
+
+네, 정확히 이해하셨습니다. 위 코드는 부모 XHTML 페이지에서 다이얼로그 태그를 사용해 자식 HTML 내용을 모달 형태로 표시하면서, 부모 페이지에서 자식 페이지로 메시지를 보내는 기능을 포함하고 있습니다.
+
+## 부모 → 자식 메시지 전송 핵심 코드 분석
+
+### 1. 부모에서 자식으로 메시지 전송하는 부분
+
+```javascript
+// 다이얼로그 열기 함수 내부
+setTimeout(function() {
+    var dataDisplay = dialog.querySelector('#receivedData');
+    if (dataDisplay) {
+        // 자식의 DOM에 직접 접근하여 메시지 표시
+        dataDisplay.textContent = '부모로부터 받은 데이터: ' + 
+            new Date().toLocaleTimeString();
+    }
+}, 100);
+```
+
+### 2. 자식에서 부모로 메시지 전송하는 부분
+
+```javascript
+// 자식 HTML 내부의 버튼 클릭 핸들러
+var sendBtn = dialog.querySelector('#sendToParentBtn');
+if (sendBtn) {
+    sendBtn.onclick = function() {
+        var input = dialog.querySelector('#childInput').value;
+        // 부모 창에 메시지 전송
+        window.parent.postMessage({
+            type: 'fromChild',
+            data: input
+        }, '*');
+    };
+}
+```
+
+### 3. 부모에서 자식 메시지 수신 대기
+
+```javascript
+// 부모 페이지의 메시지 리스너
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'fromChild') {
+        document.getElementById('parentData').textContent = 
+            '부모 데이터: 자식으로부터 받음 - ' + event.data.data;
+    }
+});
+```
+
+## 완전한 부모 → 자식 메시지 전송 코드 개선 버전
+
+기존 코드를 더 명확하게 개선한 버전입니다:
+
+```xhtml
+<script type="text/javascript">
+//<![CDATA[
+    var dialog = null;
+    
+    // 메시지 전송 함수 (부모 → 자식)
+    function sendToChild(message) {
+        if (!dialog) return;
+        
+        // 방법 1: 직접 DOM 조작
+        var display = dialog.querySelector('#receivedData');
+        if (display) {
+            display.textContent = '부모 메시지: ' + message;
+        }
+        
+        // 방법 2: 이벤트 시스템 활용 (고급)
+        var event = new CustomEvent('parentMessage', {
+            detail: { message: message }
+        });
+        dialog.dispatchEvent(event);
+    }
+    
+    // 다이얼로그 초기화
+    function initDialog() {
+        dialog = document.createElement('dialog');
+        dialog.innerHTML = '
+            <div class="dialog-container">
+                <div class="dialog-header">
+                    <h2>자식 콘텐츠</h2>
+                </div>
+                <div class="dialog-content">
+                    <div id="receivedData">메시지 대기중...</div>
+                    <button id="childBtn">부모에 응답</button>
+                </div>
+            </div>
+        ';
+        
+        // 자식 버튼 이벤트
+        dialog.querySelector('#childBtn').onclick = function() {
+            window.parent.postMessage({
+                type: 'childResponse',
+                data: '자식이 보낸 응답'
+            }, '*');
+        };
+        
+        // 이벤트 리스너 등록 (방법 2 사용시)
+        dialog.addEventListener('parentMessage', function(e) {
+            var display = dialog.querySelector('#receivedData');
+            if (display) {
+                display.textContent = '부모 이벤트 메시지: ' + e.detail.message;
+            }
+        });
+        
+        document.body.appendChild(dialog);
+    }
+    
+    // 모달 열기
+    function openDialog() {
+        initDialog();
+        dialog.showModal();
+        
+        // 열리자마자 메시지 전송 (예시)
+        sendToChild('첫 메시지');
+    }
+    
+    // 부모 → 자식 메시지 보내기 버튼
+    function setupParentButton() {
+        var btn = document.createElement('button');
+        btn.textContent = '자식에 메시지 보내기';
+        btn.onclick = function() {
+            sendToChild('버튼 클릭: ' + new Date().toLocaleTimeString());
+        };
+        document.body.appendChild(btn);
+    }
+    
+    // 초기화
+    window.onload = function() {
+        setupParentButton();
+        document.getElementById('openDialogBtn').onclick = openDialog;
+    };
+//]]>
+</script>
+```
+
+## 메시지 전송 방식 비교
+
+| 방식               | 장점                          | 단점                          |
+|--------------------|-------------------------------|-------------------------------|
+| **직접 DOM 조작**  | 간단하고 직관적               | 강결합(coupling) 문제 발생 가능 |
+| **postMessage**    | iframe과 유사한 방식          | 동일 문서에서는 약간 과도한 구현 |
+| **CustomEvent**    | 유연하고 확장성 좋음          | 구현이 다소 복잡              |
+
+## 가장 권장하는 방법 (동일 문서 내 통신)
+
+```javascript
+// 부모 → 자식 메시지 전송 (CustomEvent 사용)
+function sendToChild(message) {
+    if (!dialog) return;
+    
+    dialog.dispatchEvent(new CustomEvent('parentMessage', {
+        detail: { 
+            message: message,
+            time: new Date() 
+        }
+    }));
+}
+
+// 자식에서 이벤트 리스닝
+dialog.addEventListener('parentMessage', function(e) {
+    var data = e.detail;
+    console.log('부모로부터 받은 메시지:', data.message);
+});
+```
+
+이 코드는 하나의 XHTML 문서 내에서 다이얼로그를 사용해 모달 형태의 자식 콘텐츠를 표시하면서, 부모와 자식 간에 메시지를 주고받을 수 있는 완벽한 시스템을 제공합니다. 필요에 따라 `postMessage`를 사용하거나 직접 DOM을 조작하는 방식으로 변경할 수 있습니다.
