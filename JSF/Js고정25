@@ -1,0 +1,197 @@
+# 다이얼로그에서 OK 버튼 클릭 시 `true` 리턴이 안되는 이유와 해결 방법
+
+## 문제 원인
+
+1. **변수 스코프 문제**:
+   - `ret` 변수가 함수 내에서 선언되지 않고 암시적으로 전역 변수로 사용되고 있습니다.
+   - `var ret;` 선언이 없어 값 할당이 제대로 이루어지지 않을 수 있습니다.
+
+2. **비동기 처리 문제**:
+   - `dialog.showModal()`은 비동기적으로 동작하지만, `openConfirm()` 함수는 동기적으로 `ret` 값을 반환하려고 합니다.
+   - 다이얼로그가 닫히기 전에 함수가 이미 `ret` 값을 반환해버립니다.
+
+3. **반환 시점 문제**:
+   - 버튼 클릭 시 `dialog.close()`는 호출되지만, 함수는 이미 종료된 후입니다.
+
+## 해결 코드 (Promise 사용)
+
+```javascript
+function openConfirm(message) {
+    return new Promise((resolve) => {
+        var dialogElem = document.getElementById('myDialog');
+        
+        if (dialogElem == null) {
+            // dialog要素作成
+            const dialog = document.createElement('dialog');
+            dialog.id = 'myDialog';
+            dialog.style.width = '390px';
+            dialog.style.height = '310px';
+            dialog.style.padding = '0';
+            dialog.style.border = 'none';
+            
+            // header
+            const header = document.createElement('div');
+            header.className = 'dialog-header';
+            header.style.display = 'flex';
+            header.style.justifyContent = 'center';
+            header.style.alignItems = 'center';
+            header.style.padding = '10px';
+            header.style.backgroundColor = '#f0f0f0';
+            
+            const title = document.createElement('h2');
+            title.textContent = '確認ダイアログ';
+            title.style.margin = '0';
+            header.appendChild(title);
+            
+            // content
+            const content = document.createElement('div');
+            content.className = 'dialog-content';
+            content.style.height = 'calc(100% - 100px)';
+            
+            // メッセージ表示部分
+            const messageBox = document.createElement('div');
+            messageBox.id = 'massage';
+            messageBox.style.padding = '20px';
+            messageBox.style.fontSize = '16px';
+            messageBox.style.color = '#333';
+            content.appendChild(messageBox);
+            
+            // footer（OK・キャンセルボタン用）
+            const footer = document.createElement('div');
+            footer.className = 'dialog-footer';
+            footer.style.display = 'flex';
+            footer.style.justifyContent = 'flex-end';
+            footer.style.padding = '10px';
+            
+            const okBtn = document.createElement('button');
+            okBtn.textContent = 'OK';
+            okBtn.style.width = '95px';
+            okBtn.style.height = '30px';
+            okBtn.onclick = () => {
+                dialog.close();
+                resolve(true); // OK 클릭 시 true 반환
+            };
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.className = 'cancel';
+            cancelBtn.style.width = '95px';
+            cancelBtn.style.height = '30px';
+            cancelBtn.onclick = () => {
+                dialog.close();
+                resolve(false); // Cancel 클릭 시 false 반환
+            };
+            
+            footer.appendChild(okBtn);
+            footer.appendChild(cancelBtn);
+            
+            dialog.appendChild(header);
+            dialog.appendChild(content);
+            dialog.appendChild(footer);
+            
+            document.body.appendChild(dialog);
+            dialogElem = document.getElementById('myDialog');
+        }
+        
+        // message設定
+        var messageElem = document.querySelector('#myDialog div#massage');
+        messageElem.textContent = message;
+        
+        // レイアウト調整
+        dialogElem.showModal();
+        
+        setTimeout(function() {
+            var cancelBtn = dialogElem.querySelector('.cancel');
+            if (cancelBtn) {
+                cancelBtn.focus();
+            }
+        }, 10);
+    });
+}
+
+// 사용 방법 (async/await 사용)
+async function confirmDialog(msgId, strArray) {
+    // メッセージ取得
+    var msg = MessageList[msgId];
+    
+    // 埋め込み文字を置換する
+    if(strArray && msg) {
+        if(strArray instanceof Array) {
+            for(var i = 0; i < strArray.length; i++) {
+                msg = msg.replace('{' + i + '}', strArray[i]);
+            }
+        } else {
+            msg = msg.replace('{0}', strArray);
+        }
+    }
+    
+    // 確認ダイアログを表示し、결과 기다림
+    const result = await openConfirm(msg);
+    return result;
+}
+
+// 최종 실행 함수도 async로 변경
+async function displayDialog(messageId, messageParam) {
+    // 確認メッセージ表示
+    if (await confirmDialog(messageId, messageParam) === true) {
+        // OKの場合，actionの内容を実行
+        return doSubmit(false);
+    } else {
+        // キャンセルの場合，actionの内容を実行しない
+        return false;
+    }
+}
+```
+
+## 주요 수정 사항
+
+1. **Promise 반환**:
+   - `openConfirm()` 함수가 Promise를 반환하도록 변경
+   - `resolve()`를 사용해 사용자 선택 결과 반환
+
+2. **async/await 적용**:
+   - `confirmDialog()`와 `displayDialog()` 함수에 async/await 적용
+   - 다이얼로그 결과를 기다린 후 처리
+
+3. **변수 스코프 정리**:
+   - 전역 변수 `ret` 제거
+   - 클로저와 Promise를 이용해 값 반환
+
+## 대체 해결 방법 (콜백 방식)
+
+Promise를 사용할 수 없는 환경에서는 콜백 방식으로도 구현 가능:
+
+```javascript
+function openConfirm(message, callback) {
+    // ... (기존 다이얼로그 생성 코드 동일)
+    
+    okBtn.onclick = () => {
+        dialog.close();
+        callback(true);
+    };
+    
+    cancelBtn.onclick = () => {
+        dialog.close();
+        callback(false);
+    };
+    
+    // ... (나머지 코드 동일)
+}
+
+// 사용 예시
+openConfirm("확인하시겠습니까?", function(result) {
+    if (result) {
+        // OK 처리
+    } else {
+        // Cancel 처리
+    }
+});
+```
+
+## 문제 해결 핵심
+
+- **동기적 → 비동기적 처리 전환**: 다이얼로그의 비동기 특성을 고려한 설계
+- **값 반환 방식 변경**: 직접 반환 → Promise/콜백을 통한 결과 전달
+- **변수 관리**: 전역 변수 의존 제거
+
+이제 OK 버튼 클릭 시 정상적으로 `true` 값을 받아올 수 있으며, 다이얼로그의 비동기 동작과도 잘 맞는 구조가 되었습니다.
