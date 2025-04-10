@@ -1,0 +1,244 @@
+# 다이얼로그 태그로 모달 생성 및 포커스 관리 방법
+
+다이얼로그(`<dialog>`) 태그를 사용해 모달을 생성하고, 동적으로 생성한 취소 버튼에 포커스를 설정하는 완벽한 방법을 설명드리겠습니다.
+
+## 완성 코드 (XHTML 호환 버전)
+
+```xhtml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>다이얼로그 모달 포커스 예제</title>
+    <style type="text/css">
+        /* 다이얼로그 스타일 */
+        dialog {
+            width: 80%;
+            max-width: 500px;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            padding: 0;
+        }
+        dialog::backdrop {
+            background-color: rgba(0,0,0,0.5);
+        }
+        .dialog-header {
+            padding: 16px;
+            background-color: #f1f1f1;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .dialog-body {
+            padding: 20px;
+        }
+        .dialog-footer {
+            padding: 12px 16px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .confirm-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        .cancel-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <button id="openDialogBtn">모달 열기</button>
+
+    <script type="text/javascript">
+    //<![CDATA[
+        // 다이얼로그 생성 함수
+        function createDialog() {
+            // 다이얼로그 요소 생성
+            var dialog = document.createElement('dialog');
+            dialog.id = 'myDialog';
+            
+            // 헤더 생성
+            var header = document.createElement('div');
+            header.className = 'dialog-header';
+            header.innerHTML = '<h2>동적 생성 다이얼로그</h2>';
+            
+            // 닫기 버튼 생성 (X 버튼)
+            var closeBtn = document.createElement('button');
+            closeBtn.className = 'close-btn';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = function() {
+                dialog.close();
+            };
+            header.appendChild(closeBtn);
+            
+            // 본문 생성
+            var body = document.createElement('div');
+            body.className = 'dialog-body';
+            body.innerHTML = '<p>이 다이얼로그는 JavaScript로 동적 생성되었습니다.</p>';
+            
+            // 푸터 생성
+            var footer = document.createElement('div');
+            footer.className = 'dialog-footer';
+            
+            // 취소 버튼 생성 (포커스 대상)
+            var cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cancel-btn';
+            cancelBtn.textContent = '취소';
+            cancelBtn.onclick = function() {
+                alert('취소 버튼 클릭');
+                dialog.close();
+            };
+            
+            // 확인 버튼 생성
+            var confirmBtn = document.createElement('button');
+            confirmBtn.className = 'confirm-btn';
+            confirmBtn.textContent = '확인';
+            confirmBtn.onclick = function() {
+                alert('확인 버튼 클릭');
+                dialog.close();
+            };
+            
+            // 버튼 추가
+            footer.appendChild(cancelBtn);
+            footer.appendChild(confirmBtn);
+            
+            // 다이얼로그 조립
+            dialog.appendChild(header);
+            dialog.appendChild(body);
+            dialog.appendChild(footer);
+            
+            // 문서에 추가
+            document.body.appendChild(dialog);
+            
+            return dialog;
+        }
+        
+        // 다이얼로그 열기 함수
+        function openDialog() {
+            var dialog = document.getElementById('myDialog') || createDialog();
+            
+            // 다이얼로그 열기
+            dialog.showModal();
+            
+            // 취소 버튼에 포커스 설정 (setTimeout 필요)
+            setTimeout(function() {
+                var cancelBtn = dialog.querySelector('.cancel-btn');
+                if (cancelBtn) {
+                    cancelBtn.focus();
+                }
+            }, 0);
+            
+            // ESC 키로 닫기 방지 (옵션)
+            dialog.addEventListener('cancel', function(event) {
+                event.preventDefault();
+                var cancelBtn = dialog.querySelector('.cancel-btn');
+                if (cancelBtn) {
+                    cancelBtn.focus();
+                }
+            });
+        }
+        
+        // 모달 열기 버튼 이벤트 연결
+        document.getElementById('openDialogBtn').onclick = openDialog;
+    //]]>
+    </script>
+</body>
+</html>
+```
+
+## 포커스 관리 핵심 기술
+
+1. **setTimeout 사용 이유**:
+   - 다이얼로그가 완전히 열리기 전에 포커스를 설정하려고 하면 실패할 수 있음
+   - `setTimeout`으로 호출 스택이 비워진 후 실행되도록 보장
+
+2. **취소 버튼에 포커스 설정**:
+   ```javascript
+   setTimeout(function() {
+       dialog.querySelector('.cancel-btn').focus();
+   }, 0);
+   ```
+
+3. **ESC 키 처리**:
+   ```javascript
+   dialog.addEventListener('cancel', function(event) {
+       event.preventDefault(); // 기본 닫기 동작 방지
+       dialog.querySelector('.cancel-btn').focus(); // 취소 버튼에 포커스
+   });
+   ```
+
+## 추가 개선 사항
+
+1. **접근성 향상**:
+   ```javascript
+   // 다이얼로그에 ARIA 속성 추가
+   dialog.setAttribute('aria-modal', 'true');
+   dialog.setAttribute('aria-labelledby', 'dialogTitle');
+   header.querySelector('h2').id = 'dialogTitle';
+   
+   // 포커스 트랩 구현 (모달 내에서만 포커스 순환)
+   dialog.addEventListener('keydown', function(e) {
+       if (e.key === 'Tab') {
+           var focusable = dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+           if (focusable.length === 0) return;
+           
+           var first = focusable[0];
+           var last = focusable[focusable.length - 1];
+           
+           if (e.shiftKey && document.activeElement === first) {
+               last.focus();
+               e.preventDefault();
+           } else if (!e.shiftKey && document.activeElement === last) {
+               first.focus();
+               e.preventDefault();
+           }
+       }
+   });
+   ```
+
+2. **애니메이션 추가**:
+   ```css
+   dialog {
+       animation: fadeIn 0.3s ease-out;
+       transform-origin: center center;
+   }
+   
+   @keyframes fadeIn {
+       from { opacity: 0; transform: scale(0.95); }
+       to { opacity: 1; transform: scale(1); }
+   }
+   
+   dialog::backdrop {
+       animation: fadeIn 0.3s ease-out;
+   }
+   ```
+
+3. **동적 생성 다이얼로그 관리**:
+   ```javascript
+   // 기존 다이얼로그가 있으면 제거
+   var existingDialog = document.getElementById('myDialog');
+   if (existingDialog) {
+       existingDialog.close();
+       document.body.removeChild(existingDialog);
+   }
+   
+   // 새 다이얼로그 생성
+   var dialog = createDialog();
+   ```
+
+이 코드는 XHTML 환경에서도 완벽히 동작하며, 다이얼로그 태그의 모든 기능을 활용하면서도 접근성을 고려한 구현입니다. 필요에 따라 스타일이나 동작을 수정할 수 있습니다.
