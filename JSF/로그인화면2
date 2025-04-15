@@ -1,0 +1,56 @@
+정확하게 이해하셨어요!  
+리다이렉트 화면(`auth.xhtml`)이 단순히 **값을 넘기고 권한만 확인해서 다른 화면으로 이동**하는 목적이라면 **굳이 화면(UI)은 필요 없습니다.**
+
+### 두 가지 선택지가 있어요:
+
+---
+
+#### ① **`auth.xhtml` 화면 없이, 로그인 후 바로 권한 체크하고 리다이렉트**
+
+`LoginBean`의 `login()` 메서드에서 권한 체크까지 하고 바로 분기:
+
+```java
+public String login() {
+    SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession();
+    UserMapper mapper = session.getMapper(UserMapper.class);
+    user = mapper.findByUsernameAndPassword(username, password);
+    session.close();
+
+    if (user != null) {
+        // 권한에 따라 바로 리다이렉트
+        if ("admin".equals(user.getRole())) {
+            return "index?faces-redirect=true";
+        } else {
+            return "accessDenied?faces-redirect=true";
+        }
+    } else {
+        FacesContext.getCurrentInstance().addMessage(null,
+            new FacesMessage("아이디 또는 비밀번호가 올바르지 않습니다."));
+        return null;
+    }
+}
+```
+
+이렇게 하면 중간 `auth.xhtml` 파일도, `AuthBean`도 필요 없어져요.
+
+---
+
+#### ② **중간 처리 전용 `auth.xhtml` 사용 (UI 없이 백엔드 로직만)**
+
+이미 구현한 구조처럼 `auth.xhtml`에서 `<f:event>`로 처리하는 것도 가능해요. 이 경우는 **처리 전용 뷰**라고 보면 되고, 사용자는 그 화면을 거의 보지 않게 됩니다.
+
+```xhtml
+<f:metadata>
+    <f:event type="preRenderView" listener="#{authBean.checkPermission}" />
+</f:metadata>
+```
+
+---
+
+### 결론
+
+- **UI가 필요 없고** 바로 분기하고 싶으면 `login()`에서 권한 체크까지 처리하는 방식(①)이 심플하고 깔끔해요.
+- **권한 처리 로직을 분리**해서 관리하고 싶으면 `auth.xhtml`을 유지하는 것도 나쁘진 않아요.
+
+필요한 방식에 따라 둘 중 하나 고르시면 돼요.  
+어떤 방식이 더 프로젝트에 맞을지 고민 중이시면 방향 잡는 것도 도와드릴게요.
