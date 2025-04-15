@@ -1,0 +1,151 @@
+JSF + MyBatis 환경에서 다음과 같은 흐름의 간단한 로그인 예제를 작성해드릴게요:
+
+1. 로그인 화면 (`login.xhtml`)
+2. 로그인 성공 시 권한 확인 화면 (`auth.xhtml`)
+3. 최종 인덱스 화면 (`index.xhtml`)
+
+구성은 다음과 같습니다.
+
+---
+
+### 1. `LoginBean.java` (JSF ManagedBean)
+
+```java
+@ManagedBean
+@SessionScoped
+public class LoginBean {
+    private String username;
+    private String password;
+    private User user;
+
+    // MyBatis 이용해 사용자 인증
+    public String login() {
+        SqlSession session = MyBatisUtil.getSqlSessionFactory().openSession();
+        UserMapper mapper = session.getMapper(UserMapper.class);
+        user = mapper.findByUsernameAndPassword(username, password);
+
+        session.close();
+
+        if (user != null) {
+            return "auth?faces-redirect=true"; // 권한 확인 화면으로 리다이렉트
+        } else {
+            FacesContext.getCurrentInstance().addMessage(null,
+                new FacesMessage("아이디 또는 비밀번호가 올바르지 않습니다."));
+            return null;
+        }
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    // getters and setters
+}
+```
+
+---
+
+### 2. `login.xhtml`
+
+```xhtml
+<h:form>
+    <h:panelGrid columns="2">
+        <h:outputLabel value="ID:" />
+        <h:inputText value="#{loginBean.username}" />
+
+        <h:outputLabel value="비밀번호:" />
+        <h:inputSecret value="#{loginBean.password}" />
+
+        <h:commandButton value="로그인" action="#{loginBean.login}" />
+    </h:panelGrid>
+</h:form>
+```
+
+---
+
+### 3. `auth.xhtml` (권한 확인 후 인덱스로 이동)
+
+```xhtml
+<f:metadata>
+    <f:event type="preRenderView" listener="#{authBean.checkPermission}" />
+</f:metadata>
+
+<h:body>
+    <h:outputText value="권한 확인 중입니다..." />
+</h:body>
+```
+
+---
+
+### 4. `AuthBean.java`
+
+```java
+@ManagedBean
+@RequestScoped
+public class AuthBean {
+    @ManagedProperty(value = "#{loginBean}")
+    private LoginBean loginBean;
+
+    public void checkPermission() {
+        User user = loginBean.getUser();
+
+        if (user != null && "admin".equals(user.getRole())) {
+            redirect("/index.xhtml");
+        } else {
+            redirect("/accessDenied.xhtml");
+        }
+    }
+
+    private void redirect(String url) {
+        try {
+            FacesContext.getCurrentInstance().getExternalContext()
+                .redirect(url);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void setLoginBean(LoginBean loginBean) {
+        this.loginBean = loginBean;
+    }
+}
+```
+
+---
+
+### 5. `UserMapper.java`
+
+```java
+public interface UserMapper {
+    User findByUsernameAndPassword(@Param("username") String username, @Param("password") String password);
+}
+```
+
+---
+
+### 6. `User.java`
+
+```java
+public class User {
+    private String username;
+    private String password;
+    private String role;
+
+    // getters and setters
+}
+```
+
+---
+
+### 7. `index.xhtml`
+
+```xhtml
+<h:body>
+    <h1>환영합니다, #{loginBean.user.username} 님!</h1>
+</h:body>
+```
+
+---
+
+이 예제는 기본 흐름을 설명하기 위한 것으로, 실제 프로젝트에서는 패스워드 암호화, 예외 처리, 세션 만료 처리 등을 고려해야 합니다.  
+추가로 원하시면 `faces-config.xml` 설정이나 `MyBatisUtil` 클래스도 드릴게요.
