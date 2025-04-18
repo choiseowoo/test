@@ -1,0 +1,178 @@
+# JSF에서 Request.setAttribute() 값 JavaScript에서 사용 및 URL 추가 방법
+
+JSF(JavaServer Faces) 환경에서 `Request.setAttribute()`로 설정한 값을 JavaScript에서 받아 URL에 추가하는 방법을 설명드리겠습니다.
+
+## 1. 기본 접근 방법
+
+### 서버 사이드 (Backing Bean)
+```java
+// ManagedBean 또는 Controller에서
+FacesContext.getCurrentInstance().getExternalContext()
+            .getRequestMap().put("myKey", "myValue");
+```
+
+### 클라이언트 사이드 (JSF 페이지)
+```xhtml
+<h:outputScript>
+    // JSF EL을 사용해 서버 값 접근
+    var serverValue = '#{requestScope.myKey}';
+    
+    // URL에 추가
+    var newUrl = window.location.href.split('?')[0] + '?param=' + encodeURIComponent(serverValue);
+    window.history.pushState({}, '', newUrl);
+    
+    // 또는 리다이렉트
+    // window.location.href = newUrl;
+</h:outputScript>
+```
+
+## 2. 완전한 구현 예제
+
+### Backing Bean
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.RequestScoped;
+import javax.faces.context.FacesContext;
+
+@ManagedBean
+@RequestScoped
+public class MyBean {
+    public void prepareRequestAttribute() {
+        FacesContext.getCurrentInstance().getExternalContext()
+                   .getRequestMap().put("dynamicParam", "12345");
+    }
+}
+```
+
+### JSF 페이지 (XHTML)
+```xhtml
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html">
+<h:head>
+    <title>JSF Request Attribute to URL</title>
+</h:head>
+<h:body>
+    <h:form>
+        <h:commandButton value="Set Parameter" action="#{myBean.prepareRequestAttribute}" 
+                         onclick="updateUrl()" />
+    </h:form>
+
+    <h:outputScript>
+        function updateUrl() {
+            // 서버에서 설정한 값 가져오기
+            var paramValue = '#{requestScope.dynamicParam}';
+            
+            if(paramValue && paramValue !== '') {
+                // 현재 URL 업데이트 (히스토리 유지)
+                var newUrl = updateQueryStringParameter(window.location.href, 'myParam', paramValue);
+                window.history.replaceState({}, document.title, newUrl);
+                
+                // 또는 새 창으로 열기
+                // window.open(newUrl, '_blank');
+            }
+        }
+        
+        // URL 파라미터 업데이트 헬퍼 함수
+        function updateQueryStringParameter(uri, key, value) {
+            var re = new RegExp("([?&])" + key + "=.*?(&|$)", "i");
+            var separator = uri.indexOf('?') !== -1 ? "&" : "?";
+            
+            if (uri.match(re)) {
+                return uri.replace(re, '$1' + key + "=" + value + '$2');
+            }
+            else {
+                return uri + separator + key + "=" + value;
+            }
+        }
+    </h:outputScript>
+</h:body>
+</html>
+```
+
+## 3. 대체 방법 (JSF 2.2+)
+
+### f:ajax 사용
+```xhtml
+<h:commandButton value="Update URL">
+    <f:ajax execute="@form" render="@none"
+            onevent="function(data) { 
+                if(data.status === 'success') {
+                    var val = '#{requestScope.dynamicParam}';
+                    window.history.pushState({}, '', 
+                        window.location.pathname + '?param=' + encodeURIComponent(val));
+                }
+            }" />
+</h:commandButton>
+```
+
+## 4. 주의사항 및 보안 고려
+
+1. **EL 인젝션 방지**:
+   ```xhtml
+   <!-- 안전하지 않은 방식 -->
+   var val = '#{requestScope.userInput}';
+   
+   <!-- 안전한 방식 -->
+   var val = '#{fn:escapeJavaScript(requestScope.userInput)}';
+   ```
+   (필요시 `xmlns:fn="http://xmlns.jcp.org/jsp/jstl/functions"` 추가)
+
+2. **URL 인코딩**:
+   ```javascript
+   // 반드시 encodeURIComponent 사용
+   var safeValue = encodeURIComponent('#{requestScope.value}');
+   ```
+
+3. **JSF 버전 호환성**:
+   - JSF 2.3 이상에서는 `CDI @Named` 사용 권장
+   - 오래된 버전에서는 `@ManagedBean` 사용
+
+## 5. 완전한 CDI 예제 (JSF 2.3+)
+
+### Bean 클래스
+```java
+import javax.enterprise.context.RequestScoped;
+import javax.inject.Named;
+
+@Named
+@RequestScoped
+public class UrlBean {
+    private String urlParam;
+    
+    public void init() {
+        this.urlParam = "generated_" + System.currentTimeMillis();
+        FacesContext.getCurrentInstance().getExternalContext()
+                   .getRequestMap().put("urlParam", urlParam);
+    }
+    
+    // Getter/Setter
+}
+```
+
+### JSF 페이지
+```xhtml
+<h:commandButton value="Generate URL" action="#{urlBean.init}">
+    <f:ajax execute="@this" render="@none"
+            onevent="handleUrlUpdate" />
+</h:commandButton>
+
+<h:outputScript>
+    function handleUrlUpdate(data) {
+        if(data.status === 'success') {
+            var param = '#{fn:escapeJavaScript(requestScope.urlParam)}';
+            if(param) {
+                var newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('ref', param);
+                window.history.pushState({}, '', newUrl);
+                
+                // 콘솔에 출력 (테스트용)
+                console.log('Updated URL:', newUrl.toString());
+            }
+        }
+    }
+</h:outputScript>
+```
+
+이 방법들은 JSF 환경에서 서버 측에서 설정한 값을 클라이언트의 JavaScript로 전달하고, 이를 URL 파라미터로 추가하는 안전하고 효과적인 방법들을 제공합니다.
