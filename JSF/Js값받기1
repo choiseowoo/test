@@ -1,0 +1,50 @@
+JSF에서 `request.setAttribute(key, value)`로 값을 설정하고 **JavaScript로 받아서 `location.href`로 페이지 이동**하려면, JSP와 비슷한 방식으로 처리할 수 있습니다. 다만 JSF는 Facelets를 사용하므로 EL이나 스크립트를 약간 다르게 다룰 수 있습니다.
+
+---
+
+### 예제 흐름 (JSF 기준)
+
+#### 1. Java(Managed Bean 또는 Servlet)
+```java
+request.setAttribute("userId", "abc123");
+FacesContext.getCurrentInstance()
+    .getExternalContext()
+    .getRequestDispatcher("/yourPage.xhtml")
+    .forward(((ServletRequest) request), ((ServletResponse) response));
+```
+
+---
+
+#### 2. JSF 페이지 (yourPage.xhtml)
+```xhtml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core">
+<h:head>
+    <title>Redirect Page</title>
+    <script type="text/javascript">
+        // EL을 이용해 request attribute로 설정한 값 읽기
+        var userId = "#{requestScope.userId}";
+        var targetUrl = "/nextPage.xhtml?userId=" + encodeURIComponent(userId);
+
+        // 자동 이동
+        location.href = targetUrl;
+    </script>
+</h:head>
+<h:body>
+</h:body>
+</html>
+```
+
+---
+
+### 참고 사항
+
+- `#{requestScope.userId}`를 통해 JSF에서 `request.setAttribute("userId", value)`로 넣은 값을 읽을 수 있습니다.
+- URL 경로는 프로젝트 구조에 맞게 조정해야 합니다.
+- `h:outputScript`를 써도 되지만 간단한 경우 그냥 `<script>`로 충분합니다.
+
+---
+
+필요하다면 `f:viewParam`으로 파라미터를 받거나, `faces-redirect=true`를 이용한 서버 리다이렉트도 고려할 수 있어요. 더 복잡한 이동 로직이 있다면 Managed Bean에서 JSF `ExternalContext.redirect()` 방식도 사용 가능합니다. 원하시면 그 예도 알려드릴게요.
