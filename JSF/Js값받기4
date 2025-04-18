@@ -1,0 +1,64 @@
+`request.setAttribute()`로 설정한 값을 JavaScript에서 받아 URL에 추가하려면, JSP나 JSF 페이지에서 **Expression Language (EL)**을 사용해 HTML 또는 JavaScript로 값을 출력해주어야 합니다.
+
+---
+
+## 1. 개요
+
+### Java 서버 코드
+```java
+request.setAttribute("userId", "abc123");
+```
+
+이 값을 JavaScript에서 사용하려면 HTML 내에 직접 출력해줘야 합니다:
+
+---
+
+## 2. JSP 예제 (JSP 사용 시)
+```jsp
+<script>
+  // 서버에서 받은 값을 JavaScript 변수에 할당
+  var userId = "${userId}";
+
+  // URL 생성 및 이동
+  var url = "/nextPage.jsp?userId=" + encodeURIComponent(userId);
+  location.href = url;
+</script>
+```
+
+---
+
+## 3. JSF 예제 (XHTML 사용 시)
+JSF에서는 `${requestScope.key}`를 사용합니다:
+
+```xhtml
+<h:head>
+  <script type="text/javascript">
+    // JSF에서 request attribute 읽기
+    var userId = "#{requestScope.userId}";
+
+    // URL 생성 및 이동
+    var url = "/nextPage.xhtml?userId=" + encodeURIComponent(userId);
+    location.href = url;
+  </script>
+</h:head>
+```
+
+---
+
+## 4. 주의사항
+- **EL이 JavaScript 문자열 안에 들어가기 때문에**, EL 결과에 `'`나 `"`가 들어가지 않게 주의하세요.
+- 필요한 경우 JSF에서 `<h:outputText escape="true" />` 또는 JSTL의 `fn:escapeXml()` 사용을 고려하세요.
+- 값이 null일 수 있는 경우 `if` 체크 필요:
+
+```xhtml
+<c:if test="${not empty requestScope.userId}">
+  <script>
+    var userId = "#{requestScope.userId}";
+    location.href = "/nextPage.xhtml?userId=" + encodeURIComponent(userId);
+  </script>
+</c:if>
+```
+
+---
+
+필요하신 상황에 맞춰 `AJAX`로 처리하거나 `POST` 방식으로 넘기는 것도 가능하니, 시나리오가 있으면 더 구체적으로 도와드릴게요.
