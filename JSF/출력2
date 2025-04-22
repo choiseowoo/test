@@ -1,0 +1,47 @@
+좋아요! `HashMap<String, String>`에서 **같은 키에 문자열을 구분자로 이어붙여서 복수의 값을 저장**하고, **출력할 때는 다시 나눠서 처리**할 수 있어요.
+
+---
+
+### 1. **문자열 붙여넣기 (`,` 등 구분자 사용)**
+```java
+Map<String, String> map = new HashMap<>();
+
+// 값 추가 (기존 값 있으면 이어붙임)
+String key = "id123";
+String newValue = "Apple";
+String prev = map.getOrDefault(key, "");
+map.put(key, prev.isEmpty() ? newValue : prev + "," + newValue);
+
+// 또 다른 값 추가
+newValue = "Banana";
+prev = map.getOrDefault(key, "");
+map.put(key, prev.isEmpty() ? newValue : prev + "," + newValue);
+```
+
+---
+
+### 2. **출력할 때 나눠서 사용**
+```java
+String combined = map.get("id123"); // "Apple,Banana"
+String[] values = combined.split(",");
+
+for (String val : values) {
+    System.out.println(val);
+}
+```
+
+---
+
+### 출력 결과:
+```
+Apple
+Banana
+```
+
+---
+
+### 참고
+- 구분자는 `,`, `;`, `|` 등 사용 가능하지만, **값에 해당 문자가 포함되지 않도록 주의**하세요.
+- 더 안정적으로 하려면 `List<String>`을 값으로 갖는 `Map<String, List<String>>`을 추천하지만, 단순한 경우는 지금 방식도 충분히 좋아요.
+
+필요하면 메서드로 만들어줄 수도 있어요.
