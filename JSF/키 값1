@@ -1,0 +1,47 @@
+정확히 이해하셨어요!
+
+`HashMap<String, String>`에서 **키(key)**가 같다면, `put()`을 통해 **새 값을 넣으면 이전 값은 덮어쓰기(overwrite)** 되어 **삭제**됩니다.
+
+---
+
+### 예시
+```java
+Map<String, String> map = new HashMap<>();
+map.put("id123", "Apple");
+map.put("id123", "Banana");
+
+System.out.println(map.get("id123")); // 출력: Banana
+```
+
+- `"id123"`이라는 **같은 키**에 `"Banana"`를 넣으면, `"Apple"`은 **사라지고 덮어씌워집니다**.
+
+---
+
+### 만약 같은 키에 **여러 값 저장**하고 싶다면?
+
+1. **`Map<String, List<String>>`** 또는  
+2. **값을 구분자로 이어붙인 문자열** 등을 사용해야 해요.
+
+#### 방법 1: `Map<String, List<String>>`
+```java
+Map<String, List<String>> map = new HashMap<>();
+map.computeIfAbsent("id123", k -> new ArrayList<>()).add("Apple");
+map.get("id123").add("Banana");
+
+System.out.println(map.get("id123")); // 출력: [Apple, Banana]
+```
+
+#### 방법 2: 문자열 붙이기
+```java
+Map<String, String> map = new HashMap<>();
+map.put("id123", "Apple");
+
+String prev = map.getOrDefault("id123", "");
+map.put("id123", prev + ",Banana");
+
+System.out.println(map.get("id123")); // 출력: Apple,Banana
+```
+
+---
+
+원하는 방식이 어느 쪽인지 말해주시면 거기에 맞춰 도와드릴게요.
