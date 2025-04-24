@@ -1,0 +1,85 @@
+맞습니다!  
+**Getter를 통해 세션에 저장된 HashMap을 받아온 다음**,  
+`for`문을 돌려서 **모든 화면의 권한코드**를 체크하는 방식도 완전 가능합니다.
+
+---
+
+### ✅ 예시 구조
+
+가정:
+- `CheckInfo` 클래스에 `infoA`, `infoB` 라는 `Map<String, String>` 존재
+- `getInfoA()`, `getInfoB()` 로 각각 A모드, B모드의 권한 맵을 반환
+
+---
+
+### ✅ 클래스 예 (CheckInfo.java)
+
+```java
+public class CheckInfo {
+    private Map<String, String> infoA = new HashMap<>();
+    private Map<String, String> infoB = new HashMap<>();
+
+    public Map<String, String> getInfoA() {
+        return infoA;
+    }
+
+    public Map<String, String> getInfoB() {
+        return infoB;
+    }
+
+    // 필요시 Setter도 구현
+}
+```
+
+---
+
+### ✅ 호출 예 (권한 체크 로직)
+
+```java
+CheckInfo checkInfo = (CheckInfo) session.getAttribute("SESSIONINFO");
+
+Map<String, String> infoA = checkInfo.getInfoA();
+Map<String, String> infoB = checkInfo.getInfoB();
+
+// A모드에서 유효한 권한이 하나라도 있는지 확인
+boolean hasValidA = false;
+for (String auth : infoA.values()) {
+    if ("1".equals(auth) || "2".equals(auth)) {
+        hasValidA = true;
+        break;
+    }
+}
+
+// B모드에서 유효한 권한이 하나라도 있는지 확인
+boolean hasValidB = false;
+for (String auth : infoB.values()) {
+    if ("1".equals(auth) || "2".equals(auth)) {
+        hasValidB = true;
+        break;
+    }
+}
+
+// 모드 판별
+if (!hasValidA && !hasValidB) {
+    System.out.println("ERROR: 권한 없음");
+} else if (hasValidA && !hasValidB) {
+    System.out.println("A모드로 이동");
+} else if (!hasValidA && hasValidB) {
+    System.out.println("B모드로 이동");
+} else {
+    System.out.println("기본 A모드로 이동");
+}
+```
+
+---
+
+### ✅ 요약
+
+- **Getter로 infoA/infoB 맵을 받아서**
+- `for`문으로 모든 권한코드를 순회하며 `"1"` 또는 `"2"` 체크
+- 이 방식은 세션에 저장된 객체를 **캡슐화한 클래스(getter 사용)**로부터 안전하게 사용하는 일반적인 방법이에요
+
+---
+
+원하시면 `CheckInfo` 내부에 `hasValidAuthorityA()` 같은 편의 메서드도 넣어줄 수 있어요.  
+필요하면 말씀 주세요!
