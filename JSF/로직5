@@ -1,0 +1,127 @@
+아, 이해했습니다!  
+`CheckInfo` 클래스에서 **`HashMap` 값을 초기화하고 처리**까지 하고, 다른 클래스에서는 **결과만 받아서 사용하는 구조**를 원하시는 거죠?
+
+### 이를 위해 필요한 주요 사항:
+1. **`CheckInfo` 클래스에서 권한 체크 로직 처리**  
+   `CheckInfo` 클래스의 **생성자에서 `HashMap`을 초기화하고 for문을 돌려서 권한 체크**까지 수행합니다.
+   
+2. **다른 클래스에서 결과만 반환받기**  
+   `CheckInfo` 클래스에서 처리된 결과를 **다른 클래스**에서 받아서 사용합니다.
+
+---
+
+### ✅ 예시 구조
+
+#### 1. `CheckInfo` 클래스에서 처리
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+public class CheckInfo {
+    private Map<String, String> infoA;
+    private Map<String, String> infoB;
+
+    private boolean hasValidA = false;
+    private boolean hasValidB = false;
+
+    // 생성자에서 HashMap 초기화 및 권한 체크 처리
+    public CheckInfo() {
+        infoA = new HashMap<>();
+        infoB = new HashMap<>();
+
+        // 예시로 권한 설정
+        infoA.put("A1", "1");
+        infoA.put("A2", "0");
+        infoA.put("A3", "2");
+
+        infoB.put("B1", "0");
+        infoB.put("B2", "1");
+        infoB.put("B3", "0");
+
+        // 권한 체크 (A모드, B모드)
+        checkPermissions(infoA, "A");
+        checkPermissions(infoB, "B");
+    }
+
+    // 권한을 확인하는 메소드
+    private void checkPermissions(Map<String, String> info, String mode) {
+        for (String auth : info.values()) {
+            if ("1".equals(auth) || "2".equals(auth)) {
+                if (mode.equals("A")) {
+                    hasValidA = true;
+                } else if (mode.equals("B")) {
+                    hasValidB = true;
+                }
+            }
+        }
+    }
+
+    // 권한 체크 결과 반환 메소드
+    public boolean hasValidA() {
+        return hasValidA;
+    }
+
+    public boolean hasValidB() {
+        return hasValidB;
+    }
+}
+```
+
+---
+
+#### 2. **다른 클래스에서 결과를 받는 방식**
+
+이제 `CheckInfo` 클래스에서 권한을 체크하고, 결과를 **다른 클래스에서 사용**합니다.
+
+```java
+public class ScreenModeResolver {
+
+    public static void main(String[] args) {
+        // CheckInfo 객체를 생성하여 권한 체크를 자동으로 처리
+        CheckInfo checkInfo = new CheckInfo();
+
+        // A모드와 B모드의 권한이 있는지 확인
+        boolean hasAAuth = checkInfo.hasValidA();
+        boolean hasBAuth = checkInfo.hasValidB();
+
+        // 권한에 따라 화면 이동
+        if (!hasAAuth && !hasBAuth) {
+            System.out.println("ERROR: 권한 없음");
+        } else if (hasAAuth && !hasBAuth) {
+            System.out.println("A모드로 이동");
+        } else if (!hasAAuth && hasBAuth) {
+            System.out.println("B모드로 이동");
+        } else {
+            System.out.println("기본 A모드로 이동");
+        }
+    }
+}
+```
+
+---
+
+### ✅ 설명
+
+1. **`CheckInfo` 클래스**:  
+   - **생성자**에서 `infoA`와 `infoB`를 초기화하고, 각 모드별로 권한 체크를 **`checkPermissions()`** 메서드에서 진행합니다.
+   - 권한이 있을 경우 `hasValidA`와 `hasValidB` 값을 **`true`로 설정**합니다.
+   - 권한 체크가 끝난 후에는 **`hasValidA()`**와 **`hasValidB()`** 메서드를 통해 각 모드의 권한 상태를 반환합니다.
+
+2. **`ScreenModeResolver` 클래스**:
+   - `CheckInfo` 객체를 생성하고, `hasValidA()`와 `hasValidB()` 메서드를 사용하여 권한 체크 결과를 **다른 클래스에서 받을 수 있도록** 합니다.
+   - 결과에 따라 화면을 이동하는 로직을 작성합니다.
+
+---
+
+### ✅ 결과 흐름
+
+1. `CheckInfo`에서 `HashMap` 초기화와 권한 체크
+2. `ScreenModeResolver`에서 **결과만 받아서 처리**
+
+이렇게 분리하면 `CheckInfo` 클래스에서는 권한 체크 및 상태 관리만 하게 되고, 다른 클래스에서는 그 결과를 받아서 화면 이동 로직을 처리할 수 있습니다.
+
+---
+
+필요에 따라 `CheckInfo`의 권한 체크 방식이나 `ScreenModeResolver`에서의 로직을 더 구체화할 수 있습니다.  
+이 구조로 괜찮은지 확인해 보시고, 추가 수정이 필요하시면 알려주세요!
