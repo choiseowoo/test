@@ -1,0 +1,89 @@
+물론이죠!  
+요청하신 조건을 기준으로 **"권한 확인 후 이동할 모드 판단 메서드"**를 만들어드릴게요.
+
+---
+
+## ✅ 전제
+
+- `infoA`, `infoB`는 `Map<String, Object>` 타입
+- 권한이 `"1"` 또는 `"2"`면 권한 있음
+- 이동 모드는 `"A"`, `"B"`, `"ERROR"` 중 하나를 반환
+
+---
+
+## ✅ 메서드 예시
+
+```java
+public class AuthModeResolver {
+
+    /**
+     * 권한에 따라 이동할 화면 모드를 결정한다.
+     * @param screenId 확인할 화면ID
+     * @param infoA A모드 권한맵
+     * @param infoB B모드 권한맵
+     * @return "A" | "B" | "ERROR"
+     */
+    public static String resolveMode(String screenId, Map<String, Object> infoA, Map<String, Object> infoB) {
+        String authA = getAuthCode(infoA, screenId);
+        String authB = getAuthCode(infoB, screenId);
+
+        boolean hasAuthA = isValidAuth(authA);
+        boolean hasAuthB = isValidAuth(authB);
+
+        if (!hasAuthA && !hasAuthB) {
+            return "ERROR"; // 둘 다 권한 없음
+        } else if (hasAuthA && !hasAuthB) {
+            return "A";     // A모드만 권한 있음
+        } else if (!hasAuthA && hasAuthB) {
+            return "B";     // B모드만 권한 있음
+        } else {
+            return "A";     // 둘 다 권한 있음 → 기본 A모드
+        }
+    }
+
+    private static String getAuthCode(Map<String, Object> map, String key) {
+        Object val = map.get(key);
+        return val != null ? val.toString() : "";
+    }
+
+    private static boolean isValidAuth(String authCode) {
+        return "1".equals(authCode) || "2".equals(authCode);
+    }
+}
+```
+
+---
+
+## ✅ 사용 예
+
+```java
+String screenId = "A1";
+Map<String, Object> infoA = checkInfo.getInfoA();
+Map<String, Object> infoB = checkInfo.getInfoB();
+
+String mode = AuthModeResolver.resolveMode(screenId, infoA, infoB);
+
+switch (mode) {
+    case "A":
+        // A모드 화면 이동
+        System.out.println("A모드 이동");
+        break;
+    case "B":
+        // B모드 화면 이동
+        System.out.println("B모드 이동");
+        break;
+    case "ERROR":
+        // 권한 없음 에러 처리
+        System.out.println("에러: 권한이 없습니다.");
+        break;
+}
+```
+
+---
+
+## 원하시면
+
+- View 이름을 리턴하게 바꿀 수도 있고,
+- JSF나 Spring MVC 등 상황에 따라 적절한 화면 처리 방식에 맞게 커스터마이징할 수도 있어요.
+
+필요하시면 거기에 맞춰 더 구체화해드릴게요!
