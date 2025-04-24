@@ -1,0 +1,78 @@
+설명 잘 이해했어요!  
+요약하자면:
+
+- **화면 ID** 기준으로  
+  - `infoA` (A모드 권한 맵) → 키: 화면ID, 값: 권한코드 (1=참조, 2=갱신)  
+  - `infoB` (B모드 권한 맵) → 키: 화면ID, 값: 권한코드  
+- 사용자가 어떤 화면을 요청했을 때,  
+  - A/B 둘 다 권한 없으면 → 에러 메시지  
+  - A에만 있으면 → A모드 이동  
+  - B에만 있으면 → B모드 이동  
+  - A, B 둘 다 있으면 → **기본 A모드로 이동**
+
+---
+
+## Java 코드 예시 구조
+
+```java
+// A/B모드 권한 정보
+Map<String, Object> infoA = checkInfo.getInfoA();  // A모드
+Map<String, Object> infoB = checkInfo.getInfoB();  // B모드
+
+String screenId = "A1";  // 예시 화면 ID
+
+// 권한코드 가져오기
+String authA = String.valueOf(infoA.get(screenId));
+String authB = String.valueOf(infoB.get(screenId));
+
+// 권한코드 "1" 또는 "2"일 때만 유효한 권한
+boolean hasAuthA = "1".equals(authA) || "2".equals(authA);
+boolean hasAuthB = "1".equals(authB) || "2".equals(authB);
+
+// 분기 처리
+if (!hasAuthA && !hasAuthB) {
+    // A, B 모두 권한 없음
+    System.out.println("에러: 이 화면에 대한 권한이 없습니다.");
+} else if (hasAuthA && !hasAuthB) {
+    // A모드에만 권한 있음
+    System.out.println("A모드 화면으로 이동");
+} else if (!hasAuthA && hasAuthB) {
+    // B모드에만 권한 있음
+    System.out.println("B모드 화면으로 이동");
+} else {
+    // A, B 둘 다 권한 있음 → A모드 우선
+    System.out.println("A모드 화면으로 이동 (기본)");
+}
+```
+
+---
+
+## 포인트
+
+- `Map.get(screenId)`가 `null`일 수 있으므로 **null 처리 후 비교** 필수
+- 권한이 `"1"` 또는 `"2"`일 때만 권한 있다고 판단
+- 둘 다 권한 있으면 A모드 우선
+
+---
+
+### 추가로 리턴값을 URL, View ID 등으로 리턴하고 싶으면:
+
+```java
+String nextView = "";
+
+if (!hasAuthA && !hasAuthB) {
+    throw new IllegalAccessException("이 화면에 대한 권한이 없습니다.");
+} else if (hasAuthA && !hasAuthB) {
+    nextView = "screenA.xhtml";
+} else if (!hasAuthA && hasAuthB) {
+    nextView = "screenB.xhtml";
+} else {
+    nextView = "screenA.xhtml"; // 기본 A모드
+}
+
+return nextView;
+```
+
+---
+
+필요하면 이걸 `メソッド`으로 빼서 재사용도 가능해요! 원하시면 구조 만들어드릴게요.
