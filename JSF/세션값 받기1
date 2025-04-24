@@ -1,0 +1,72 @@
+좋은 질문이에요!  
+`Object comsession` 안에 실제로 `map1`, `map2`, `map3`이 들어있는 경우, 이를 다시 **각각의 `Map<String, Object>` 변수로 꺼내서 사용하는 방법**을 설명드릴게요.
+
+---
+
+### 1. **전제 조건**
+- `session.getAttribute("comsession")` 이런 식으로 저장되어 있고,
+- 그 안에 `map1`, `map2`, `map3`이 하나의 `Map`으로 묶여 있거나 특정 객체 안에 들어있다고 가정합니다.
+
+---
+
+### 2. **상황별 분기**
+
+#### **[A] comsession이 `Map<String, Map<String, Object>>`인 경우 (자주 쓰는 구조)**
+
+```java
+Object comsession = session.getAttribute("comsession");
+
+if (comsession instanceof Map) {
+    Map<String, Map<String, Object>> sessionMap = (Map<String, Map<String, Object>>) comsession;
+
+    Map<String, Object> map1 = sessionMap.get("map1");
+    Map<String, Object> map2 = sessionMap.get("map2");
+    Map<String, Object> map3 = sessionMap.get("map3");
+
+    // 예시 사용
+    Object value = map1.get("keyName");
+    System.out.println("map1의 keyName 값: " + value);
+}
+```
+
+---
+
+#### **[B] comsession이 DTO 객체 안에 map1~map3이 들어있는 경우**
+
+예를 들어 이런 클래스가 있다면:
+
+```java
+public class ComSessionDTO {
+    private Map<String, Object> map1;
+    private Map<String, Object> map2;
+    private Map<String, Object> map3;
+
+    // Getter, Setter
+}
+```
+
+```java
+Object comsession = session.getAttribute("comsession");
+
+if (comsession instanceof ComSessionDTO) {
+    ComSessionDTO dto = (ComSessionDTO) comsession;
+
+    Map<String, Object> map1 = dto.getMap1();
+    Map<String, Object> map2 = dto.getMap2();
+    Map<String, Object> map3 = dto.getMap3();
+
+    Object val = map2.get("someKey");
+}
+```
+
+---
+
+### 핵심 요약
+
+- `Object`로 받아온 경우 반드시 `instanceof`로 타입 체크 후, **캐스팅(casting)** 필요
+- 구조가 `Map<String, Map<String, Object>>`이면 `Map`을 두 번 꺼내야 함
+- 구조가 DTO라면 해당 클래스로 캐스팅 후 `getter` 사용
+
+---
+
+혹시 세션에 넣을 때 코드도 알려주시면 더 정확하게 캐스팅 방식 알려드릴게요.
