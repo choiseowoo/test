@@ -1,0 +1,157 @@
+# JSF 세션에서 맵 객체 추출 및 사용 방법
+
+JSF(JavaServer Faces) 환경에서 세션에 저장된 `Map<String, Object>` 객체를 추출하여 사용하는 방법을 설명드리겠습니다.
+
+## 1. 기본적인 값 추출 방법
+
+```java
+// 세션에서 Object 타입으로 받은 값을 각 Map 변수에 할당
+Object comsession = session.getAttribute("sessionKey");
+
+if (comsession instanceof Map) {
+    // 전체가 하나의 Map인 경우
+    Map<String, Object> sessionMap = (Map<String, Object>) comsession;
+    // map1, map2, map3이 sessionMap의 하위 맵이라고 가정
+    Map<String, Object> map1 = (Map<String, Object>) sessionMap.get("map1");
+    Map<String, Object> map2 = (Map<String, Object>) sessionMap.get("map2");
+    Map<String, Object> map3 = (Map<String, Object>) sessionMap.get("map3");
+    
+    // 사용 예
+    Object valueFromMap1 = map1.get("key1");
+    Object valueFromMap2 = map2.get("key2");
+}
+```
+
+## 2. 완전한 JSF Managed Bean 예제
+
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.SessionScoped;
+import javax.faces.context.FacesContext;
+import java.util.Map;
+
+@ManagedBean
+@SessionScoped
+public class SessionMapBean {
+    private Map<String, Object> map1;
+    private Map<String, Object> map2;
+    private Map<String, Object> map3;
+
+    @PostConstruct
+    public void init() {
+        // 세션에서 데이터 추출
+        Map<String, Object> sessionMap = (Map<String, Object>) 
+            FacesContext.getCurrentInstance()
+                       .getExternalContext()
+                       .getSessionMap()
+                       .get("comsession");
+        
+        if (sessionMap != null) {
+            this.map1 = (Map<String, Object>) sessionMap.get("map1");
+            this.map2 = (Map<String, Object>) sessionMap.get("map2");
+            this.map3 = (Map<String, Object>) sessionMap.get("map3");
+        }
+    }
+
+    // Getter 메서드
+    public Map<String, Object> getMap1() {
+        return map1;
+    }
+    
+    public Object getValueFromMap1(String key) {
+        return map1 != null ? map1.get(key) : null;
+    }
+    
+    // 다른 Map에 대한 Getter 메서드들...
+}
+```
+
+## 3. JSP/EL에서 사용하는 방법
+
+```jsp
+<!-- map1의 값 접근 -->
+<h:outputText value="#{sessionMapBean.map1['key1']}" />
+
+<!-- map2의 값 접근 -->
+<h:outputText value="#{sessionMapBean.map2['key2']}" />
+
+<!-- 안전한 접근 방법 -->
+<h:outputText value="#{not empty sessionMapBean.map3 ? sessionMapBean.map3['key3'] : '기본값'}" />
+```
+
+## 4. 타입 안전한 처리 방법
+
+```java
+// Generic 타입을 사용한 안전한 캐스팅
+@SuppressWarnings("unchecked")
+private <T> T getSessionAttribute(String key, Class<T> clazz) {
+    Object value = FacesContext.getCurrentInstance()
+                             .getExternalContext()
+                             .getSessionMap()
+                             .get(key);
+    return clazz.isInstance(value) ? clazz.cast(value) : null;
+}
+
+// 사용 예시
+Map<String, Object> map1 = getSessionAttribute("map1", Map.class);
+```
+
+## 5. 여러 맵을 동시에 처리하는 유틸리티 메서드
+
+```java
+public class SessionMapExtractor {
+    public static void extractMapsFromSession(Map<String, Map<String, Object>> resultMap) {
+        FacesContext context = FacesContext.getCurrentInstance();
+        if (context != null) {
+            Map<String, Object> sessionMap = context.getExternalContext()
+                                                  .getSessionMap();
+            
+            Object comsession = sessionMap.get("comsession");
+            if (comsession instanceof Map) {
+                Map<?, ?> mainMap = (Map<?, ?>) comsession;
+                
+                resultMap.put("map1", safeCast(mainMap.get("map1")));
+                resultMap.put("map2", safeCast(mainMap.get("map2")));
+                resultMap.put("map3", safeCast(mainMap.get("map3")));
+            }
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> safeCast(Object obj) {
+        try {
+            return (Map<String, Object>) obj;
+        } catch (ClassCastException e) {
+            return null;
+        }
+    }
+}
+
+// 사용 예시
+Map<String, Map<String, Object>> allMaps = new HashMap<>();
+SessionMapExtractor.extractMapsFromSession(allMaps);
+
+Map<String, Object> map1 = allMaps.get("map1");
+Map<String, Object> map2 = allMaps.get("map2");
+```
+
+## 6. 주의사항
+
+1. **Null 체크**: 항상 null 체크를 수행해야 합니다.
+   ```java
+   if (map1 != null && map1.containsKey("desiredKey")) {
+       // 처리 로직
+   }
+   ```
+
+2. **타입 안정성**: `ClassCastException`을 방지하기 위해 instanceof 검사를 수행하세요.
+
+3. **세션 동기화**: 멀티스레드 환경에서의 동시 접근 문제를 고려해야 합니다.
+
+4. **JSF 2.3+ CDI 사용 시**:
+   ```java
+   @Inject @SessionScoped
+   private SessionData sessionData; // 별도 세션 관리 객체 사용 권장
+   ```
+
+이 방법들을 통해 JSF 세션에 저장된 여러 맵 객체를 안전하게 추출하고 사용할 수 있습니다.
