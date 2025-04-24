@@ -1,0 +1,78 @@
+네! `HashMap<String, String>`에  
+- **Key = 화면 ID**  
+- **Value = 권한 코드 ("1", "2", "0" 등)**  
+이렇게 저장돼 있다면, `for`문을 돌려서 **모든 화면 권한 값**을 체크할 수 있어요.
+
+---
+
+## ✅ 예: 모든 화면 권한이 `"1"` 또는 `"2"`가 있는지 체크
+
+```java
+public static boolean hasValidAuthority(Map<String, String> map) {
+    for (Map.Entry<String, String> entry : map.entrySet()) {
+        String authCode = entry.getValue();
+        if ("1".equals(authCode) || "2".equals(authCode)) {
+            return true; // 유효한 권한이 하나라도 있으면 true
+        }
+    }
+    return false; // 전부 권한 없음
+}
+```
+
+---
+
+## ✅ 예: **모든 화면**이 `"1"` 또는 `"2"` 권한을 가져야 할 경우
+
+```java
+public static boolean allScreensHaveAuthority(Map<String, String> map) {
+    for (Map.Entry<String, String> entry : map.entrySet()) {
+        String authCode = entry.getValue();
+        if (!"1".equals(authCode) && !"2".equals(authCode)) {
+            return false; // 하나라도 권한 없으면 false
+        }
+    }
+    return true; // 전부 유효한 권한
+}
+```
+
+---
+
+## ✅ 예: 특정 화면 리스트만 검사하고 싶은 경우
+
+```java
+public static boolean hasValidAuthorityForScreens(List<String> screenIds, Map<String, String> map) {
+    for (String screenId : screenIds) {
+        String authCode = map.get(screenId);
+        if ("1".equals(authCode) || "2".equals(authCode)) {
+            return true;
+        }
+    }
+    return false;
+}
+```
+
+---
+
+## ✅ 셰션에서 꺼내서 사용하는 예시
+
+```java
+HttpSession session = request.getSession();
+Map<String, String> infoA = (Map<String, String>) session.getAttribute("INFOA");
+Map<String, String> infoB = (Map<String, String>) session.getAttribute("INFOB");
+
+boolean aHasAuth = hasValidAuthority(infoA);
+boolean bHasAuth = hasValidAuthority(infoB);
+```
+
+---
+
+## 정리하면
+
+- `for (Map.Entry<...>)` 또는 `for (String key : map.keySet())` 사용해서 반복
+- 권한코드를 `.equals("1") || .equals("2")` 로 비교
+- 화면 전체 검사, 일부 검사, 하나라도 있으면 true 등 조건은 로직에 따라 다르게 만들 수 있음
+
+---
+
+필요하시면 실제 로직에 맞춰 더 구체적인 유틸 함수 만들어드릴게요.  
+지금 세션에 있는 map 형식이 `Map<String, String>` 맞나요? 아니면 `Map<String, Object>` 형태인가요?
