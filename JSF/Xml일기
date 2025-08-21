@@ -1,0 +1,53 @@
+좋은 질문이에요 👍
+말씀하신 구조는 `menuA`, `menuB`처럼 개별 멤버 변수를 두고 XML을 매핑하는 방식인데, XML 파일이 100개\~200개라면 변수로 다 선언하는 건 사실상 불가능하죠.
+
+이럴 때는 **동적 변수명** 같은 걸 자바에서는 직접적으로 지원하지 않기 때문에, 보통은 **Map\<String, MenuDto>** 같은 자료구조로 관리하는 방식을 씁니다.
+
+---
+
+### 개선된 방법
+
+```java
+private Map<String, MenuDto> menuMap = new HashMap<>();
+
+public void createMenu(String id, String filePath) {
+    MenuDto menu = loadMenu(filePath);  // XML → DTO 변환
+    menuMap.put(id, menu);              // id=파일명 같은 키로 저장
+}
+
+// 예시 사용
+createMenu("menuA", "menuA.xml");
+createMenu("menuB", "menuB.xml");
+
+// 꺼내 쓰기
+MenuDto menuA = menuMap.get("menuA");
+MenuDto menuB = menuMap.get("menuB");
+```
+
+---
+
+### 여러 개 파일을 한꺼번에 로딩
+
+만약 XML이 100개 이상이라면 파일명을 리스트나 디렉토리에서 읽어와 반복문으로 처리할 수 있어요.
+
+```java
+public void createMenus(List<String> fileNames) {
+    for (String fileName : fileNames) {
+        String id = fileName.replace(".xml", ""); // ex) menuA.xml → menuA
+        MenuDto menu = loadMenu(fileName);
+        menuMap.put(id, menu);
+    }
+}
+```
+
+---
+
+### 정리
+
+* 변수명을 동적으로 만드는 건 불가능 → **Map**으로 관리해야 함
+* `menuMap.get("menuA")` 같은 방식으로 접근 가능
+* XML이 많으면 디렉토리 스캔해서 자동으로 `Map`에 로딩 가능
+
+---
+
+👉 혹시 원하시는 게 `menuA`, `menuB`처럼 변수 이름 자체를 코드에서 직접 쓰고 싶은 건가요? 아니면 `menuMap.get("menuA")`처럼 **맵으로 관리해도 괜찮은 건가요?**
