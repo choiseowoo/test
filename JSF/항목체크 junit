@@ -1,0 +1,129 @@
+네, 정확하게 이해하셨어요 👍
+제가 좀 더 쉽게 정리해드릴게요.
+
+---
+
+## 왜 JUnit에서 그대로 실행이 안 되냐?
+
+* 지금 `validate(FacesContext context, UIComponent component, String value)` 안에는
+  `FacesContext`, `UIComponent` 같은 **JSF 서버(WildFly)** 환경이 있어야만 동작하는 객체들이 들어있어요.
+* JUnit은 **순수 자바 실행 환경**이기 때문에 WildFly를 띄우지 않으면 저 객체들이 존재하지 않음 → 실행 불가 ❌
+
+---
+
+## 해결 방법
+
+👉 그래서 **검증 로직(영문자만 허용, 이메일 허용, 길이 제한)** 부분만 뽑아서 별도 메서드로 만들어 두면
+이 부분은 **순수 자바 코드**니까 JUnit에서 실행 가능해요.
+
+즉, 이렇게 두 층으로 나누는 거예요:
+
+1. **JSF용 Validator (원래 코드)**
+
+   * JSF와 연결 (component.getId() → XML 조건 찾기, FacesMessage 던지기 등)
+   * 여기서는 로직을 직접 하지 않고, 아래 로직 클래스에 위임만 함
+
+2. **순수 자바 Validator 로직 클래스 (JUnit 테스트 가능)**
+
+   * "영문만 허용", "길이 7자까지" 같은 순수 문자열 체크
+   * 여기만 JUnit으로 테스트
+
+---
+
+## 구조 예시
+
+### 1. 순수 로직 클래스 (JUnit에서 테스트)
+
+```java
+public class ItemValidatorLogic {
+
+    public void validateItem(ItemDTO item, String value) {
+        if("English".equals(item.getType()) && !value.matches("^[A-Za-z]+$")) {
+            throw new IllegalArgumentException(item.getName() + "은(는) 영어만 입력 가능합니다.");
+        }
+        if("EnglishAndA".equals(item.getType()) && !value.matches("^[A-Za-z0-9@.]+$")) {
+            throw new IllegalArgumentException(item.getName() + "은(는) 이메일 형식만 가능합니다.");
+        }
+        if(value.length() > item.getLength()) {
+            throw new IllegalArgumentException(item.getName() + "은(는) 최대 " + item.getLength() + "자까지 입력 가능합니다.");
+        }
+    }
+}
+```
+
+### 2. JUnit 테스트
+
+```java
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class ItemValidatorLogicTest {
+
+    @Test
+    void testEnglishValid() {
+        ItemDTO item = new ItemDTO("이름", "name", "English", 5);
+        ItemValidatorLogic logic = new ItemValidatorLogic();
+        assertDoesNotThrow(() -> logic.validateItem(item, "John"));
+    }
+
+    @Test
+    void testEnglishInvalid() {
+        ItemDTO item = new ItemDTO("이름", "name", "English", 5);
+        ItemValidatorLogic logic = new ItemValidatorLogic();
+        Exception ex = assertThrows(IllegalArgumentException.class,
+                () -> logic.validateItem(item, "홍길동"));
+        assertTrue(ex.getMessage().contains("영어만 입력"));
+    }
+}
+```
+
+### 3. JSF Validator (기존 코드, 로직 위임만 함)
+
+```java
+@FacesValidator("itemValidator")
+public class ItemValidator implements Validator<String> {
+
+    private ItemValidatorLogic logic = new ItemValidatorLogic();
+
+    @Override
+    public void validate(FacesContext context, UIComponent component, String value) {
+        // Controller에서 itemDTO 찾기
+        ScreenController controller = context.getApplication()
+                .evaluateExpressionGet(context, "#{screenController}", ScreenController.class);
+        String screenId = controller.getScreenId();
+        if(screenId == null) return;
+
+        List<ItemDTO> items = controller.getXmlCache().get(screenId);
+        if(items == null) return;
+
+        String fieldId = component.getId();
+        ItemDTO item = items.stream()
+                            .filter(i -> i.getId().equals(fieldId))
+                            .findFirst()
+                            .orElse(null);
+        if(item == null) return;
+
+        // 순수 로직 클래스에 위임
+        try {
+            logic.validateItem(item, value);
+        } catch (IllegalArgumentException e) {
+            throw new ValidatorException(new FacesMessage(e.getMessage()));
+        }
+    }
+}
+```
+
+---
+
+✅ 이렇게 하면:
+
+* **JUnit** → `ItemValidatorLogic`만 테스트 → WildFly 없이 가능
+* **실제 실행(WildFly)** → `ItemValidator`가 동작하면서 내부적으로 `ItemValidatorLogic` 호출
+
+---
+
+즉, 질문 주신 대로 **validate() 안의 체크 로직만 복사 → 별도 클래스에 두고 JUnit에서 테스트**하는 방식이 맞습니다 👍
+
+---
+
+제가 원하시면, 지금 쓰고 계신 `ItemDTO` 클래스에 맞춰서 JUnit 테스트용 샘플 데이터를 같이 만들어드릴까요?
