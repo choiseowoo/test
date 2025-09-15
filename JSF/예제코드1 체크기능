@@ -1,0 +1,144 @@
+좋아요 😄 그러면 지금 구조를 기반으로 **ViewScoped Bean에서 안전하게 XML 캐싱 적용 + Validator 동작** 완전 코드 만들어 드릴게요.
+
+---
+
+## 1️⃣ Controller (ViewScoped Bean + 캐시 적용)
+
+```java
+import jakarta.faces.bean.ManagedBean;
+import jakarta.faces.bean.ViewScoped;
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.Unmarshaller;
+import java.io.File;
+import java.io.Serializable;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@ManagedBean
+@ViewScoped
+public class ScreenController implements Serializable {
+
+    private String screenId; // 현재 눌린 버튼(sysA/sysB)
+    private Map<String, List<ItemDTO>> xmlCache = new HashMap<>(); // 화면ID별 XML 캐시
+    private Map<String, String> values = new HashMap<>(); // 입력값 저장
+
+    // 버튼 클릭
+    public void sysA() {
+        screenId = "sysA";
+        loadXml(screenId);
+    }
+
+    public void sysB() {
+        screenId = "sysB";
+        loadXml(screenId);
+    }
+
+    // XML 읽고 캐시에 저장
+    private void loadXml(String screenId) {
+        // 이미 캐시에 존재하면 읽지 않음
+        if(xmlCache.containsKey(screenId)) return;
+
+        try {
+            JAXBContext context = JAXBContext.newInstance(DataDTO.class);
+            Unmarshaller unmarshaller = context.createUnmarshaller();
+            DataDTO data = (DataDTO) unmarshaller.unmarshal(new File("data.xml"));
+
+            List<ItemDTO> items = data.getUsers().stream()
+                    .filter(u -> u.getGroup().equals(screenId))
+                    .flatMap(u -> u.getItems().stream())
+                    .collect(Collectors.toList());
+
+            xmlCache.put(screenId, items);
+        } catch (Exception e) {
+            throw new RuntimeException("XML 로드 실패: " + screenId, e);
+        }
+    }
+
+    // Getter
+    public String getScreenId() { return screenId; }
+    public Map<String, String> getValues() { return values; }
+    public Map<String, List<ItemDTO>> getXmlCache() { return xmlCache; }
+}
+```
+
+---
+
+## 2️⃣ Validator (component.getId() + value 활용)
+
+```java
+import jakarta.faces.application.FacesMessage;
+import jakarta.faces.component.UIComponent;
+import jakarta.faces.context.FacesContext;
+import jakarta.faces.validator.FacesValidator;
+import jakarta.faces.validator.Validator;
+import jakarta.faces.validator.ValidatorException;
+import java.util.List;
+
+@FacesValidator("itemValidator")
+public class ItemValidator implements Validator<String> {
+
+    @Override
+    public void validate(FacesContext context, UIComponent component, String value) throws ValidatorException {
+
+        // Controller에서 화면ID + 캐시 가져오기
+        ScreenController controller = context.getApplication()
+                .evaluateExpressionGet(context, "#{screenController}", ScreenController.class);
+        String screenId = controller.getScreenId();
+        if(screenId == null) return;
+
+        List<ItemDTO> items = controller.getXmlCache().get(screenId);
+        if(items == null) return;
+
+        // 어떤 입력란인지 확인
+        String fieldId = component.getId();
+        ItemDTO item = items.stream()
+                            .filter(i -> i.getId().equals(fieldId))
+                            .findFirst()
+                            .orElse(null);
+        if(item == null) return;
+
+        // 입력값 검증
+        if("English".equals(item.getType()) && !value.matches("^[A-Za-z]+$")) {
+            throw new ValidatorException(new FacesMessage(item.getName() + "은(는) 영어만 입력 가능합니다."));
+        }
+        if("EnglishAndA".equals(item.getType()) && !value.matches("^[A-Za-z0-9@.]+$")) {
+            throw new ValidatorException(new FacesMessage(item.getName() + "은(는) 이메일 형식만 가능합니다."));
+        }
+        if(value.length() > item.getLength()) {
+            throw new ValidatorException(new FacesMessage(item.getName() + "은(는) 최대 " + item.getLength() + "자까지 입력 가능합니다."));
+        }
+    }
+}
+```
+
+---
+
+## 3️⃣ XHTML
+
+```xml
+<h:form>
+    <h:inputText id="name" value="#{screenController.values['name']}" validator="itemValidator"/>
+    <h:message for="name" style="color:red"/>
+
+    <h:inputText id="email" value="#{screenController.values['email']}" validator="itemValidator"/>
+    <h:message for="email" style="color:red"/>
+
+    <h:commandButton id="sysA" value="SYS A" action="#{screenController.sysA}"/>
+    <h:commandButton id="sysB" value="SYS B" action="#{screenController.sysB}"/>
+</h:form>
+```
+
+---
+
+### 🔹 동작 요약
+
+1. 버튼 클릭 → `screenId` 세팅 + XML 읽어서 캐시 저장 (`xmlCache`)
+2. Validator 호출 → `screenId` 기준으로 캐시에서 DTO 가져와 입력값 검증
+3. XML 파일은 한 번만 읽고, 이후 동일 화면ID는 메모리에서 조회 → 빠른 검증 가능
+
+---
+
+이 구조면 **Ajax 없이도 화면별(sysA/sysB) 조건 체크 + XML 캐싱** 완벽하게 적용됩니다.
+
+원하시면 제가 **XML 변경 시 캐시 갱신 기능**까지 추가한 버전도 만들어서 보여드릴 수 있어요.
+혹시 그거 필요하신가요?
