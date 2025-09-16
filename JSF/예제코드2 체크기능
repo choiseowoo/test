@@ -1,0 +1,166 @@
+아하 👍 상황이 명확해졌네요. 지금 `ItemValidator`는 **`ScreenController`의 XML 캐시 → ItemDTO 목록 → 입력값 검사** 구조라서, 단위 테스트에서는 **FacesContext / ScreenController / UIComponent** 를 전부 mock 처리하면 됩니다.
+
+아래는 JUnit 5 + Mockito 기반 예시입니다.
+
+---
+
+### 1. 테스트 준비
+
+`pom.xml`에 다음 의존성 필요:
+
+```xml
+<dependency>
+    <groupId>org.mockito</groupId>
+    <artifactId>mockito-core</artifactId>
+    <version>5.13.0</version>
+    <scope>test</scope>
+</dependency>
+
+<dependency>
+    <groupId>org.junit.jupiter</groupId>
+    <artifactId>junit-jupiter</artifactId>
+    <version>5.11.0</version>
+    <scope>test</scope>
+</dependency>
+```
+
+---
+
+### 2. 단위 테스트 예시
+
+```java
+import jakarta.faces.application.Application;
+import jakarta.faces.application.FacesMessage;
+import jakarta.faces.component.UIComponent;
+import jakarta.faces.context.FacesContext;
+import jakarta.faces.validator.ValidatorException;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class ItemValidatorTest {
+
+    @Test
+    void testValidateEnglishValid() {
+        // given
+        FacesContext context = mock(FacesContext.class);
+        Application app = mock(Application.class);
+        UIComponent component = mock(UIComponent.class);
+        ScreenController controller = mock(ScreenController.class);
+
+        when(context.getApplication()).thenReturn(app);
+        when(app.evaluateExpressionGet(eq(context), eq("#{screenController}"), eq(ScreenController.class)))
+                .thenReturn(controller);
+
+        // ScreenController mock
+        when(controller.getScreenId()).thenReturn("screen1");
+
+        ItemDTO dto = new ItemDTO();
+        dto.setId("username");
+        dto.setName("아이디");
+        dto.setType("English");
+        dto.setLength(10);
+
+        Map<String, List<ItemDTO>> cache = new HashMap<>();
+        cache.put("screen1", Collections.singletonList(dto));
+        when(controller.getXmlCache()).thenReturn(cache);
+
+        when(component.getId()).thenReturn("username");
+
+        ItemValidator validator = new ItemValidator();
+
+        // when / then
+        assertDoesNotThrow(() ->
+                validator.validate(context, component, "abcDEF")
+        );
+    }
+
+    @Test
+    void testValidateEnglishInvalid() {
+        FacesContext context = mock(FacesContext.class);
+        Application app = mock(Application.class);
+        UIComponent component = mock(UIComponent.class);
+        ScreenController controller = mock(ScreenController.class);
+
+        when(context.getApplication()).thenReturn(app);
+        when(app.evaluateExpressionGet(eq(context), eq("#{screenController}"), eq(ScreenController.class)))
+                .thenReturn(controller);
+
+        when(controller.getScreenId()).thenReturn("screen1");
+
+        ItemDTO dto = new ItemDTO();
+        dto.setId("username");
+        dto.setName("아이디");
+        dto.setType("English");
+        dto.setLength(10);
+
+        Map<String, List<ItemDTO>> cache = new HashMap<>();
+        cache.put("screen1", Collections.singletonList(dto));
+        when(controller.getXmlCache()).thenReturn(cache);
+
+        when(component.getId()).thenReturn("username");
+
+        ItemValidator validator = new ItemValidator();
+
+        ValidatorException ex = assertThrows(
+                ValidatorException.class,
+                () -> validator.validate(context, component, "abc123") // 숫자 들어가면 실패
+        );
+
+        assertTrue(ex.getFacesMessage().getSummary().contains("영어만 입력"));
+    }
+
+    @Test
+    void testValidateOverMaxLength() {
+        FacesContext context = mock(FacesContext.class);
+        Application app = mock(Application.class);
+        UIComponent component = mock(UIComponent.class);
+        ScreenController controller = mock(ScreenController.class);
+
+        when(context.getApplication()).thenReturn(app);
+        when(app.evaluateExpressionGet(eq(context), eq("#{screenController}"), eq(ScreenController.class)))
+                .thenReturn(controller);
+
+        when(controller.getScreenId()).thenReturn("screen1");
+
+        ItemDTO dto = new ItemDTO();
+        dto.setId("username");
+        dto.setName("아이디");
+        dto.setType("English");
+        dto.setLength(5); // 최대 5자
+
+        Map<String, List<ItemDTO>> cache = new HashMap<>();
+        cache.put("screen1", Collections.singletonList(dto));
+        when(controller.getXmlCache()).thenReturn(cache);
+
+        when(component.getId()).thenReturn("username");
+
+        ItemValidator validator = new ItemValidator();
+
+        ValidatorException ex = assertThrows(
+                ValidatorException.class,
+                () -> validator.validate(context, component, "abcdefgh")
+        );
+
+        assertTrue(ex.getFacesMessage().getSummary().contains("최대 5자"));
+    }
+}
+```
+
+---
+
+### 3. 포인트
+
+* `FacesContext.getApplication().evaluateExpressionGet(...)` 부분 → Mockito로 `ScreenController` 반환하도록 설정
+* `ScreenController.getXmlCache()` → 미리 가짜 `ItemDTO` 넣어둠
+* `UIComponent.getId()` → 필드 ID 지정
+* 각각 조건(`English`, `EnglishAndA`, `길이 초과`)별로 테스트 케이스 작성
+
+---
+
+👉 혹시 `ItemDTO` 클래스 구조 (`id`, `name`, `type`, `length`) 가 getter/setter 있는 단순 DTO 맞나요?
+그럼 위 코드 그대로 돌려도 될 거예요.
