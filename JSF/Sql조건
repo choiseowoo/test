@@ -1,0 +1,31 @@
+SELECT 
+    a.id,
+    a.codeid,
+    t1.name AS id_name,
+    t1.address AS id_address,
+    t1.number AS id_number,
+    t2.name AS codeid_name,
+    t2.address AS codeid_address,
+    t2.number AS codeid_number
+FROM a
+LEFT JOIN (
+    SELECT DISTINCT ON (levelid) 
+        levelid,
+        name,
+        address,
+        number
+    FROM b
+    WHERE flag='0'
+    ORDER BY levelid
+) AS t1 ON a.id = t1.levelid
+LEFT JOIN (
+    SELECT DISTINCT ON (levelid) 
+        levelid,
+        name,
+        address,
+        number
+    FROM b
+    WHERE flag='0'
+    ORDER BY levelid
+) AS t2 ON a.codeid = t2.levelid
+WHERE a.status='ACTIVE';
