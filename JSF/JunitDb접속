@@ -1,0 +1,41 @@
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.apache.ibatis.session.SqlSession;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class CheckTest {
+
+    private SqlSession session;
+    private CheckMapper mapper;
+    private Check check;
+
+    @BeforeAll
+    public static void setupSystemProperties() {
+        // DB 접속 정보 JVM System Property로 등록
+        System.setProperty("db.url", "jdbc:postgresql://localhost:5432/testdb");
+        System.setProperty("db.username", "test_user");
+        System.setProperty("db.password", "test_pass");
+        System.setProperty("db.driver", "org.postgresql.Driver");
+    }
+
+    @BeforeEach
+    public void openSessionAndMapper() {
+        // 각 테스트마다 새 세션과 Mapper 생성
+        session = MyBatisUtil.getSession();
+        mapper = session.getMapper(CheckMapper.class);
+        check = new Check();
+    }
+
+    @Test
+    public void testCheckTime() {
+        String id = "111";
+        String number = "12355";
+        String time = "2025/09/07 12:30";
+
+        boolean result = check.checkTime(id, number, time);
+
+        assertTrue(result, "DB 조회 후 checkTime이 true가 되어야 합니다");
+    }
+}
