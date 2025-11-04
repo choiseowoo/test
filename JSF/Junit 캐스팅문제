@@ -1,0 +1,122 @@
+좋은 질문이에요 👍
+이 상황을 정리해보면 다음과 같습니다.
+
+---
+
+### 🔍 상황 요약
+
+```java
+String[] value = "값"; // 실제로는 불가능한 코드, 예를 들어 아래처럼 되어 있을 수 있음
+String[] value = someObject; // Object를 String[]로 캐스팅해서 받음
+if (value.length > 0) { ... }
+```
+
+JUnit 테스트에서 `value`를 `new String[] {}` (즉, 빈 배열)로 넣었는데도
+`if (value.length > 0)` 조건이 **true**처럼 작동하거나,
+예외가 발생하지 않고 조건문이 통과하는 문제가 생긴 거죠.
+
+이건 **Object 타입으로 전달된 값**이 실제로는 `String[]`이 아닐 가능성이 높습니다.
+즉, `Object` 상태에서 length를 확인하지 않기 때문이에요.
+
+---
+
+### ⚠️ 원인
+
+JUnit이나 코드 어딘가에서 이런 식으로 값을 전달하고 있을 가능성이 큽니다.
+
+```java
+Object value = new String[]{}; // OK
+if (value instanceof String[]) {
+    String[] arr = (String[]) value;
+    if (arr.length > 0) {
+        ...
+    }
+}
+```
+
+하지만 만약 이렇게 되어 있다면:
+
+```java
+Object value = new Object[]{}; // or new Object()
+String[] arr = (String[]) value; // 런타임 캐스팅 문제
+```
+
+혹은
+`Object`로 받았지만 `instanceof` 검사 없이 `length`를 확인하려 하면
+조건이 제대로 평가되지 않거나 무시될 수 있습니다.
+
+---
+
+### ✅ 해결 방법
+
+1. **instanceof로 명확히 타입 체크하기**
+
+```java
+if (value instanceof String[]) {
+    String[] arr = (String[]) value;
+    if (arr.length > 0) {
+        // 정상 동작
+    }
+} else {
+    // null이거나 다른 타입
+}
+```
+
+---
+
+2. **Object로 받을 때는 Array.getLength() 사용**
+
+`java.lang.reflect.Array`를 사용하면 `Object` 타입에서도 안전하게 length를 구할 수 있습니다.
+
+```java
+import java.lang.reflect.Array;
+
+if (value != null && value.getClass().isArray()) {
+    int len = Array.getLength(value);
+    if (len > 0) {
+        ...
+    }
+}
+```
+
+이 방법을 쓰면 `String[]`, `int[]`, `Object[]` 등 어떤 배열 타입이라도 동작합니다.
+
+---
+
+3. **JUnit 테스트 시 명시적으로 String[] 타입 전달**
+
+JUnit에서 테스트 데이터를 넘길 때 `Object` 배열로 감싸지 말고,
+직접 `String[]` 타입으로 넘기세요.
+
+```java
+@Test
+void testEmptyArray() {
+    String[] value = new String[]{};
+    assertEquals(0, value.length); // ✅ 정상 동작
+}
+```
+
+만약 아래처럼 했다면 문제 생깁니다 👇
+
+```java
+Object value = new String[]{};
+if (value instanceof String[]) {
+    // ✅ OK
+} else {
+    // ❌ length 체크 안됨
+}
+```
+
+---
+
+### 🚀 요약
+
+| 상황                     | 문제 원인             | 해결 방법                            |
+| ---------------------- | ----------------- | -------------------------------- |
+| `value`가 Object 타입     | `length` 직접 접근 불가 | `Array.getLength()` 사용           |
+| `value`가 null 또는 배열 아님 | length 체크 불가능     | `value.getClass().isArray()`로 확인 |
+| JUnit에서 Object로 넘김     | 캐스팅 문제            | `String[]`로 명확히 넘김               |
+
+---
+
+필요하다면, 제가 JUnit 예제 코드로 정상/비정상 케이스 두 가지를 보여드릴까요?
