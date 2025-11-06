@@ -1,0 +1,5 @@
+String value = "１２３"; // 전각숫자
+boolean result = !value.matches("^[0-9]{1,3}.*$");
+
+System.out.println(result); 
+// true (전각은 반각 숫자가 아니므로)
