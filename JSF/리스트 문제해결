@@ -1,0 +1,82 @@
+아주 좋은 질문이에요 👍 완벽히 이해하신 방향이에요.
+`ThreadLocal<List<String>>`을 쓰면, **스레드(즉, 각 요청 또는 컴퓨터)** 마다 **독립된 `ArrayList`** 가 생기니까
+다른 스레드 간에 데이터가 섞이지 않습니다.
+
+그리고 ✅ **`add`, 조회, 초기화(리셋)** 전부 가능합니다.
+아래에 구체적인 사용 패턴을 정리드릴게요.
+
+---
+
+### ✅ 예제 코드
+
+```java
+public class ErrorChecker {
+
+    // 스레드마다 독립된 ArrayList를 생성
+    private static final ThreadLocal<List<String>> errorMessages =
+        ThreadLocal.withInitial(ArrayList::new);
+
+    // 에러 추가
+    public static void addError(String msg) {
+        errorMessages.get().add(msg);
+    }
+
+    // 에러 전체 조회
+    public static List<String> getErrors() {
+        return errorMessages.get();
+    }
+
+    // 초기화 (새 리스트로 교체)
+    public static void clearErrors() {
+        errorMessages.remove(); // 현재 스레드의 리스트를 제거
+    }
+}
+```
+
+---
+
+### 🔍 사용 예시
+
+```java
+// A컴퓨터 스레드
+ErrorChecker.addError("특수문자NG");
+ErrorChecker.addError("전각스페이스NG");
+System.out.println(ErrorChecker.getErrors());
+// 출력: [특수문자NG, 전각스페이스NG]
+
+// 초기화
+ErrorChecker.clearErrors();
+System.out.println(ErrorChecker.getErrors());
+// 출력: []  (새로운 빈 리스트)
+```
+
+---
+
+### ⚙️ 동작 원리
+
+* `ThreadLocal`은 스레드마다 독립적인 저장소를 갖고 있어서,
+  다른 스레드가 접근할 수 없습니다.
+* `clearErrors()` 시 `remove()`를 호출하면 해당 스레드의 데이터만 제거됩니다.
+  (다른 스레드 데이터에는 영향 없음)
+* `withInitial(ArrayList::new)` 덕분에, 다음번 `get()` 호출 시 자동으로 새로운 빈 리스트를 생성합니다.
+
+---
+
+### 🧠 정리
+
+| 작업  | 방법                | 설명                     |
+| --- | ----------------- | ---------------------- |
+| 추가  | `addError("메시지")` | 현재 스레드의 리스트에 메시지 추가    |
+| 조회  | `getErrors()`     | 현재 스레드의 에러 메시지 전체 조회   |
+| 초기화 | `clearErrors()`   | 현재 스레드 리스트 제거 후 새로 초기화 |
+
+---
+
+즉,
+✅ `ThreadLocal`로 하면 `list`처럼 `add` 가능하고
+✅ `remove()`로 **완전 초기화도 가능**합니다.
+
+---
+
+원하신다면 `static ArrayList`에서 `ThreadLocal` 기반으로 안전하게 바꾼
+실제 적용 예시 (`에러체크 + 메세지 출력`) 도 보여드릴까요?
