@@ -1,0 +1,107 @@
+좋은 질문이에요 👍
+이 문제는 **`log4j.xml` (또는 `log4j2.xml`)에서 로그 파일 경로를 상대경로로 지정했기 때문에**, WildFly 실행 디렉터리(`$WILDFLY_HOME/bin`)가 **기준 경로(base path)** 로 인식되어 로그 파일이 거기에 생성되는 현상입니다.
+
+즉, WildFly는 서버 시작 시 현재 작업 디렉터리를 `bin/`으로 설정하므로
+상대경로(`logs/app.log` 같은 형식)는 결국
+→ `${WILDFLY_HOME}/bin/logs/app.log`
+이 위치로 해석되어 버립니다.
+
+---
+
+### ✅ 원인 요약
+
+* `log4j.xml`에 경로가 상대경로로 지정되어 있음.
+* WildFly 실행 시 기본 working directory는 `$WILDFLY_HOME/bin`.
+* 따라서 로그파일이 `bin` 밑에 생성됨.
+* `{logfile}` 같은 이름으로 찍히는 건, 경로 변수가 올바르게 치환되지 않은 상태 (property 정의 누락 or 잘못된 EL 사용) 때문.
+
+---
+
+### ✅ 해결 방법
+
+#### 🔹 1. 절대경로 지정하기
+
+가장 간단하고 확실한 방법입니다.
+
+```xml
+<File name="FileLogger" fileName="/opt/wildfly/logs/myapp.log">
+    <PatternLayout pattern="%d %-5p [%c{1}] %m%n"/>
+</File>
+```
+
+> 💡 `fileName`에 **절대경로**를 지정하면 WildFly의 bin 폴더와 관계없이 지정 위치에 로그 파일이 생성됩니다.
+
+---
+
+#### 🔹 2. WildFly 시스템 프로퍼티 사용
+
+WildFly는 `jboss.server.log.dir` 같은 표준 로그 경로 변수를 제공합니다.
+이걸 활용하면 서버 환경에 따라 경로를 유연하게 지정할 수 있습니다.
+
+```xml
+<File name="FileLogger" fileName="${jboss.server.log.dir}/myapp.log">
+    <PatternLayout pattern="%d %-5p [%c{1}] %m%n"/>
+</File>
+```
+
+> `${jboss.server.log.dir}` → 기본적으로 `$WILDFLY_HOME/standalone/log`
+> 이렇게 하면 WildFly 기본 로그 디렉터리에 함께 출력됩니다.
+
+---
+
+#### 🔹 3. 커스텀 변수 지정 (`-D` 옵션)
+
+WildFly 실행 시 로그 경로를 환경 변수로 넘길 수도 있습니다.
+
+```bash
+standalone.sh -Dlog.path=/var/log/myapp
+```
+
+그리고 `log4j.xml`에서는 다음처럼 참조합니다:
+
+```xml
+<File name="FileLogger" fileName="${log.path}/myapp.log">
+    <PatternLayout pattern="%d %-5p [%c{1}] %m%n"/>
+</File>
+```
+
+> 이렇게 하면 개발/운영 환경마다 로그 경로를 쉽게 바꿀 수 있습니다.
+
+---
+
+#### 🔹 4. `{logfile}` 형태가 그대로 출력되는 경우
+
+이건 `log4j.xml`에서 `${logfile}` 변수 정의가 없거나
+`Property` 설정을 빼먹은 경우입니다.
+
+예시:
+
+```xml
+<Properties>
+    <Property name="logfile">/opt/wildfly/logs/myapp.log</Property>
+</Properties>
+
+<Appenders>
+    <File name="FileLogger" fileName="${logfile}">
+        <PatternLayout pattern="%d %-5p [%c{1}] %m%n"/>
+    </File>
+</Appenders>
+```
+
+이렇게 `Property`로 정의하면 `{logfile}`이 아니라 `${logfile}` 형태로 참조되어 정상적으로 치환됩니다.
+
+---
+
+### ✅ 정리
+
+| 원인            | 현상                      | 해결 방법                                |
+| ------------- | ----------------------- | ------------------------------------ |
+| 상대경로 지정       | WildFly/bin 아래에 파일 생성   | 절대경로 or `${jboss.server.log.dir}` 사용 |
+| Property 누락   | `{logfile}`라는 이름의 파일 생성 | `<Properties>` 섹션에서 변수 정의            |
+| 환경마다 경로 달라야 함 | 위치 통일 어려움               | `-Dlog.path` 옵션으로 변수 주입              |
+
+---
+
+혹시 사용 중인 로그 설정이 `log4j.xml`이 아니라 `log4j2.xml` 혹은 WildFly 자체 로거(`logging.properties`) 기반이라면, 해당 파일의 설정 방식도 보여주시면 정확히 어떤 구문이 문제인지 pinpoint 해드릴 수 있습니다.
+
+원하시면 실제 사용 중인 `log4j.xml` 일부 (특히 `<File>`이나 `<Appender>` 부분) 보여주실래요?
