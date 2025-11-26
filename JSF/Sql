@@ -1,0 +1,110 @@
+결론부터 말하면 **네, 어느 정도 해결됩니다.**
+하지만 **SQL에서 COALESCE(NULLIF(TRIM()))로 NULL/공백을 제거하는 것만으로 자바 Collections Empty 문제 전체가 해결되는 건 아닙니다.**
+→ 두 문제는 *관련 있지만 완전히 동일한 문제는 아님*
+→ 케이스별로 정확히 구분해야 합니다.
+
+아래에서 왜 그런지 명확하게 정리해드릴게요.
+
+---
+
+# ✅ 1. SQL에서 `COALESCE(NULLIF(TRIM(username), ''))`로 해결되는 것
+
+이건 **"리스트 안의 값이 null이거나 공란이어서 메소드 호출 시 NPE or 처리 오류"** 문제를 해결합니다.
+
+예를 들어 리스트에 DB 값이 이렇게 들어올 때:
+
+```java
+List<String> list = Arrays.asList(null, "   ", "abc");
+```
+
+이럴 때
+list.get(0).trim();  // NPE
+list.get(1).isEmpty();  // false → 원래는 빈값 취급해야 하는데 오류
+
+이런 문제들은 SQL에서 다음처럼 하면 **99% 해결됨**:
+
+```sql
+SELECT COALESCE(NULLIF(TRIM(username), ''), '') AS username
+```
+
+→ Java로 들어오는 list 값에는 **절대로 null이 없음**
+→ 공란("   ")도 모두 빈 문자열("")로 변환됨
+✔ Java에서 `.isEmpty()` / `.equals()` / `.contains()` 등 안전하게 처리 가능
+
+---
+
+# ❌ 2. 그러나 이 SQL 처리가 해결 *불가한 문제*
+
+**"DB에서 조회된 행 자체가 없어서 리스트가 Empty가 되는 경우"** 는 SQL 변환으로 해결 불가입니다.
+
+예)
+
+```sql
+SELECT username FROM users WHERE id = 99999;
+```
+
+→ 해당 데이터가 없음
+→ MyBatis 반환: `List<String>` 의 사이즈가 0
+→ 즉, **리스트 자체가 empty**
+
+이 경우는 아무리 `COALESCE()`를 써도
+→ 값이 없으면 행 자체가 없기 때문에 리스트는 비어 있음
+→ Java Collections empty 문제는 SQL로 해결할 수 없음
+
+---
+
+# 🔍 질문 요약에 기반한 정확한 답변
+
+### ❓ “자바 Collections에서 empty면 ? 리스트 반환하는 처리인데 COALESCE로 해결 된다고?”
+
+✔ **리스트 내부 요소가 null/공백 → 해결 가능 (Yes)**
+❌ **리스트 자체가 empty → 해결 불가 (No)**
+
+즉,
+
+| 문제                             | SQL에서 해결되나? |
+| ------------------------------ | ----------- |
+| 리스트 원소가 null                   | ✔ 해결됨       |
+| 리스트 원소가 "   " 공란               | ✔ 해결됨       |
+| 리스트 원소 trim 후 empty            | ✔ 해결됨       |
+| 쿼리 결과 행이 없음 → list.size() == 0 | ❌ 해결 불가     |
+
+---
+
+# 📝 해결 방안 (상황별)
+
+## **① 리스트는 비어 있지만 기본값 있는 리스트를 반환해야 하는 경우**
+
+자바단에서 처리해야 합니다.
+
+예:
+
+```java
+List<String> list = mapper.selectSomething();
+
+return list.isEmpty() ? Collections.singletonList("DEFAULT") : list;
+```
+
+또는:
+
+```java
+if (list.isEmpty()) {
+    list.add("DEFAULT");
+}
+```
+
+---
+
+# 🔚 정리
+
+✔ SQL에서 `COALESCE(NULLIF(TRIM()))`
+→ **리스트 요소 내부의 null/공란 문제를 해결**
+
+❌ SQL로는
+→ **쿼리 결과 0건 → 리스트 empty** 문제는 해결 못함
+→ 이건 자바단에서 후처리 필요
+
+---
+
+SQL 쿼리와 Java Collection 처리 코드 예시를 보여주시면
+→ **거기에 맞는 정확한 해결 코드**를 만들어 드릴게요!
