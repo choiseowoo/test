@@ -1,0 +1,143 @@
+아래 상황으로 보이면 **clear 기능이 문제라기보다는, clear() 함수 내부에서 DOM 조작이 부모·자식 프레임 구조를 건드려서 자식 화면이 닫히는 부작용이 발생하는 것**일 가능성이 높습니다.
+정확한 원인은 코드를 봐야 하지만, 실제로 자주 발생하는 패턴을 기준으로 정리해줄게요.
+
+---
+
+# ✅ **1. “태그명 읽어서 element = '' ” 이 부분이 문제일 가능성**
+
+JS에서 흔히 다음과 같은 코드가 있음:
+
+```js
+document.getElementById('msg').innerHTML = '';
+```
+
+이건 정상.
+하지만 다음과 같은 경우면 문제가 커짐:
+
+```js
+document.getElementById('msg') = '';
+```
+
+➡️ **DOM 객체 자체를 문자열로 덮어써서 예외 발생**
+➡️ 예외가 발생하면 함수 진행 중단
+➡️ 실행 흐름이 끊기면서 이벤트 핸들러가 비정상 종료
+➡️ 부모 → 자식 iframe 호출 과정에서 오류 발생 시 자식 창이 닫힘
+
+즉, **innerHTML을 비우는 게 아니라 element 자체를 빈 문자열로 치환하면 100% 오류**입니다.
+
+---
+
+# ✅ **2. 부모화면에서 메시지 태그 clear 실행 시 자식 프레임까지 접근할 경우**
+
+자주 있는 문제:
+
+```js
+parent.document.getElementById("msg").innerHTML = "";
+```
+
+또는
+
+```js
+window.opener.document.getElementById("msg").innerHTML = "";
+```
+
+이게 실행 중에
+✔ opener가 null
+✔ parent DOM에 해당 태그 없음
+✔ cross domain 구조
+이런 상황 발생하면 JavaScript 오류가 나서 **팝업(자식)이 강제 종료**되는 브라우저가 있습니다 (특히 IE/Edge 모드, 일부 WebView).
+
+---
+
+# ✅ **3. clear 함수 내에 location 관련 코드가 숨어 있는 경우**
+
+예)
+
+```js
+document.getElementById('msg').innerHTML = '';
+location.href = location.href;
+```
+
+또는
+
+```js
+form.reset();
+```
+
+팝업 or iframe 안에서 `location.reload()`가 실행되면 자식 화면이 닫히는 사례 많음.
+JSF + iframe 구조에서 특히 발생.
+
+---
+
+# ✅ **4. try-catch 미사용으로 인한 예외 전파 → 자식 화면이 닫힘**
+
+clear하고 끝인 줄 알았는데, 내부에서 오류 발생:
+
+```js
+function clearMsg() {
+    let tag = document.getElementById('msg');
+    tag.innerHTML = '';  // tag == null이면 오류 발생 ➜ 함수 종료
+}
+```
+
+태그가 없으면 → `Cannot set property 'innerHTML' of null` 발생
+이 오류가 상위 프레임으로 전파되면 팝업이 닫힘
+
+**예외처리 없으면 팝업 UI가 닫혀버리는 현상 매우 흔함.**
+
+---
+
+# 🔍 **핵심 원인 요약**
+
+| 문제                            | 영향                        |
+| ----------------------------- | ------------------------- |
+| element = ""처럼 DOM 객체를 잘못 변경  | clear() 중 예외 발생 → 자식 창 종료 |
+| parent/opener DOM 접근 실패       | JS 오류 → 팝업 비정상 종료         |
+| clear 함수 내부에서 reload/reset 발생 | 자식 frame 새로고침 또는 닫힘       |
+| 태그가 존재하지 않아 null 참조           | 예외 발생 → 팝업 종료             |
+
+---
+
+# ✅ **해결 체크리스트 (확인하면 바로 원인 나옴)**
+
+아래를 확인해보세요:
+
+### ✔ 1) clear 함수에서 element = '' 로 쓰지 않았는가
+
+👉 반드시 `innerHTML = ''` 또는 `value = ''`만 사용해야 함
+
+### ✔ 2) clear 함수에서 부모/자식 DOM에 접근하지 않는가
+
+(ex. `parent.document.getElementById()`)
+
+### ✔ 3) 메시지 태그가 실제로 존재하는지
+
+없으면 null → 오류 → 팝업 종료
+
+### ✔ 4) try-catch 하는가
+
+```js
+try {
+    const el = document.getElementById('msg');
+    if (el) el.innerHTML = "";
+} catch(e) {
+    console.log(e);
+}
+```
+
+### ✔ 5) clear 함수에서 location.href, reload, window.close 등 발생하는 코드가 숨어있지 않은가
+
+---
+
+# ✨ 결론
+
+**자식 화면이 멋대로 꺼지는 건 clear 기능 때문이 아니라, clear 기능 내부에서 DOM 조작 중 예외 발생 → 브라우저가 팝업을 종료시키는 부작용**입니다.
+
+즉,
+👉 clear 함수 내부 코드에 **null**, **parent DOM 접근**, **잘못된 element 조작** 등 문제가 있는지 확인하면 됩니다.
+
+---
+
+원하면
+🔥 지금 사용하고 있는 clear 함수 JS 코드를 보내주면
+정확한 원인을 한 번에 pinpoint해서 해결해줄게!
