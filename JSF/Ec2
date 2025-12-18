@@ -1,0 +1,31 @@
+import java.io.IOException;
+import java.nio.file.*;
+
+public class XmlLoader {
+
+    public static void main(String[] args) throws IOException {
+
+        Path dir = Paths.get("/opt/xmllist/actionlist"); // EC2 Linux 경로
+
+        // ① 경로 존재 / 디렉터리 체크
+        if (!Files.isDirectory(dir)) {
+            throw new IllegalStateException("디렉터리가 아닙니다: " + dir);
+        }
+
+        // ② XML 파일 목록 취득
+        try (DirectoryStream<Path> stream =
+                     Files.newDirectoryStream(dir, "*.xml")) {
+
+            for (Path path : stream) {
+                String fileName = path.getFileName().toString();
+                System.out.println("file = " + fileName);
+
+                // ③ 파일 읽기
+                byte[] bytes = Files.readAllBytes(path);
+                String content = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+
+                // 처리 로직
+            }
+        }
+    }
+}
