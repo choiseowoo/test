@@ -1,0 +1,188 @@
+좋아, 그럼 **지금까지의 제약을 전부 반영해서**
+👉 *“현실적으로 쓸 수 있는 설계안”*을 **선택지 형태**로 제안할게요.
+(서블릿 / WildFly / 로컬+EC2 공통 기준)
+
+---
+
+# 전제 정리 (당신 환경 기준)
+
+* Servlet 기반 (Spring ❌)
+* WildFly
+* 로컬 + EC2 공통 동작 필요
+* `/WEB-INF/conf/*.xml` 사용 중
+* `getResourcePaths()` ❌
+* `getRealPath()` ❌
+* **파일 목록 필요 가능성 있음**
+
+---
+
+# ✅ 제안 1️⃣ (최우선 권장, 운영 표준)
+
+## 🔥 “외부 설정 디렉토리 + fallback 구조”
+
+### 구조
+
+```
+(EC2)
+/opt/app/conf/
+ ├ a.xml
+ ├ b.xml
+ └ c.xml
+
+(로컬)
+C:\app\conf\
+```
+
+### web.xml
+
+```xml
+<context-param>
+    <param-name>conf.dir</param-name>
+    <param-value>/opt/app/conf</param-value>
+</context-param>
+```
+
+### Servlet 코드
+
+```java
+String dir = getServletContext().getInitParameter("conf.dir");
+
+if (dir != null && Files.isDirectory(Paths.get(dir))) {
+    // ✅ 외부 디렉토리 우선
+    try (Stream<Path> s = Files.list(Paths.get(dir))) {
+        s.filter(p -> p.toString().endsWith(".xml"))
+         .forEach(this::load);
+    }
+} else {
+    // 🔁 fallback (WEB-INF 개별 접근)
+    String[] defaults = { "a.xml", "b.xml", "c.xml" };
+    for (String f : defaults) {
+        try (InputStream is =
+            getServletContext().getResourceAsStream("/WEB-INF/conf/" + f)) {
+            load(is);
+        }
+    }
+}
+```
+
+### 👍 장점
+
+* EC2/로컬 완전 공통
+* 운영 중 설정 교체 가능
+* WAR 재배포 불필요
+* **실무에서 가장 많이 쓰는 패턴**
+
+---
+
+# ✅ 제안 2️⃣ (WEB-INF 고수해야 할 때)
+
+## “파일명 인덱스 방식”
+
+### 구조
+
+```
+/WEB-INF/conf/
+ ├ files.index
+ ├ a.xml
+ ├ b.xml
+```
+
+### files.index
+
+```
+a.xml
+b.xml
+```
+
+### Servlet
+
+```java
+try (InputStream is =
+     ctx.getResourceAsStream("/WEB-INF/conf/files.index");
+     BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+
+    br.lines().forEach(name -> {
+        try (InputStream xml =
+             ctx.getResourceAsStream("/WEB-INF/conf/" + name)) {
+            load(xml);
+        }
+    });
+}
+```
+
+### 👍 장점
+
+* WAR 내부 유지
+* 환경 의존성 없음
+* getResourcePaths() 불필요
+
+### 👎 단점
+
+* 파일 추가 시 index 수정 필요
+
+---
+
+# ✅ 제안 3️⃣ (classpath 리소스로 전환)
+
+## 구조
+
+```
+src/main/resources/conf/a.xml
+```
+
+### 접근
+
+```java
+ClassLoader cl = Thread.currentThread().getContextClassLoader();
+try (InputStream is = cl.getResourceAsStream("conf/a.xml")) {
+    load(is);
+}
+```
+
+### 👍 장점
+
+* 가장 안정적인 접근 방식
+* 테스트 쉬움
+
+### 👎 단점
+
+* 파일 목록 불가
+* 설정 변경 시 재배포 필요
+
+---
+
+# ❌ 추천하지 않는 선택지
+
+| 방법                   | 이유                 |
+| -------------------- | ------------------ |
+| `getResourcePaths()` | WildFly/WAR에서 보장 ❌ |
+| `getRealPath()`      | EC2에서 null         |
+| JBoss VFS            | 서버 종속              |
+| exploded 강제          | 운영 비현실             |
+
+---
+
+# 🔍 내가 추천하는 “최종 선택”
+
+| 상황             | 추천     |
+| -------------- | ------ |
+| 운영 중 설정 변경     | ✅ 제안 1 |
+| 보안 때문에 WEB-INF | 제안 2   |
+| 고정 설정          | 제안 3   |
+
+---
+
+## 한 줄로 요약하면
+
+> **“목록 필요 = 외부 디렉토리”**
+> **“WAR 내부 = 인덱스 or 개별 접근”**
+
+---
+
+원하면 다음도 바로 해줄 수 있어요:
+
+* web.xml / WildFly 설정 실제 예
+* 현재 `/WEB-INF/conf` 구조 → 외부 config 이전 가이드
+* 테스트/운영 분리 설계
+
+다음으로 **어느 제안이 제일 현실적인지**만 말해줘.
