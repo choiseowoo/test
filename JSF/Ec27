@@ -1,0 +1,251 @@
+좋아. 그럼 **실무에서 바로 가져다 쓸 수 있게**
+👉 **3가지를 순서대로, 구체적으로** 정리해 줄게요.
+
+---
+
+# ① 지금 코드 기준 “그대로” 리팩토링 예
+
+(**getRealPath 제거 + EC2 대응, 최소 수정**)
+
+## 📌 기존 코드 형태 (전형적인 패턴)
+
+```java
+String path = getServletContext().getRealPath("/WEB-INF/conf/");
+File dir = new File(path);
+
+File[] files = dir.listFiles();
+for (File f : files) {
+    if (f.getName().endsWith(".xml")) {
+        try (InputStream is = new FileInputStream(f)) {
+            loadXml(is);
+        }
+    }
+}
+```
+
+---
+
+## ✅ 리팩토링 1단계 (분기 추가 – 최소 수정)
+
+```java
+ServletContext ctx = getServletContext();
+
+// 🔴 기존 코드의 핵심 문제 지점
+String realPath = ctx.getRealPath("/WEB-INF/conf/");
+
+if (realPath != null) {
+    // ===== 로컬 WildFly (exploded WAR) =====
+    File dir = new File(realPath);
+    File[] files = dir.listFiles((d, name) -> name.endsWith(".xml"));
+
+    if (files != null) {
+        for (File f : files) {
+            try (InputStream is = new FileInputStream(f)) {
+                loadXml(is);
+            }
+        }
+    }
+
+} else {
+    // ===== AWS EC2 (압축 WAR) =====
+    // getRealPath 불가 → fallback
+    String[] files = {
+        "a.xml",
+        "b.xml",
+        "c.xml"
+    };
+
+    for (String name : files) {
+        try (InputStream is =
+             ctx.getResourceAsStream("/WEB-INF/conf/" + name)) {
+
+            if (is == null) {
+                throw new IllegalStateException("File not found: " + name);
+            }
+            loadXml(is);
+        }
+    }
+}
+```
+
+✔ 로컬 동작 유지
+✔ EC2 대응
+✔ 수정량 최소
+❌ 파일명 하드코딩
+
+---
+
+# ② index 파일 방식 (getRealPath **완전 제거**)
+
+> **WEB-INF 유지하면서 EC2/로컬 공통으로 쓰는 “최선책”**
+
+---
+
+## 📁 디렉토리 구조
+
+```
+/WEB-INF/conf/
+ ├ files.index
+ ├ a.xml
+ ├ b.xml
+ └ c.xml
+```
+
+---
+
+## 📄 files.index 규칙
+
+### ✅ 규칙
+
+* UTF-8
+* 한 줄 = 파일 하나
+* 상대 경로 금지
+* 주석 허용(`#`)
+
+### 예시
+
+```
+# XML config list
+a.xml
+b.xml
+c.xml
+```
+
+---
+
+## ✅ Servlet 코드 (권장 최종형)
+
+```java
+ServletContext ctx = getServletContext();
+
+try (InputStream index =
+     ctx.getResourceAsStream("/WEB-INF/conf/files.index")) {
+
+    if (index == null) {
+        throw new IllegalStateException("files.index not found");
+    }
+
+    try (BufferedReader br =
+         new BufferedReader(new InputStreamReader(index, StandardCharsets.UTF_8))) {
+
+        br.lines()
+          .map(String::trim)
+          .filter(l -> !l.isEmpty())
+          .filter(l -> !l.startsWith("#"))
+          .forEach(name -> {
+              try (InputStream is =
+                   ctx.getResourceAsStream("/WEB-INF/conf/" + name)) {
+
+                  if (is == null) {
+                      throw new IllegalStateException("XML not found: " + name);
+                  }
+                  loadXml(is);
+
+              } catch (IOException e) {
+                  throw new RuntimeException(e);
+              }
+          });
+    }
+}
+```
+
+✔ getRealPath 제거
+✔ EC2 / 로컬 완전 동일
+✔ WAR 구조 유지
+✔ 파일 추가 시 index만 수정
+
+---
+
+# ③ 외부 config 이전 단계별 가이드 (운영 정석)
+
+> **최종적으로 가장 안전한 구조**
+
+---
+
+## 🔹 STEP 1. 외부 디렉토리 생성 (EC2)
+
+```bash
+sudo mkdir -p /opt/app/conf
+sudo chown wildfly:wildfly /opt/app/conf
+```
+
+```
+/opt/app/conf/
+ ├ a.xml
+ ├ b.xml
+ └ c.xml
+```
+
+---
+
+## 🔹 STEP 2. web.xml 설정
+
+```xml
+<context-param>
+    <param-name>conf.dir</param-name>
+    <param-value>/opt/app/conf</param-value>
+</context-param>
+```
+
+---
+
+## 🔹 STEP 3. Servlet 코드
+
+```java
+ServletContext ctx = getServletContext();
+String dirPath = ctx.getInitParameter("conf.dir");
+
+Path dir = Paths.get(dirPath);
+
+if (!Files.isDirectory(dir)) {
+    throw new IllegalStateException("Config dir not found: " + dirPath);
+}
+
+try (Stream<Path> stream = Files.list(dir)) {
+    stream
+        .filter(p -> p.toString().endsWith(".xml"))
+        .forEach(p -> {
+            try (InputStream is = Files.newInputStream(p)) {
+                loadXml(is);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+}
+```
+
+---
+
+## 🔹 STEP 4. 로컬 대응
+
+* Windows: `C:\app\conf`
+* web.xml만 환경별로 변경
+
+---
+
+# 🔚 최종 선택 가이드
+
+| 상황           | 추천              |
+| ------------ | --------------- |
+| 당장 EC2 에러 제거 | **① 분기 방식**     |
+| 구조 깔끔        | **② index 방식**  |
+| 운영/확장        | **③ 외부 config** |
+
+---
+
+## 한 줄 요약
+
+> **getRealPath는 “되면 쓰고, 안 되면 버리는 API”**
+>
+> 👉 지금은 **index 방식**이 가장 현실적인 중간 해법
+> 👉 최종 목적지는 **외부 config**
+
+---
+
+다음으로 원하면
+
+* **현재 실제 코드 그대로 붙여서 1:1 리팩토링**
+* **index 파일 자동 생성 스크립트**
+* **보안/권한 설정 체크리스트**
+
+바로 이어서 해줄게.
