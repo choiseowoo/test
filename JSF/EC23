@@ -1,0 +1,152 @@
+이 상황이면 원인이 **완전히 확정**됐어요.
+지금 겪는 증상을 정리하면 이겁니다 👇
+
+---
+
+## 지금 상황 정리 (아주 중요)
+
+| 항목                                            | 결과                           |
+| --------------------------------------------- | ---------------------------- |
+| `getResourcePaths("/WEB-INF/conf/")`          | ❌ **로컬 WildFly에서도 null**     |
+| `getRealPath("/WEB-INF/conf")` + `new File()` | ✅ **로컬에서는 파일 검색 가능**         |
+| EC2                                           | ❌ `getRealPath()` 사용 불가 / 위험 |
+
+👉 즉 **로컬은 exploded 배포**,
+👉 **EC2는 압축 WAR 배포** 구조
+
+---
+
+## 질문 요지
+
+> **서블릿 기준에서**
+> **로컬 + EC2 둘 다 안정적으로 동작하는 방법**
+
+### 🔴 결론
+
+> **WEB-INF 내부 파일을 “목록 검색”하는 공통 방법은 없다**
+
+Servlet Spec + WildFly 구현상 **불가능**에 가깝습니다.
+
+---
+
+## EC2 + 로컬 공통으로 쓰는 “정답 패턴”
+
+### ✅ 정답 ① (운영 표준, 가장 권장)
+
+### **WAR 밖 외부 디렉토리 사용**
+
+#### 디렉토리
+
+```
+/opt/app/conf/
+ ├ a.xml
+ ├ b.xml
+ └ c.xml
+```
+
+#### web.xml / system property
+
+```xml
+<context-param>
+    <param-name>conf.dir</param-name>
+    <param-value>/opt/app/conf</param-value>
+</context-param>
+```
+
+#### Servlet 코드
+
+```java
+String dirPath = getServletContext().getInitParameter("conf.dir");
+
+Path dir = Paths.get(dirPath);
+try (Stream<Path> stream = Files.list(dir)) {
+    stream
+        .filter(p -> p.toString().endsWith(".xml"))
+        .forEach(p -> {
+            try (InputStream is = Files.newInputStream(p)) {
+                // 처리
+            }
+        });
+}
+```
+
+✔ 로컬 / EC2 동일
+✔ WAR 배포 형태 무관
+✔ 운영에서 수정 가능
+
+---
+
+### ✅ 정답 ② (WEB-INF 유지해야 할 때 – 차선책)
+
+> **파일 “목록”은 포기하고 “개별 접근”만 한다**
+
+```java
+String[] files = {
+    "/WEB-INF/conf/a.xml",
+    "/WEB-INF/conf/b.xml",
+    "/WEB-INF/conf/c.xml"
+};
+
+ServletContext ctx = getServletContext();
+
+for (String f : files) {
+    try (InputStream is = ctx.getResourceAsStream(f)) {
+        // 처리
+    }
+}
+```
+
+✔ 로컬 / EC2 OK
+❌ 파일 추가 시 코드 수정 필요
+
+---
+
+## ❌ 하면 안 되는 방법 (이유 명확)
+
+### ❌ `getRealPath()`
+
+* EC2 (압축 WAR) → `null`
+* WildFly 공식 비권장
+
+### ❌ `new File("/WEB-INF/...")`
+
+* WAR 내부는 실제 파일 아님
+
+### ❌ `getResourcePaths()` 에 집착
+
+* 컨테이너 구현 의존
+* WildFly에서는 실전 사용 불가
+
+---
+
+## 왜 이런 구조가 생겼냐면
+
+Servlet은 **“파일 시스템”을 보장하지 않음**
+
+* WAR = ZIP
+* 디렉토리 = 논리 개념
+* **목록 조회는 스펙상 optional**
+
+그래서
+
+* `getResourceAsStream()` ✅
+* `getResourcePaths()` ❌ (null 허용)
+
+---
+
+## 최종 한 줄 결론
+
+> **EC2 + 로컬 + WildFly + Servlet**
+>
+> 🔥 **공통으로 안정적인 유일한 방법은
+> “WAR 밖 디렉토리 + NIO(Files)”**
+
+---
+
+원하면
+
+* **지금 구조에서 외부 config로 최소 변경 방법**
+* **web.xml / WildFly 설정 샘플**
+* **Spring 없이 Servlet만 쓰는 구조 정리**
+
+바로 이어서 정리해 줄게요.
