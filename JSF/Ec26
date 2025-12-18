@@ -1,0 +1,161 @@
+좋아요.
+그럼 **지금 쓰고 있는 코드를 최대한 유지하면서**,
+👉 **EC2에서 깨지는 `getRealPath()`만 제거**하는 방향으로 **최소 수정 리팩토링**을 딱 집어서 보여줄게요.
+
+---
+
+# 1️⃣ 현재 코드 (추정 형태)
+
+```java
+String realPath = getServletContext().getRealPath("/WEB-INF/conf/");
+File dir = new File(realPath);
+
+File[] files = dir.listFiles((d, name) -> name.endsWith(".xml"));
+
+for (File f : files) {
+    try (InputStream is = new FileInputStream(f)) {
+        load(is);
+    }
+}
+```
+
+❌ 문제
+
+* EC2 → `getRealPath()` == null → NPE
+* WAR 압축 시 디렉토리 없음
+
+---
+
+# 2️⃣ 최소 수정 리팩토링 핵심 전략
+
+### ✔ 로컬 (exploded) → **기존 방식 유지**
+
+### ✔ EC2 (압축 WAR) → **fallback 방식으로 전환**
+
+> 즉 **“분기만 추가”**합니다.
+
+---
+
+# 3️⃣ 최소 수정 버전 (추천)
+
+```java
+ServletContext ctx = getServletContext();
+
+// ① 기존 코드 유지
+String realPath = ctx.getRealPath("/WEB-INF/conf/");
+
+if (realPath != null) {
+    // ===== 로컬 (exploded WAR) =====
+    File dir = new File(realPath);
+
+    File[] files = dir.listFiles((d, name) -> name.endsWith(".xml"));
+    if (files != null) {
+        for (File f : files) {
+            try (InputStream is = new FileInputStream(f)) {
+                load(is);
+            }
+        }
+    }
+
+} else {
+    // ===== EC2 (압축 WAR) =====
+    // 🔽 최소 수정 fallback
+
+    String[] files = {
+        "a.xml",
+        "b.xml",
+        "c.xml"
+    };
+
+    for (String name : files) {
+        try (InputStream is =
+             ctx.getResourceAsStream("/WEB-INF/conf/" + name)) {
+            load(is);
+        }
+    }
+}
+```
+
+### 👍 이 방식의 특징
+
+* 기존 로컬 동작 **그대로 유지**
+* EC2에서만 대체 경로 사용
+* 수정량 최소
+
+---
+
+# 4️⃣ getRealPath 완전 제거 버전 (조금 더 안전)
+
+> **“환경 분기 자체를 제거”**
+
+### 구조
+
+```
+/WEB-INF/conf/
+ ├ files.index
+ ├ a.xml
+ ├ b.xml
+```
+
+---
+
+### 리팩토링 코드
+
+```java
+ServletContext ctx = getServletContext();
+
+try (InputStream is =
+     ctx.getResourceAsStream("/WEB-INF/conf/files.index");
+     BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+
+    br.lines().forEach(name -> {
+        try (InputStream xml =
+             ctx.getResourceAsStream("/WEB-INF/conf/" + name)) {
+            load(xml);
+        }
+    });
+}
+```
+
+### 👍 장점
+
+* 로컬 / EC2 완전 동일
+* getRealPath 제거
+* 환경 의존성 0
+
+---
+
+# 5️⃣ 추천 순서 (현실적인 선택)
+
+| 상황            | 선택        |
+| ------------- | --------- |
+| 당장 EC2만 살려야 함 | **분기 방식** |
+| 조금 손댈 수 있음    | index 방식  |
+| 운영까지 고려       | 외부 디렉토리   |
+
+---
+
+# 6️⃣ 체크리스트 (실수 방지)
+
+* `getResourceAsStream()` 결과 null 체크
+* 파일명 하드코딩 시 존재 여부 로그
+* index 파일 UTF-8 고정
+
+---
+
+## 🔚 한 줄 요약
+
+> **getRealPath는 “있으면 쓰고, 없으면 버린다”**
+>
+> 👉 분기 추가가 **최소 수정의 정답**
+> 👉 index 방식이 **근본 해결**
+
+---
+
+원하면
+
+* **지금 실제 코드 그대로 붙여서 리팩토링**
+* **index 파일 생성 규칙**
+* **외부 config 이전 단계별 가이드**
+
+바로 도와줄게요.
