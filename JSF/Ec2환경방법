@@ -1,0 +1,179 @@
+네, **보통 Tera Term으로 EC2에 접속해서 프로퍼티 파일 값을 이렇게 수정합니다.**
+실무에서 가장 많이 쓰는 **정석 루트**를 순서대로 정리할게요.
+
+---
+
+## ① Tera Term으로 EC2 접속
+
+```text
+Host: EC2 Public IP / DNS
+Port: 22
+Auth: Public Key
+User: ec2-user (Amazon Linux) / ubuntu (Ubuntu)
+Key: xxx.pem
+```
+
+접속되면 리눅스 쉘 화면이 나옵니다.
+
+---
+
+## ② 프로퍼티 파일 위치로 이동
+
+예시 (Java / WildFly 기준):
+
+```bash
+cd /opt/app/conf
+cd /opt/wildfly/standalone/configuration
+cd /home/ec2-user/app/config
+```
+
+위치 모르면:
+
+```bash
+find / -name "*.properties" 2>/dev/null
+```
+
+---
+
+## ③ 수정 전 백업 (중요 ⭐)
+
+```bash
+cp application.properties application.properties.bak
+```
+
+---
+
+## ④ 파일 수정 (가장 일반적)
+
+### 🔹 vi / vim 사용 (90% 이 방법)
+
+```bash
+vi application.properties
+```
+
+**vi 기본 조작**
+
+```
+i      ← 편집 모드
+ESC    ← 편집 종료
+:wq    ← 저장 후 종료
+:q!    ← 저장 안 하고 종료
+```
+
+값 수정 예:
+
+```properties
+db.url=jdbc:postgresql://localhost:5432/test
+```
+
+⬇
+
+```properties
+db.url=jdbc:postgresql://rds-endpoint:5432/prod
+```
+
+---
+
+## ⑤ 수정 내용 확인
+
+```bash
+cat application.properties
+grep db.url application.properties
+```
+
+---
+
+## ⑥ 권한 문제 있을 때
+
+```bash
+sudo vi application.properties
+```
+
+또는
+
+```bash
+sudo chown ec2-user:ec2-user application.properties
+```
+
+---
+
+## ⑦ 서비스 재시작 (이거 안 하면 반영 안 됨 ⚠️)
+
+### WildFly
+
+```bash
+sudo systemctl restart wildfly
+```
+
+### 직접 실행하는 Java
+
+```bash
+ps -ef | grep java
+kill -9 PID
+java -jar app.jar
+```
+
+---
+
+## ⑧ 잘 바뀌었는지 확인
+
+```bash
+tail -f server.log
+```
+
+또는 애플리케이션 기동 로그에서
+
+```
+Loaded application.properties
+```
+
+---
+
+## 🚨 실무 주의사항
+
+### ❗ 운영 서버 직접 수정 시
+
+* 재배포하면 사라질 수 있음
+* 여러 EC2면 한 대만 바뀔 수 있음
+
+### ❗ vi 실수 방지 팁
+
+```bash
+:set nu     # 줄 번호 표시
+```
+
+---
+
+## ✅ 초요약 (이것만 기억해도 됨)
+
+```bash
+ssh 접속 (Tera Term)
+→ cd 설정파일 위치
+→ cp 백업
+→ vi *.properties
+→ 저장
+→ 서비스 재시작
+```
+
+---
+
+## 🔥 당신 상황 기준 코멘트
+
+이전 질문들 보면
+
+* WildFly
+* getRealPath 문제
+* EC2 파일 접근 이슈
+
+가 엮여 있으니,
+**“WEB-INF 안에 있는 properties 직접 수정”** 구조라면
+나중에 또 막힐 확률 큽니다.
+
+👉 원하면
+
+* EC2에서도 안전한 **외부 config 구조**
+* 로컬/EC2 공통 properties 로딩 방식
+  지금 코드 기준으로 바로 리팩토링 예시 써줄게요.
+
+지금 수정하려는 파일 경로 알려주면,
+**정확히 그 위치 기준으로** 명령어 써줄게요.
