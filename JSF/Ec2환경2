@@ -1,0 +1,152 @@
+네, **가능합니다.**
+그리고 요즘은 **Tera Term보다 VS Code로 EC2 접속해서 수정하는 경우도 많아요.** 👍
+
+---
+
+## ✅ 방법: VS Code + Remote SSH
+
+VS Code에는 **Remote - SSH** 확장 기능이 있어서
+👉 **EC2를 로컬처럼 열어서 파일 수정**할 수 있습니다.
+
+---
+
+## 🧰 준비물
+
+1. **VS Code 설치**
+2. 확장 설치
+   👉 `Remote - SSH` (Microsoft)
+3. **EC2 접속 정보**
+
+   * Public IP or DNS
+   * 사용자 (`ec2-user`, `ubuntu`)
+   * `.pem` 키 파일
+4. **보안그룹**
+
+   * 22번 포트 열림
+
+---
+
+## 🔌 접속 절차 (한 번만 하면 됨)
+
+### ① VS Code → `Ctrl + Shift + P`
+
+```
+Remote-SSH: Add New SSH Host
+```
+
+### ② 접속 정보 입력
+
+```text
+ssh -i C:\key\mykey.pem ec2-user@xx.xx.xx.xx
+```
+
+### ③ SSH config 저장
+
+기본값 선택해도 OK
+
+---
+
+## ④ EC2 접속
+
+* 왼쪽 아래 `><` 아이콘 클릭
+* 방금 추가한 EC2 선택
+* 새 VS Code 창 열림 (← 이게 EC2 환경)
+
+---
+
+## ✏️ 파일 수정 방법
+
+### 🔹 폴더 열기
+
+```text
+File → Open Folder → /opt/app/conf
+```
+
+### 🔹 properties 파일 열어서 수정
+
+```properties
+db.host=rds-old
+⬇
+db.host=rds-new
+```
+
+### 🔹 저장 (Ctrl + S)
+
+→ **EC2 서버에 바로 반영됨**
+
+---
+
+## 🔁 서비스 재시작
+
+VS Code 터미널 열기:
+
+```bash
+sudo systemctl restart wildfly
+```
+
+로그 확인도 가능:
+
+```bash
+tail -f server.log
+```
+
+---
+
+## 🆚 Tera Term vs VS Code
+
+| 항목        | Tera Term | VS Code |
+| --------- | --------- | ------- |
+| 접속        | ⭕         | ⭕       |
+| 파일 수정     | vi 필요     | GUI 편집  |
+| 여러 파일 수정  | 불편        | 매우 편함   |
+| 검색 / diff | ❌         | ⭕       |
+| 초보자       | 어려움       | 쉬움      |
+
+👉 **properties 여러 개 수정할 때 VS Code가 압승**
+
+---
+
+## ⚠️ 주의사항
+
+### 🔸 권한 문제
+
+```text
+저장 안 됨 / Permission denied
+```
+
+→ VS Code 터미널에서:
+
+```bash
+sudo chown ec2-user:ec2-user application.properties
+```
+
+또는
+
+```bash
+sudo -e application.properties
+```
+
+### 🔸 운영 서버
+
+* 실수로 저장하면 즉시 반영됨
+* Git 관리 안 되는 파일은 특히 주의
+
+---
+
+## ✅ 결론
+
+* ⭕ **VS Code로 EC2 접속 가능**
+* ⭕ properties 파일 수정 매우 편함
+* ⭕ Tera Term 대체 가능
+* 🔥 실무에서는 VS Code + Remote SSH 많이 씀
+
+---
+
+원하면 다음도 도와줄게요👇
+
+* VS Code에서 **sudo 권한 파일 안전하게 수정하는 방법**
+* WildFly 설정파일 수정 시 주의점
+* 로컬 / EC2 공통 설정 구조
+
+지금 쓰는 OS가 Windows / macOS 중 뭐야?
+그에 맞춰 **SSH 설정 예시** 정확히 써줄게요.
