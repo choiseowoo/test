@@ -1,0 +1,133 @@
+이건 **라디오 버튼 상태별로 데이터를 기억해두고, 클릭 시 테이블/텍스트 값을 교체**하면 됩니다.
+핵심은 **라디오 버튼별 데이터를 JS 객체로 관리**하는 거예요.
+
+아래가 가장 깔끔하고 실무에서 많이 쓰는 방식입니다 👍
+
+---
+
+## ✅ 핵심 개념
+
+1. 라디오 버튼 값(`1`, `2`)을 key로 사용
+2. 각 상태의 데이터를 JS 객체에 저장
+3. 라디오 클릭 시 해당 데이터로 화면 갱신
+4. 다시 눌러도 **이전에 입력했던 값 유지**
+
+---
+
+## ✅ 예제 코드 (순수 JS)
+
+### 📌 HTML
+
+```html
+<label>
+  <input type="radio" name="mode" value="1" checked> 1번
+</label>
+<label>
+  <input type="radio" name="mode" value="2"> 2번
+</label>
+
+<br><br>
+
+<table border="1">
+  <tr>
+    <th>ID</th>
+    <th>이름</th>
+    <th>전화번호</th>
+  </tr>
+  <tr>
+    <td><input type="text" id="id"></td>
+    <td><input type="text" id="name"></td>
+    <td><input type="text" id="tel"></td>
+  </tr>
+</table>
+```
+
+---
+
+### 📌 JavaScript
+
+```html
+<script>
+  // 라디오별 데이터 저장소
+  const dataMap = {
+    1: { id: "111", name: "111", tel: "111" },
+    2: { id: "222", name: "222", tel: "222" }
+  };
+
+  // 현재 선택된 라디오
+  let currentMode = "1";
+
+  const idInput = document.getElementById("id");
+  const nameInput = document.getElementById("name");
+  const telInput = document.getElementById("tel");
+
+  // 화면에 값 세팅
+  function render(mode) {
+    idInput.value = dataMap[mode].id;
+    nameInput.value = dataMap[mode].name;
+    telInput.value = dataMap[mode].tel;
+  }
+
+  // 입력값 저장
+  function saveCurrent() {
+    dataMap[currentMode] = {
+      id: idInput.value,
+      name: nameInput.value,
+      tel: telInput.value
+    };
+  }
+
+  // 라디오 클릭 이벤트
+  document.querySelectorAll("input[name='mode']").forEach(radio => {
+    radio.addEventListener("change", e => {
+      saveCurrent();               // 이전 값 저장
+      currentMode = e.target.value;
+      render(currentMode);         // 새 값 표시
+    });
+  });
+
+  // 최초 렌더링
+  render(currentMode);
+</script>
+```
+
+---
+
+## ✅ 동작 흐름
+
+1. **1번 선택**
+
+   ```
+   111 / 111 / 111
+   ```
+2. 값 수정 가능 (예: 123 입력)
+3. **2번 클릭**
+
+   ```
+   222 / 222 / 222
+   ```
+4. **다시 1번 클릭**
+
+   ```
+   123 / 111 / 111  ← 이전 값 그대로 유지
+   ```
+
+---
+
+## 💡 실무 팁
+
+* JSF / JSP 환경이면
+  👉 `hidden` 필드 + JS 객체 같이 쓰면 안정적
+* 테이블 행이 여러 개면
+  👉 `dataMap[mode] = []` 배열로 관리
+* Vue 사용 중이면
+  👉 `v-model + watch`로 더 간단히 가능 (원하면 예제 줄게요)
+
+---
+
+원하면
+✔ **JSF 연동 버전**
+✔ **테이블 row 여러 개인 경우**
+✔ **Vue / TypeScript 버전**
+
+중에서 어떤 걸로 할지 말해줘 😊
