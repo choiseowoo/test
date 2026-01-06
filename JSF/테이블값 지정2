@@ -1,0 +1,195 @@
+좋아요 👍
+그럼 **JSF + JavaScript 연동 방식**으로,
+👉 **라디오 버튼을 바꿀 때마다 테이블 값이 전환되고**
+👉 **다시 돌아오면 이전 값이 유지되는 구조**를 설명할게요.
+
+아래 예시는 **JSF 2.x / Facelets 기준**,
+**서버 왕복 없이(JS만 사용)** 화면에서 처리하는 **실무형 패턴**입니다.
+
+---
+
+## ✅ 구조 개요 (중요)
+
+* JSF는 **초기값만 서버에서 내려줌**
+* 라디오 전환 & 값 유지 → **JavaScript 객체**
+* 저장 버튼 클릭 시에만 → **ManagedBean으로 전송**
+
+👉 이 방식이 **검색 / 페이지 이동 / 팝업** 많은 화면에서 가장 안정적입니다.
+
+---
+
+## 1️⃣ ManagedBean (초기 데이터만 담당)
+
+```java
+@ManagedBean
+@ViewScoped
+public class SampleBean implements Serializable {
+
+    private String mode = "1";
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
+}
+```
+
+---
+
+## 2️⃣ XHTML (JSF 화면)
+
+```xhtml
+<h:form id="form">
+
+    <!-- 라디오 버튼 -->
+    <h:selectOneRadio id="modeRadio" value="#{sampleBean.mode}">
+        <f:selectItem itemValue="1" itemLabel="1번" />
+        <f:selectItem itemValue="2" itemLabel="2번" />
+        <f:ajax execute="@this" render="@none" />
+    </h:selectOneRadio>
+
+    <br/><br/>
+
+    <!-- 테이블 -->
+    <h:panelGrid columns="3" border="1">
+        <h:outputText value="ID" />
+        <h:outputText value="이름" />
+        <h:outputText value="전화번호" />
+
+        <h:inputText id="id" />
+        <h:inputText id="name" />
+        <h:inputText id="tel" />
+    </h:panelGrid>
+
+    <!-- JS 데이터 저장용 -->
+    <h:inputHidden id="dataJson" />
+
+</h:form>
+```
+
+---
+
+## 3️⃣ JavaScript (핵심 로직)
+
+```html
+<script>
+  const dataMap = {
+    "1": { id: "111", name: "111", tel: "111" },
+    "2": { id: "222", name: "222", tel: "222" }
+  };
+
+  let currentMode = "1";
+
+  function el(id) {
+    return document.getElementById("form:" + id);
+  }
+
+  function render(mode) {
+    el("id").value   = dataMap[mode].id;
+    el("name").value = dataMap[mode].name;
+    el("tel").value  = dataMap[mode].tel;
+  }
+
+  function saveCurrent() {
+    dataMap[currentMode] = {
+      id: el("id").value,
+      name: el("name").value,
+      tel: el("tel").value
+    };
+  }
+
+  // 라디오 클릭 감지
+  document.querySelectorAll("input[name='form:modeRadio']").forEach(radio => {
+    radio.addEventListener("change", e => {
+      saveCurrent();
+      currentMode = e.target.value;
+      render(currentMode);
+    });
+  });
+
+  // 최초 표시
+  window.addEventListener("load", () => {
+    render(currentMode);
+  });
+</script>
+```
+
+---
+
+## ✅ 동작 순서
+
+1️⃣ 화면 로딩
+
+```
+1번 선택 → 111 / 111 / 111 표시
+```
+
+2️⃣ 1번에서 값 변경
+
+```
+ID = 999
+```
+
+3️⃣ 2번 클릭
+
+```
+222 / 222 / 222
+```
+
+4️⃣ 다시 1번 클릭
+
+```
+999 / 111 / 111 (이전 값 유지)
+```
+
+---
+
+## 💡 실무에서 중요한 포인트
+
+### ❗ 왜 서버에서 안 바꾸는가?
+
+* 라디오 클릭마다 서버 왕복 ❌
+* pagination / 검색 / 팝업 열림 시 값 초기화 위험 ❌
+* JS로 관리 → **화면 상태 유지 최강**
+
+---
+
+## 🔥 실무 확장 패턴
+
+### ✔ 저장 버튼 클릭 시 서버로 넘기기
+
+```js
+el("dataJson").value = JSON.stringify(dataMap);
+```
+
+→ Bean에서 JSON 파싱해서 DB 저장
+
+---
+
+### ✔ 테이블 row 여러 개인 경우
+
+```js
+dataMap["1"] = [
+  { id:"1", name:"A", tel:"111" },
+  { id:"2", name:"B", tel:"222" }
+];
+```
+
+---
+
+### ✔ ViewScoped 유지 이유
+
+* 같은 화면 내 상태 유지
+* 페이지 이동 시 자동 소멸
+
+---
+
+원하면 다음도 바로 이어서 설명해줄게요 👇
+👉 **JSF + MyBatis 저장 구조**
+👉 **검색 + 라디오 연동**
+👉 **부모/자식 팝업 연동 패턴**
+
+지금 화면이 **검색/등록/팝업 중 어떤 구조**인지 말해주면 거기에 맞춰 딱 맞게 짜줄게요.
