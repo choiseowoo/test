@@ -1,0 +1,122 @@
+짧게 말하면 👉 **아니요. `onload` 안 써도 이벤트는 발생합니다.**
+다만 **어떻게 이벤트를 걸었느냐**에 따라 차이가 있어요.
+
+---
+
+## 1️⃣ 라디오 버튼 이벤트는 `onload` 없어도 동작함
+
+### ✅ HTML에 직접 이벤트를 준 경우
+
+```html
+<input type="radio" name="type" value="1" onclick="changeTable(this.value)">
+<input type="radio" name="type" value="2" onclick="changeTable(this.value)">
+```
+
+```js
+function changeTable(val) {
+  document.getElementById("table1").style.display =
+    val === "1" ? "table" : "none";
+}
+```
+
+👉 **onload 없어도 정상 동작**
+(브라우저가 클릭 시 바로 함수 호출)
+
+---
+
+## 2️⃣ ❗ onload가 필요한 경우 (JS에서 이벤트 바인딩할 때)
+
+### ❌ 이런 코드면 onload 없으면 안 됨
+
+```js
+document.getElementById("radio1").addEventListener("change", function () {
+  // ...
+});
+```
+
+⛔ 이유
+
+* JS 실행 시점에 DOM이 아직 생성 안 됨
+* `getElementById` → `null`
+* 이벤트가 안 붙음
+
+---
+
+### ✅ 해결 ① `window.onload`
+
+```js
+window.onload = function () {
+  document.getElementById("radio1")
+    .addEventListener("change", changeTable);
+};
+```
+
+---
+
+### ✅ 해결 ② `DOMContentLoaded` (권장)
+
+```js
+document.addEventListener("DOMContentLoaded", function () {
+  document.getElementById("radio1")
+    .addEventListener("change", changeTable);
+});
+```
+
+---
+
+### ✅ 해결 ③ JS를 body 맨 아래에 두기 (실무에서 자주 씀)
+
+```html
+<body>
+  <!-- HTML -->
+  <script src="sample.js"></script>
+</body>
+```
+
+👉 이 경우도 `onload` 필요 없음
+
+---
+
+## 3️⃣ JSF 환경에서 특히 조심할 점 ⚠️
+
+(이전 질문들 보니 JSF 쓰고 계셔서)
+
+JSF는 **화면이 Ajax로 다시 그려질 수 있음**
+→ **onload에서 잡은 이벤트가 사라질 수 있음**
+
+### JSF에서 안전한 방법
+
+```html
+<h:selectOneRadio value="#{bean.type}"
+  onclick="changeTable(this.value)">
+```
+
+또는 Ajax 재렌더 후
+
+```js
+jsf.ajax.addOnEvent(function(data) {
+  if (data.status === "success") {
+    initEvent();
+  }
+});
+```
+
+---
+
+## 4️⃣ 결론 정리
+
+| 방식                      | onload 필요 |
+| ----------------------- | --------- |
+| HTML onclick / onchange | ❌ 필요 없음   |
+| JS addEventListener     | ⭕ 필요      |
+| script를 body 하단에 배치     | ❌ 필요 없음   |
+| JSF + Ajax 렌더링          | ⭕ 재바인딩 필요 |
+
+---
+
+### 한 줄 요약
+
+👉 **이벤트가 안 먹는 건 onload 때문이 아니라, DOM 생성 전에 이벤트를 붙였기 때문**
+
+JSF 기준으로 **라디오 버튼 + 테이블 show/hide 예제** 바로 짜줄 수도 있어요.
+지금 쓰는 방식(HTML/JSF/JS) 코드 조금 올려줄래요?
