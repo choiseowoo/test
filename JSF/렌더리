@@ -1,0 +1,140 @@
+요약하면 **라디오버튼으로 A/B 상세정보 일람표를 전환하되**,
+👉 **등록 버튼을 눌렀을 때 선택되지 않은 쪽(A 또는 B)의 값이 서로 영향을 주지 않게** 하면 됩니다.
+JSF 기준으로 가장 안전한 패턴을 단계별로 정리해줄게요.
+
+---
+
+## ✅ 핵심 원칙 (중요)
+
+1. **A / B는 서로 다른 모델 객체를 사용한다**
+2. **렌더링(rendered)으로 화면 표시만 제어한다** (display:none ❌)
+3. **등록 버튼에서 선택된 타입(A/B)만 서버에서 처리한다**
+4. **JS로 값만 바꾸고 submit은 JSF가 담당**
+
+---
+
+## 1️⃣ Backing Bean 구조 (가장 중요)
+
+```java
+@ViewScoped
+@Named
+public class DetailBean implements Serializable {
+
+    private String selectedType; // "A" or "B"
+
+    private DetailA detailA = new DetailA();
+    private DetailB detailB = new DetailB();
+
+    public void register() {
+        if ("A".equals(selectedType)) {
+            registerA(detailA);
+        } else if ("B".equals(selectedType)) {
+            registerB(detailB);
+        }
+    }
+}
+```
+
+👉 **A/B 값을 같은 변수에 절대 넣지 마세요**
+
+---
+
+## 2️⃣ XHTML – 라디오 버튼
+
+```xhtml
+<h:selectOneRadio value="#{detailBean.selectedType}">
+    <f:selectItem itemValue="A" itemLabel="상세정보 A"/>
+    <f:selectItem itemValue="B" itemLabel="상세정보 B"/>
+    <f:ajax render="detailA detailB"/>
+</h:selectOneRadio>
+```
+
+---
+
+## 3️⃣ 상세정보 A 일람표
+
+```xhtml
+<h:panelGroup id="detailA" rendered="#{detailBean.selectedType eq 'A'}">
+
+    <h:inputText value="#{detailBean.detailA.id}" />
+    <h:inputText value="#{detailBean.detailA.name}" />
+    <h:inputText value="#{detailBean.detailA.tel}" />
+
+</h:panelGroup>
+```
+
+---
+
+## 4️⃣ 상세정보 B 일람표
+
+```xhtml
+<h:panelGroup id="detailB" rendered="#{detailBean.selectedType eq 'B'}">
+
+    <h:inputText value="#{detailBean.detailB.id}" />
+    <h:inputText value="#{detailBean.detailB.name}" />
+    <h:inputText value="#{detailBean.detailB.tel}" />
+
+</h:panelGroup>
+```
+
+### ✅ `rendered`를 쓰는 이유
+
+* **보이지 않는 쪽은 JSF 라이프사이클에 참여하지 않음**
+* submit 시 **값이 덮어쓰여지지 않음**
+* `style="display:none"` ❌ (이건 값이 넘어옴)
+
+---
+
+## 5️⃣ 등록 버튼
+
+```xhtml
+<h:commandButton value="등록" action="#{detailBean.register}" />
+```
+
+---
+
+## 6️⃣ 왜 서로 영향이 안 가는가?
+
+| 항목          | 이유                |
+| ----------- | ----------------- |
+| A/B 값 섞임 ❌  | 서로 다른 객체          |
+| 숨긴 쪽 값 전송 ❌ | `rendered=false`  |
+| JS로 값 변경 ❌  | 서버 상태와 분리         |
+| 등록 분기 ⭕     | `selectedType` 기준 |
+
+---
+
+## 7️⃣ 자주 하는 실수 ❌
+
+❌ 같은 변수 사용
+
+```java
+private String id;
+```
+
+❌ display:none 사용
+
+```xhtml
+style="display:none"
+```
+
+❌ JS로 submit 제어
+
+```js
+form.submit(); // 위험
+```
+
+---
+
+## ✅ 정리 한 줄
+
+> **JSF에서는 “보여주지 않을 컴포넌트는 렌더링 자체를 안 한다” + “A/B는 모델을 분리한다”가 정답**
+
+---
+
+원하면
+✔ JS로 라디오 전환만 하고 서버는 안 타게 하는 방식
+✔ 기존 JS 코드 최소 수정 버전
+✔ PrimeFaces 사용 버전
+
+중에서 골라서 더 자세히 설명해줄게요 👍
