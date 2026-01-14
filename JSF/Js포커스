@@ -1,0 +1,68 @@
+응, **onfocus / onblur 이벤트** 쓰면 깔끔하게 돼 👍
+포커스 들어오면 콤마 제거 → 포커스 나가면 콤마 추가 방식이야.
+
+### 기본 예제 (순수 JS)
+
+```html
+<input type="text" id="numInput" value="111,111">
+
+<script>
+const input = document.getElementById("numInput");
+
+// 포커스 ON → 콤마 제거
+input.addEventListener("focus", function () {
+  this.value = this.value.replace(/,/g, "");
+});
+
+// 포커스 OUT → 콤마 추가
+input.addEventListener("blur", function () {
+  if (this.value === "") return;
+
+  const num = this.value.replace(/,/g, "");
+  if (!isNaN(num)) {
+    this.value = Number(num).toLocaleString();
+  }
+});
+</script>
+```
+
+### 동작
+
+* 포커스 ON → `111111`
+* 포커스 OUT → `111,111`
+
+---
+
+### 숫자만 입력되게 하고 싶을 때 (옵션)
+
+```js
+input.addEventListener("input", function () {
+  this.value = this.value.replace(/[^0-9]/g, "");
+});
+```
+
+---
+
+### JSF랑 같이 쓰는 경우 (hint)
+
+* 화면 표시용은 콤마 포함
+* 서버로 보낼 때는 **hidden 값**에 콤마 제거해서 넘기는 방식이 안전함
+
+```html
+<input type="hidden" id="realValue" name="realValue">
+
+<script>
+input.addEventListener("blur", function () {
+  document.getElementById("realValue").value =
+    this.value.replace(/,/g, "");
+});
+</script>
+```
+
+---
+
+원하면
+✔ 자릿수 제한
+✔ 소수점 포함
+✔ JSF `<h:inputText>` 버전
+도 같이 만들어줄게 😄
