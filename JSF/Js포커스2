@@ -1,0 +1,120 @@
+좋아, **3가지를 전부 만족하는 JSF 버전**으로 정리해줄게 👍
+(✔ 소수점 자리 고정 / ✔ 실시간 반영 / ✔ `<h:inputHidden>` + `<h:inputText>`)
+
+---
+
+## ✅ 동작 요약
+
+* 서버 → `hidden` 에 **순수 숫자(111111)** 전달
+* 서버 → `digit` 에 **자릿수(4 or 5)** 전달
+* 화면 표시용 `<h:inputText>`
+
+  * 포커스 IN: 콤마 제거
+  * 입력 중: **실시간으로 hidden 값 갱신**
+  * 포커스 OUT:
+
+    * 자릿수 기준으로 **소수점 자동 삽입**
+    * **소수점 자리 고정**
+    * **콤마 표시**
+
+---
+
+## ✅ JSF 화면 코드
+
+```xhtml
+<h:form id="form">
+
+  <!-- 서버용 -->
+  <h:inputHidden id="rawValue" value="#{bean.rawValue}" />
+  <h:inputHidden id="digit" value="#{bean.digit}" />
+
+  <!-- 표시용 -->
+  <h:inputText id="display"
+               onfocus="onFocusNumber(this)"
+               oninput="onInputNumber(this)"
+               onblur="onBlurNumber(this)" />
+
+</h:form>
+```
+
+---
+
+## ✅ JavaScript (핵심)
+
+```html
+<script>
+function getHidden(id) {
+  return document.getElementById("form:" + id);
+}
+
+// 포커스 IN → 콤마 제거
+function onFocusNumber(el) {
+  el.value = el.value.replace(/,/g, "");
+}
+
+// 입력 중 → 숫자만 허용 + hidden 실시간 반영
+function onInputNumber(el) {
+  el.value = el.value.replace(/[^0-9]/g, "");
+  getHidden("rawValue").value = el.value;
+}
+
+// 포커스 OUT → 소수점 고정 + 콤마
+function onBlurNumber(el) {
+  const raw = getHidden("rawValue").value; // 111111
+  const digit = Number(getHidden("digit").value); // 4 or 5
+
+  if (!raw || raw.length <= digit) {
+    el.value = raw;
+    return;
+  }
+
+  const decimalLen = raw.length - digit;
+  const intPart = raw.substring(0, decimalLen);
+  const decimalPart = raw.substring(decimalLen).padEnd(raw.length - decimalLen, "0");
+
+  // 소수점 자리 고정
+  const formatted =
+    Number(intPart).toLocaleString() + "." + decimalPart;
+
+  el.value = formatted;
+}
+</script>
+```
+
+---
+
+## ✅ 결과 예시
+
+| rawValue | digit | 화면 표시      |
+| -------- | ----- | ---------- |
+| 111111   | 5     | 11,111.1   |
+| 111111   | 4     | 1,111.11   |
+| 12345678 | 6     | 12,345.678 |
+
+---
+
+## ✅ 서버(Bean) 예시
+
+```java
+private String rawValue; // "111111"
+private int digit;       // 4 or 5
+```
+
+서버에서는 **rawValue만 사용**하면 됨
+(콤마/소수점 처리 X)
+
+---
+
+## 💡 실무 팁 (중요)
+
+* 표시값은 JS 전용
+* 서버 계산/DB 저장은 **hidden 값만**
+* validation은 **서버 + JS 이중 처리** 추천
+
+---
+
+원하면 다음도 바로 추가해줄게 👇
+✔ 최대 입력 자릿수 제한
+✔ 소수점 반올림/절사
+✔ `f:ajax` 연동
+✔ 기존 JSF 프로젝트 코드에 최소 수정 버전
