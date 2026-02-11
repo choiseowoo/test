@@ -1,0 +1,183 @@
+아하, 이제 맥락 정확히 이해했어 👍
+**“pom.xml로 메이븐에서 땡긴 JAR가 너무 많아서(1만 건…)
+→ WAR 안에 안 넣고
+→ WildFly 쪽에 ‘외부 공통’으로 두고 쓰는 구조가 가능하냐”** 이거지?
+
+👉 **결론부터 말하면: 가능 + 실제로 쓰는 방식이고, 그게 `WildFly Module` 방식이야.**
+전용 공통 시스템 있으면 **오히려 이게 정석**이야.
+
+---
+
+## 1️⃣ 이게 어떤 개념이냐면
+
+### ❌ 지금 구조 (문제 상황)
+
+* pom.xml
+* Maven dependency 수천~1만 개
+* 전부 `WEB-INF/lib`로 들어감
+* WAR 용량 폭발 💣
+* 배포 느림 / 중복 라이브러리 지옥
+
+### ✅ 바꾸려는 구조
+
+* **공통 JAR는 WildFly가 관리**
+* 애플리케이션(WAR)은 **참조만 함**
+* WAR는 얇아짐 🪶
+
+이걸 WildFly에서는 **Module**이라고 불러.
+
+---
+
+## 2️⃣ WildFly Module 방식 (실무에서 실제 사용)
+
+### 📂 디렉토리 구조
+
+```text
+$WILDFLY_HOME/modules/system/layers/base/
+  └── com/
+      └── company/
+          └── commons/
+              └── main/
+                  ├── common-1.0.0.jar
+                  ├── util-2.3.1.jar
+                  ├── xxx.jar
+                  └── module.xml
+```
+
+👉 **여기에 pom.xml로 받은 JAR들을 모아둠**
+
+---
+
+## 3️⃣ module.xml 예제 (중요)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<module xmlns="urn:jboss:module:1.9" name="com.company.commons">
+    <resources>
+        <resource-root path="common-1.0.0.jar"/>
+        <resource-root path="util-2.3.1.jar"/>
+        <!-- 필요하면 계속 추가 -->
+    </resources>
+
+    <dependencies>
+        <module name="javax.api"/>
+        <module name="org.slf4j"/>
+    </dependencies>
+</module>
+```
+
+✔ 이 module 하나가 **수천 개 JAR의 묶음** 역할을 함
+
+---
+
+## 4️⃣ WAR에서 이 공통 JAR 쓰는 방법
+
+### 📄 `jboss-deployment-structure.xml`
+
+```xml
+<jboss-deployment-structure>
+    <deployment>
+        <dependencies>
+            <module name="com.company.commons"/>
+        </dependencies>
+    </deployment>
+</jboss-deployment-structure>
+```
+
+📍 위치:
+
+```
+WEB-INF/jboss-deployment-structure.xml
+```
+
+👉 이렇게 하면
+
+* WAR 안에 JAR 없어도 됨
+* WildFly가 module에서 로딩
+
+---
+
+## 5️⃣ Maven 쪽 pom.xml은 어떻게 하냐?
+
+### ✅ dependency는 유지하되
+
+```xml
+<dependency>
+    <groupId>com.company</groupId>
+    <artifactId>common</artifactId>
+    <version>1.0.0</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+✔ `provided` 필수
+✔ 빌드 시 컴파일만 하고, 패키징은 안 함
+
+---
+
+## 6️⃣ “jar 1만 건”인 경우 현실적인 운영 방식
+
+솔직히 말하면:
+
+### 🚨 jar 1만 개를 module.xml에 다 적는 건 지옥
+
+그래서 실무에서는:
+
+### ✔ 패턴 1 (제일 많음)
+
+* 공통 시스템에서 **fat jar / bundle jar** 생성
+* WildFly module에는 **큰 JAR 몇 개만**
+* 내부적으로 shading / 병합
+
+### ✔ 패턴 2
+
+* 기능 단위 module 분리
+
+```
+com.company.logging
+com.company.db
+com.company.security
+```
+
+### ❌ 거의 안 쓰는 패턴
+
+* JAR 1만 개를 그대로 module에 등록
+  → 관리 불가 / 장애 나면 지옥 🔥
+
+---
+
+## 7️⃣ 이 방식의 장단점 (솔직)
+
+### 👍 장점
+
+* WAR 용량 극소화
+* 공통 라이브러리 중앙관리
+* 여러 시스템이 같은 JAR 사용
+* 배포 속도 ↑
+
+### 👎 단점
+
+* WildFly 버전 의존
+* module 관리 난이도 ↑
+* 로컬 개발환경 세팅 귀찮음
+
+👉 **전용 공통 시스템이 있으면 단점은 감수할 가치 있음**
+
+---
+
+## 8️⃣ 정리
+
+* ✔ Maven으로 받은 JAR을 **WildFly 외부로 옮기는 구조 → 가능**
+* ✔ 그 방식 = **WildFly Module**
+* ✔ jar 수가 많으면 **bundle/fat jar로 묶는 게 실무 정석**
+* ❌ WAR 안에 1만 JAR → 거의 재앙
+
+---
+
+원하면 다음도 같이 볼 수 있어:
+
+* 🔧 **pom.xml → module 자동 생성 스크립트**
+* 🧩 **기존 공통 시스템을 WildFly module로 이관 설계**
+* ⚠ **JSF / MyBatis / PostgreSQL 쓸 때 주의점**
+
+지금 쓰는 WildFly 버전이 몇이야? (10 / 14 / 26 / 27?)
