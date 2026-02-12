@@ -1,0 +1,116 @@
+응 👍 **그럴 가능성 매우 높아.**
+WildFly에서 “해당 파일(클래스/모듈) 없다”는 에러가 날 때, **module에 JAR을 물리적으로 안 넣었거나, module.xml에 제대로 선언 안 된 경우**가 가장 흔한 원인이야.
+
+아래 체크리스트로 바로 확인해봐 👇
+
+---
+
+## 1️⃣ JAR 물리적 배치 확인 (가장 흔한 원인)
+
+경로:
+
+```
+WILDFLY_HOME/modules/system/layers/base/
+  └── com/company/commons/main/
+```
+
+이 안에:
+
+```
+module.xml
+common.jar
+util.jar
+```
+
+✔ **실제 파일이 존재하는지**
+✔ 오타 없는지 (`common-1.0.jar`인데 module.xml엔 `common.jar`로 써놨다든지)
+
+👉 파일이 없으면 무조건 배포 실패 💥
+
+---
+
+## 2️⃣ module.xml 경로/파일명 정확한지
+
+예:
+
+```xml
+<resource-root path="common.jar"/>
+```
+
+* 대소문자 다름 ❌
+* 버전 다름 ❌
+* 확장자 오타 ❌
+
+Linux 서버면 **대소문자 구분함** ⚠
+
+---
+
+## 3️⃣ WAR에서 모듈을 참조했는지
+
+`WEB-INF/jboss-deployment-structure.xml` 있어?
+
+```xml
+<jboss-deployment-structure>
+    <deployment>
+        <dependencies>
+            <module name="com.company.commons"/>
+        </dependencies>
+    </deployment>
+</jboss-deployment-structure>
+```
+
+✔ module name이 module.xml의 name과 완전히 일치해야 함
+
+---
+
+## 4️⃣ pom.xml에서 provided 처리했는지
+
+만약 WAR 안에도 같은 JAR 있고
+module에도 있으면 → 충돌 날 수 있음
+
+```xml
+<scope>provided</scope>
+```
+
+확인 필요.
+
+---
+
+## 5️⃣ 에러 종류로 원인 구분
+
+### 🔴 이런 에러면 → JAR 없음
+
+```
+ModuleNotFoundException: com.company.commons
+```
+
+👉 module 경로 문제
+
+---
+
+### 🔴 이런 에러면 → JAR 안에 클래스 없음
+
+```
+ClassNotFoundException: com.company.SomeClass
+```
+
+👉
+
+* JAR 물리적 없음
+* dependency JAR 빠짐
+* module.xml에 빠짐
+
+---
+
+## 🎯 결론
+
+> “파일 없다고 뜬다”
+> → 80% 확률로 **module 폴더에 JAR 물리적으로 없음**
+> → 15%는 module.xml 오타
+> → 5%는 dependency 누락
+
+---
+
+에러 로그 한 줄만 보여줄래?
+`ModuleNotFoundException`인지
+`ClassNotFoundException`인지에 따라 바로 정확히 짚어줄게.
