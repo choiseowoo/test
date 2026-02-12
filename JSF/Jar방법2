@@ -1,0 +1,200 @@
+좋아 👍 질문 핵심 정확히 정리해서 답해줄게.
+
+---
+
+# ✅ 질문 1
+
+> module 디렉토리에 jar 파일을 직접 다운로드해서 배치해야 돼?
+
+### ✔ 결론: **응, 직접 배치해야 돼. (자동 아님)**
+
+WildFly Module 방식은
+👉 **Maven이 자동으로 복사해주지 않음**
+
+---
+
+## 🔎 왜냐면
+
+### 🔹 기존 방식 (WAR 내부)
+
+```
+mvn package
+↓
+target/xxx.war
+  └── WEB-INF/lib/*.jar  ← Maven이 자동 복사
+```
+
+### 🔹 Module 방식
+
+```
+WILDFLY_HOME/modules/...
+```
+
+이 경로는 **Maven 빌드 대상이 아니야.**
+그래서:
+
+* Maven → 로컬 저장소(.m2)에 다운로드
+* ❌ WildFly module 경로로 자동 복사 안 됨
+
+---
+
+## 💡 실무에서 어떻게 하냐?
+
+### 방법 1️⃣ 수동 복사 (작은 규모)
+
+```
+~/.m2/repository/.../*.jar
+→
+WILDFLY_HOME/modules/.../main/
+```
+
+### 방법 2️⃣ 스크립트 자동화 (실무 추천)
+
+* Maven dependency:copy-dependencies
+* 또는 Gradle task
+* 또는 CI에서 배포 스크립트 작성
+
+예:
+
+```xml
+<plugin>
+  <artifactId>maven-dependency-plugin</artifactId>
+</plugin>
+```
+
+👉 **운영에서는 거의 자동화 스크립트 씀**
+
+---
+
+# ✅ 질문 2
+
+> module.xml에 필요한 jar만 적어두면 그걸로 충분해?
+
+### ✔ 원칙적으로는 YES
+
+하지만 조건이 있어.
+
+---
+
+## 🔎 module.xml 역할
+
+```xml
+<module name="com.company.commons">
+    <resources>
+        <resource-root path="common.jar"/>
+        <resource-root path="util.jar"/>
+    </resources>
+</module>
+```
+
+이건:
+
+👉 “이 폴더 안에 있는 이 JAR들을 하나의 모듈로 묶겠다”는 선언
+
+---
+
+## 🚨 중요한 포인트
+
+### 1️⃣ module.xml에 적힌 JAR는
+
+✔ 반드시 **같은 폴더(main)** 안에 있어야 함
+
+```
+commons/
+ └── main/
+      ├── module.xml
+      ├── common.jar
+      └── util.jar
+```
+
+---
+
+### 2️⃣ 의존성 JAR도 필요
+
+예를 들어:
+
+* common.jar가 slf4j를 사용한다면
+* slf4j도 module dependency로 등록해야 함
+
+```xml
+<dependencies>
+    <module name="org.slf4j"/>
+</dependencies>
+```
+
+👉 이거 안 하면 ClassNotFoundException 터짐 💥
+
+---
+
+# 🎯 아주 중요한 현실 체크
+
+만약 JAR가 1만 개라면:
+
+### ❌ 이렇게 하면 위험
+
+* module.xml에 1만 개 resource-root
+* 관리 지옥
+* 버전 충돌
+
+---
+
+## ✅ 실무 정석 구조
+
+### 🔥 공통 시스템에서
+
+→ 하나의 “bundle jar” 생성
+
+예:
+
+```
+company-common-bundle.jar
+```
+
+그 안에 필요한 dependency 포함 (shading)
+
+---
+
+### WildFly module에는
+
+```
+resource-root path="company-common-bundle.jar"
+```
+
+👉 이렇게 1~5개 정도로 압축하는 게 정석
+
+---
+
+# 💡 지금 상황에서 제일 중요한 질문
+
+너희가 말한:
+
+> “전용 공통 시스템이 있어서 jar 1만 건”
+
+이게
+
+1️⃣ 정말 1만 개 dependency냐
+2️⃣ 아니면 공통 시스템 전체 artifact 수가 1만 개냐
+
+이거에 따라 전략 완전 달라져.
+
+---
+
+# 🔥 정리
+
+| 질문                   | 답                            |
+| -------------------- | ---------------------------- |
+| jar 직접 배치해야 하나?      | ✅ Yes (자동 아님)                |
+| module.xml에만 적으면 되나? | ✅ Yes, 단 JAR 실제로 있어야 함       |
+| dependency도 등록해야 하나? | ⚠ Yes                        |
+| 1만 개 그대로 module에?    | ❌ 비추천                        |
+| 정석 방법                | ✔ bundle/fat jar 후 module 등록 |
+
+---
+
+원하면 다음 단계로:
+
+* 📦 Maven → WildFly module 자동 배치 구조 만들어줄까?
+* 🏗 네 JSF + MyBatis 구조 기준으로 설계해줄까?
+* ⚠ module 방식 쓸 때 생기는 진짜 장애 사례 알려줄까?
+
+어디까지 깊게 갈까? 😎
