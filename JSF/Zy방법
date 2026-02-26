@@ -1,0 +1,17 @@
+<!-- template.xhtml -->
+<h:body>
+    <!-- 기존 컨텐츠 (메뉴, 본문 등) -->
+    <ui:insert name="content" />
+
+    <script type="text/javascript">
+        document.addEventListener('input', function (event) {
+            const target = event.target;
+            // maxlength 속성이 존재하고, input 또는 textarea인 경우만 실행
+            if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') &amp;&amp; target.maxLength > -1) {
+                if (target.value.length > target.maxLength) {
+                    target.value = target.value.substring(0, target.maxLength);
+                }
+            }
+        }, true);
+    </script>
+</h:body>
