@@ -1,0 +1,14 @@
+// 페이지 로드 시 전역 이벤트 리스너 등록
+document.addEventListener('input', function (event) {
+    const target = event.target;
+    
+    // maxlength 속성이 있는 input 또는 textarea인 경우
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        const maxLen = target.getAttribute('maxlength');
+        
+        if (maxLen && target.value.length > maxLen) {
+            // Ctrl+Z/Y 등으로 초과된 값을 즉시 절삭
+            target.value = target.value.substring(0, maxLen);
+        }
+    }
+}, true); // 캡처링 단계에서 잡아내어 안정성 확보
