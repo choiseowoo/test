@@ -1,0 +1,104 @@
+좋아 👍 상황 정리하면:
+
+* 각 페이지마다 글자수 제한 다름
+* 각 `<h:inputText>` / `<p:inputText>` 에 이미 `maxlength` 있음
+* Ctrl+Z / Ctrl+Y 허용해야 함
+* 공통 layout (menu.xhtml, paging.xhtml) 에서 한 번에 처리하고 싶음
+
+👉 그럼 **maxlength 속성을 그대로 읽어서 전역에서 자동 제어**하면 된다.
+
+---
+
+# ✅ 정답: maxlength 속성 기반 전역 제어
+
+공통으로 포함되는 `menu.xhtml` 또는 `template.xhtml` 에 아래 스크립트 추가:
+
+```xhtml
+<h:outputScript target="body">
+document.addEventListener("input", function (e) {
+
+    var el = e.target;
+
+    // input / textarea 만 대상
+    if (el.tagName !== "INPUT" && el.tagName !== "TEXTAREA") {
+        return;
+    }
+
+    // maxlength 있는 요소만 처리
+    var max = el.getAttribute("maxlength");
+    if (!max) {
+        return;
+    }
+
+    max = parseInt(max);
+
+    if (el.value.length > max) {
+        el.value = el.value.substring(0, max);
+    }
+
+});
+</h:outputScript>
+```
+
+---
+
+# ✅ 이 방식의 특징
+
+✔ 페이지마다 maxlength 달라도 자동 적용
+✔ JSF / PrimeFaces 구분 없음
+✔ Ctrl+Z / Ctrl+Y 대응
+✔ 붙여넣기 대응
+✔ Ajax 리렌더링 대응 (이벤트 위임이라 OK)
+
+---
+
+# 💡 왜 이게 되는가?
+
+우리는 길이를 고정값으로 쓰는 게 아니라:
+
+```javascript
+var max = el.getAttribute("maxlength");
+```
+
+👉 각 태그에 설정된 maxlength 값을 **동적으로 읽는다**
+
+즉:
+
+```xhtml
+<h:inputText maxlength="5" />
+<h:inputText maxlength="20" />
+<p:inputText maxlength="12" />
+```
+
+전부 자동 대응.
+
+---
+
+# 🔥 실무에서 더 안전하게 하려면
+
+서버 쪽도 같이:
+
+```xhtml
+<f:validateLength maximum="20"/>
+```
+
+왜냐면 JS는 우회 가능하기 때문.
+
+---
+
+# 🎯 최종 결론
+
+네 구조에서는:
+
+> 공통 layout에 전역 input 이벤트 하나 추가하는 게 가장 깔끔하고 유지보수 좋다.
+
+각 페이지 수정 필요 없음.
+
+---
+
+원하면
+📌 한글 2byte 계산 포함 버전
+📌 숫자 전용 + maxlength 자동 적용
+📌 PrimeFaces 전용 고급 버전
+
+어디까지 갈까? 😎
