@@ -1,0 +1,80 @@
+document.addEventListener("DOMContentLoaded", function () {
+
+    function attachYmMask(el) {
+
+        el.addEventListener("beforeinput", function (e) {
+
+            // Undo / Redo / Delete / Paste 허용
+            if (
+                e.inputType === "historyUndo" ||
+                e.inputType === "historyRedo" ||
+                e.inputType.startsWith("delete") ||
+                e.inputType === "insertFromPaste"
+            ) {
+                return;
+            }
+
+            // 숫자만 허용
+            if (e.inputType === "insertText" && !/^\d$/.test(e.data)) {
+                e.preventDefault();
+                return;
+            }
+
+            const value = el.value;
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+
+            // 6자리 제한 (YYYYMM)
+            const digits = value.replace(/\D/g, "");
+            if (digits.length >= 6 && start === end) {
+                e.preventDefault();
+                return;
+            }
+
+            // 4번째 자리에서 자동 "/" 삽입
+            if (e.inputType === "insertText" && start === 4) {
+                e.preventDefault();
+
+                // "/" 먼저 삽입
+                el.setRangeText("/", start, end, "end");
+
+                // 그 다음 숫자 삽입
+                el.setRangeText(e.data, el.selectionStart, el.selectionStart, "end");
+            }
+        });
+
+        // 붙여넣기 후 정리 (Undo 유지됨)
+        el.addEventListener("input", function () {
+
+            let digits = el.value.replace(/\D/g, "");
+
+            if (digits.length > 6) {
+                digits = digits.substring(0, 6);
+            }
+
+            let formatted = digits;
+
+            if (digits.length >= 5) {
+                formatted = digits.substring(0, 4) + "/" + digits.substring(4);
+            }
+
+            // 전체 덮어쓰기 대신 비교 후 최소 변경
+            if (el.value !== formatted) {
+                const pos = el.selectionStart;
+                el.setRangeText(
+                    formatted,
+                    0,
+                    el.value.length,
+                    "end"
+                );
+                el.setSelectionRange(pos, pos);
+            }
+        });
+
+    }
+
+    // 시작년월 / 종료년월 둘 다 적용
+    attachYmMask(document.getElementById("startYm"));
+    attachYmMask(document.getElementById("endYm"));
+
+});
