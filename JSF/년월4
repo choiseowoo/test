@@ -1,0 +1,135 @@
+좋아요 👍 상황 이해했어요.
+
+> ✔ 값은 `bean`에서 자동으로 **당일 날짜(예: 2026/03/03)** 로 세팅됨
+> ✔ 날짜가 바뀌면 자동으로 바뀜
+> ✔ 그 초기값도 Ctrl+Z로 돌아가게 하고 싶음
+
+---
+
+# 🔥 핵심 문제
+
+JSF가 렌더링하면서
+
+```xhtml
+<h:inputText id="startYm" value="#{bean.today}" />
+```
+
+이렇게 **처음부터 value 속성으로 출력하면 Undo 기준값이 됨 → 문제 없음**
+
+하지만 ❗
+
+* Ajax 후에 JS로 `.value = bean값`
+* 또는 DOMContentLoaded에서 `.value = ...`
+* 또는 jQuery `.val(...)`
+
+이렇게 세팅하면
+
+👉 그 값은 Undo 스택에 들어가지 않음
+👉 Ctrl+Z로 못 돌아감
+
+---
+
+# 🎯 해결 방법 (동적 bean 값 적용 + Undo 보장)
+
+고정 문자열 대신
+**현재 input에 들어있는 값을 "입력처럼 다시 기록"** 하면 됨
+
+---
+
+## ✅ 완전 안전 버전
+
+```javascript
+function registerInitialValueToUndo(input) {
+
+    const initialValue = input.value; // bean에서 렌더링된 현재 값
+
+    input.focus();
+
+    // 전체 선택
+    input.setSelectionRange(0, input.value.length);
+
+    // 지우기 (히스토리 기록됨)
+    input.setRangeText("", 0, input.value.length, "end");
+
+    // 다시 삽입 (히스토리 기록됨)
+    input.setRangeText(initialValue, 0, 0, "end");
+
+}
+```
+
+---
+
+## ✅ 사용 방법
+
+```javascript
+document.addEventListener("DOMContentLoaded", function() {
+
+    const start = document.getElementById("startYm");
+    const end = document.getElementById("endYm");
+
+    registerInitialValueToUndo(start);
+    registerInitialValueToUndo(end);
+
+});
+```
+
+---
+
+# 🔎 이게 왜 되냐?
+
+`setRangeText()`는 브라우저에게
+
+> "사용자가 직접 텍스트를 입력했다"
+
+라고 인식시킴
+
+그래서 Undo 스택에 이렇게 쌓임:
+
+```text
+[초기값] → (사용자 입력1) → (사용자 입력2)
+```
+
+이제 Ctrl+Z 하면 초기값까지 정상 복귀 ✅
+
+---
+
+# ⚠ JSF Ajax 환경이라면 중요
+
+Ajax로 부분 리렌더링 하면
+input DOM 자체가 새로 생성됨 → Undo 스택 날아감
+
+그 경우는:
+
+```javascript
+jsf.ajax.addOnEvent(function(data) {
+    if (data.status === "success") {
+        registerInitialValueToUndo(document.getElementById("startYm"));
+    }
+});
+```
+
+이렇게 Ajax 완료 후 다시 등록해야 함
+
+---
+
+# 🎯 정리
+
+| 상황            | 해결 방법             |
+| ------------- | ----------------- |
+| 서버 렌더링 초기값    | 그냥 두면 OK          |
+| JS로 value 세팅  | setRangeText로 재기록 |
+| Ajax rerender | 성공 후 재등록          |
+
+---
+
+# 💡 현실적으로 가장 좋은 구조
+
+✔ 초기값은 JSF value로 렌더
+✔ JS에서 .value 직접 세팅 금지
+✔ 필요하면 setRangeText로 Undo 등록
+✔ beforeinput으로 마스크 처리
+
+---
+
+원하면
+👉 시작/종료 날짜 + Undo 완전 보장 + Ajax 대응 + 마스크 통합한 최종 실전 버전 만들어줄까요?
