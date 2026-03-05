@@ -1,0 +1,136 @@
+좋아요 👍 mask 안 쓰면 해결 가능합니다.
+
+그럼 거의 확실한 원인은 이것입니다 👇
+
+> jQuery `.val()` 로 blur / focus 때 값을 바꾸고 있음
+> 또는 `input / keyup` 이벤트 안에서 `.val()` 실행 중
+
+이게 **undo stack을 매번 초기화**시킵니다.
+
+---
+
+# 🎯 핵심 정리
+
+브라우저 Undo는:
+
+* 사용자가 직접 입력한 변경만 기록
+* JS에서 `element.value = ...`
+* jQuery에서 `.val(...)`
+
+👉 이 순간 **이전 undo 기록이 날아갑니다**
+
+그래서:
+
+* 시작년월에서 여러 번 수정
+* 종료년월 갔다가
+* 다시 시작년월에서 Ctrl+Z
+
+→ 최초값이 안 돌아오는 현상 발생
+
+---
+
+# ✅ jQuery 사용하면서 완전 해결하는 방법
+
+이벤트는 jQuery 써도 됩니다.
+**값 변경만 순수 DOM API 사용**
+
+---
+
+## 🔥 안정 코드 (Ctrl+Z/Y 완전 정상)
+
+```javascript
+$("#startYm, #endYm").on("focus", function () {
+
+    const el = this;
+    const raw = el.value.replace(/\//g, "");
+
+    if (el.value !== raw) {
+        el.setSelectionRange(0, el.value.length);
+        el.setRangeText(raw, 0, el.value.length, "end");
+    }
+
+});
+
+$("#startYm, #endYm").on("blur", function () {
+
+    const el = this;
+    const raw = el.value.replace(/\D/g, "");
+
+    if (raw.length === 8) {
+
+        const formatted =
+            raw.substring(0, 4) + "/" +
+            raw.substring(4, 6) + "/" +
+            raw.substring(6, 8);
+
+        if (el.value !== formatted) {
+            el.setSelectionRange(0, el.value.length);
+            el.setRangeText(formatted, 0, el.value.length, "end");
+        }
+    }
+
+});
+```
+
+---
+
+# 🔥 반드시 지켜야 할 것
+
+코드 전체에서 이거 검색하세요:
+
+```
+.val(
+```
+
+만약 날짜 필드에 대해 `.val()` 쓰는 코드가 **어디라도 있으면**
+Undo는 다시 깨집니다.
+
+특히 이런 코드 있으면 위험:
+
+```javascript
+.on("keyup", function() {
+   $(this).val(...)
+});
+```
+
+이게 가장 흔한 원인입니다.
+
+---
+
+# 💡 왜 종료년월은 정상처럼 보이냐면
+
+Undo stack은 "마지막 value 변경 기준"으로 동작합니다.
+
+시작년월에 JS value 변경이 더 많이 일어나면
+그 필드만 깨진 것처럼 보입니다.
+
+---
+
+# 🚨 추가 확인
+
+혹시 JSF에서:
+
+```xhtml
+<f:ajax render="startYm" />
+```
+
+같은 거 있나요?
+
+ajax render가 input을 다시 그리면
+undo stack도 같이 날아갑니다.
+
+---
+
+# 🎯 지금 상황에서 99% 원인
+
+✔ blur/focus에서 `.val()`
+✔ keyup/input 이벤트에서 `.val()`
+✔ ajax re-render
+
+이 3개 중 하나입니다.
+
+---
+
+원하면
+지금 쓰는 blur/focus jQuery 코드 그대로 붙여주세요.
+딱 보고 **undo 깨는 부분 정확히 집어서 수정해드릴게요.**
