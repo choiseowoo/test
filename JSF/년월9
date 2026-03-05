@@ -1,0 +1,211 @@
+좋습니다 👍
+**JSF + jQuery에서 바로 쓸 수 있는 “input 하나 + `/` 표시 + Ctrl+Z/Y 정상” 완성 코드**를 정리해 드리겠습니다.
+핵심은 **input value는 숫자만 유지하고, 화면에만 `/`를 표시하는 overlay 방식**입니다.
+
+---
+
+# 1️⃣ XHTML (JSF)
+
+```xhtml
+<h:panelGroup styleClass="date-input">
+
+    <h:inputText id="startYm"
+                 value="#{bean.startYm}"
+                 maxlength="8"
+                 styleClass="date-raw"/>
+
+    <span class="date-view"></span>
+
+</h:panelGroup>
+```
+
+JSF에서 실제 서버로 전달되는 값은
+
+```
+20260304
+```
+
+입니다.
+
+---
+
+# 2️⃣ CSS
+
+```css
+.date-input {
+    position: relative;
+    display: inline-block;
+}
+
+.date-input input {
+    position: relative;
+    background: transparent;
+    color: transparent;
+    caret-color: black;
+    z-index: 2;
+}
+
+.date-input .date-view {
+    position: absolute;
+    left: 5px;
+    top: 3px;
+    color: black;
+    pointer-events: none;
+    z-index: 1;
+}
+```
+
+의미
+
+```
+input value : 20260304
+화면 표시  : 2026/03/04
+```
+
+---
+
+# 3️⃣ jQuery
+
+```javascript
+$(function () {
+
+    $(".date-raw").on("input", function () {
+
+        let raw = this.value.replace(/\D/g, "");
+        this.value = raw;
+
+        let view = raw;
+
+        if (raw.length >= 4) {
+            view = raw.substring(0,4) + "/" + raw.substring(4);
+        }
+
+        if (raw.length >= 6) {
+            view = raw.substring(0,4) + "/" +
+                   raw.substring(4,6) + "/" +
+                   raw.substring(6);
+        }
+
+        $(this).siblings(".date-view").text(view);
+
+    });
+
+});
+```
+
+---
+
+# 4️⃣ 동작 예
+
+사용자 입력
+
+```
+20260304
+```
+
+화면 표시
+
+```
+2026/03/04
+```
+
+실제 input value
+
+```
+20260304
+```
+
+---
+
+# 5️⃣ Ctrl+Z 테스트
+
+입력
+
+```
+20260304
+```
+
+Ctrl+Z
+
+```
+2026030
+202603
+20260
+2026
+202
+20
+2
+```
+
+✔ **완전히 정상 동작**
+
+이유
+
+```
+input value를 JS가 포맷으로 변경하지 않기 때문
+```
+
+---
+
+# 6️⃣ JSF 서버에서 받는 값
+
+Bean
+
+```java
+private String startYm;
+```
+
+값
+
+```
+20260304
+```
+
+따라서
+
+```
+replace("/") 같은 처리 필요 없음
+```
+
+---
+
+# 🔥 이 방식의 장점
+
+✔ Ctrl+Z 정상
+✔ Ctrl+Y 정상
+✔ `/` 화면 표시 가능
+✔ JSF submit 값은 숫자
+✔ focus / blur 변환 필요 없음
+✔ jQuery `.val()` 문제 없음
+
+---
+
+# ⚠️ 하나 주의
+
+초기값이 있을 경우 (`20260304`)
+페이지 로드시 `/` 표시를 한 번 만들어줘야 합니다.
+
+추가 코드:
+
+```javascript
+$(".date-raw").trigger("input");
+```
+
+---
+
+# 👍 실무 팁
+
+시작년월 / 종료년월 두 개면
+
+```javascript
+$(".date-raw")
+```
+
+한 줄로 둘 다 처리됩니다.
+
+---
+
+💡 만약 원하시면
+**지금 사용 중인 “focus → / 제거, blur → / 추가” 코드 그대로 유지하면서 Ctrl+Z 문제 거의 100% 해결하는 방법**도 있습니다.
+
+이건 **JSF 프로젝트에서 실제 많이 쓰는 트릭**인데 위 방법보다 코드 수정이 훨씬 적습니다.
