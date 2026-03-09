@@ -1,0 +1,169 @@
+좋습니다 👍
+지금 구조( **입력 input + 표시 input** ) 그대로 두고
+**Ctrl+Z / Ctrl+Y가 값 단위로 동작**하도록 하는 간단한 **jQuery Undo Stack** 구현입니다.
+
+핵심 아이디어:
+
+* 브라우저 기본 undo 사용 ❌
+* **우리가 값 변경 히스토리를 직접 관리**
+* blur 또는 값 확정 시 **history에 저장**
+
+---
+
+# 1️⃣ XHTML 예 (JSF)
+
+```xhtml
+<h:inputText id="dateRaw" styleClass="date-raw" maxlength="8"/>
+<h:inputText id="dateView" styleClass="date-view" readonly="true"/>
+```
+
+```
+dateRaw  → 입력용 (11111111)
+dateView → 표시용 (2026/03/06)
+```
+
+---
+
+# 2️⃣ jQuery 코드 (Undo stack 구현)
+
+```javascript
+$(function () {
+
+    let history = [];
+    let index = -1;
+
+    const $input = $(".date-raw");
+
+    function saveState(val) {
+        if (history[index] === val) return;
+
+        history = history.slice(0, index + 1);
+        history.push(val);
+        index++;
+    }
+
+    function formatDate(val) {
+
+        if (val.length !== 8) return val;
+
+        return val.substring(0,4) + "/" +
+               val.substring(4,6) + "/" +
+               val.substring(6,8);
+    }
+
+    // 초기값 저장
+    saveState($input.val());
+
+    // 입력 완료 시 히스토리 저장
+    $input.on("blur", function () {
+
+        const val = this.value.replace(/\D/g,"");
+        this.value = val;
+
+        $(".date-view").val(formatDate(val));
+
+        saveState(val);
+
+    });
+
+    // Ctrl+Z / Ctrl+Y 처리
+    $input.on("keydown", function (e) {
+
+        if (e.ctrlKey && e.key === "z") {
+
+            e.preventDefault();
+
+            if (index > 0) {
+                index--;
+                this.value = history[index];
+                $(".date-view").val(formatDate(history[index]));
+            }
+        }
+
+        if (e.ctrlKey && e.key === "y") {
+
+            e.preventDefault();
+
+            if (index < history.length - 1) {
+                index++;
+                this.value = history[index];
+                $(".date-view").val(formatDate(history[index]));
+            }
+        }
+
+    });
+
+});
+```
+
+---
+
+# 3️⃣ 동작
+
+입력
+
+```
+11111111
+22222222
+33333333
+```
+
+Ctrl+Z
+
+```
+33333333
+→ 22222222
+→ 11111111
+```
+
+Ctrl+Y
+
+```
+11111111
+→ 22222222
+→ 33333333
+```
+
+✔ **값 단위 undo**
+
+---
+
+# 4️⃣ 표시 input
+
+자동으로
+
+```
+11111111 → 1111/11/11
+22222222 → 2222/22/22
+```
+
+표시됩니다.
+
+---
+
+# 5️⃣ 장점
+
+✔ Ctrl+Z 정상
+✔ Ctrl+Y 정상
+✔ 값 단위 undo
+✔ JSF submit 영향 없음
+✔ 기존 구조 그대로 사용
+
+---
+
+# ⚠️ 주의
+
+이 코드는 **브라우저 기본 undo를 막고 (`preventDefault`) 우리가 직접 처리**합니다.
+
+그래서:
+
+* 값 단위 undo 가능
+* 브라우저 기본 동작과 충돌 없음
+
+---
+
+💡 만약 원하시면
+제가 **지금 상황(JSF + jQuery 날짜 입력)** 기준으로 더 좋은 **“진짜 실무에서 쓰는 방식”**도 알려드릴게요.
+
+이건 코드도 더 짧고
+Ctrl+Z 문제도 **거의 완벽하게 해결되는 패턴**입니다.
