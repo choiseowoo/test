@@ -1,0 +1,171 @@
+네 👍 **`setTimeout`으로 약간의 시간차를 주면 실제로 문제 완화될 가능성이 있습니다.**
+이유는 **렌더링 프레임을 분리해 주기 때문**입니다.
+
+---
+
+# 왜 setTimeout이 도움이 될 수 있나
+
+지금 전환 흐름이 아마 이런 구조일 가능성이 큽니다.
+
+```id="5z1aof"
+blur
+→ input8 hide
+→ input10 show
+```
+
+브라우저는 이걸 **같은 렌더링 사이클에서 처리**합니다.
+
+그래서 한 프레임에서
+
+```id="8jy7io"
+input8
+input10
+```
+
+둘 다 잠깐 존재합니다.
+
+---
+
+# setTimeout을 쓰면
+
+```javascript
+$("#input8").on("blur", function () {
+
+    $("#input8").hide();
+
+    setTimeout(function(){
+        $("#input10").show();
+    }, 0);
+
+});
+```
+
+이렇게 하면 브라우저 흐름이 바뀝니다.
+
+```id="k5hyhc"
+1. input8 hide
+2. repaint
+3. setTimeout 실행
+4. input10 show
+5. repaint
+```
+
+즉 **두 input이 같은 프레임에 그려지지 않습니다.**
+
+그래서
+
+```
+border 겹침
+focus 겹침
+렌더링 glitch
+```
+
+가 줄어듭니다.
+
+---
+
+# 보통 더 안정적인 값
+
+`0`도 되지만 보통 이렇게 씁니다.
+
+```javascript
+setTimeout(fn, 10);
+```
+
+또는
+
+```javascript
+setTimeout(fn, 16);
+```
+
+이유:
+
+```
+16ms ≈ 1 frame (60fps)
+```
+
+---
+
+# 예시 코드 (추천)
+
+```javascript
+$("#input8").on("blur", function () {
+
+    const val = this.value;
+
+    $("#input8").hide();
+
+    setTimeout(function(){
+
+        $("#input10").val(formatDate(val));
+        $("#input10").show();
+
+    }, 10);
+
+});
+```
+
+---
+
+# 하지만 알아야 할 점
+
+`setTimeout`은 **완전한 해결책은 아닙니다.**
+
+이유:
+
+* 브라우저마다 렌더링 타이밍 다름
+* 테이블 레이아웃 영향
+* focus 이동 타이밍
+
+그래서 **95%는 해결되지만 100%는 아닐 수 있습니다.**
+
+---
+
+# 실제로 더 안정적인 방법
+
+전환 순서를 이렇게 하면 glitch가 거의 사라집니다.
+
+```id="nq0yct"
+1. blur
+2. input8 hide
+3. repaint
+4. input10 show
+5. focus 이동
+```
+
+즉
+
+```javascript
+$("#input8").on("blur", function () {
+
+    const val = this.value;
+
+    $("#input8").hide();
+
+    requestAnimationFrame(function(){
+
+        $("#input10").val(formatDate(val));
+        $("#input10").show();
+
+    });
+
+});
+```
+
+`requestAnimationFrame`이 **렌더링 프레임 기준이라 더 안정적**입니다.
+
+---
+
+# 결론
+
+✔ `setTimeout` → **효과 있음 (대부분 해결)**
+✔ `requestAnimationFrame` → **더 안정적**
+✔ CSS 겹침 구조 → **근본 해결**
+
+---
+
+💡 지금 설명을 보면 **input 2개 전환 방식**에서 생기는 **대표적인 UI glitch**입니다.
+
+만약 원하시면 제가 **지금 구조(JSF + table + input2개)** 기준으로
+**glitch 없이 100% 안정적으로 전환되는 패턴**도 보여드릴게요.
+(코드 6줄 정도로 해결됩니다.)
