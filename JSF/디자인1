@@ -1,0 +1,160 @@
+요구한 동작을 정리하면 이겁니다.
+
+| 상태    | 화면                  |
+| ----- | ------------------- |
+| 입력    | aBcD (사용자가 입력한 그대로) |
+| blur  | ABCD                |
+| 다시 클릭 | ABCD                |
+
+즉
+**값은 그대로 두고, blur 이후에는 항상 대문자 표시**입니다.
+그리고 **Ctrl+Z / Ctrl+Y도 깨지면 안 됨**.
+
+이 경우 **CSS + focus/blur 제어**가 가장 안전합니다.
+
+---
+
+# 구현 방법
+
+### HTML
+
+```html
+<input id="code">
+```
+
+### CSS
+
+```css
+.uppercase {
+    text-transform: uppercase;
+}
+```
+
+### JS
+
+```javascript
+const el = document.getElementById("code");
+
+el.addEventListener("focus", function () {
+    el.classList.remove("uppercase");
+});
+
+el.addEventListener("blur", function () {
+    el.classList.add("uppercase");
+});
+```
+
+---
+
+# 동작 과정
+
+### ① 입력 중
+
+사용자가
+
+```
+aBcD
+```
+
+입력
+
+화면
+
+```
+aBcD
+```
+
+value
+
+```
+aBcD
+```
+
+---
+
+### ② 다른 곳 클릭 (blur)
+
+CSS 적용
+
+```
+ABCD
+```
+
+value는 그대로
+
+```
+aBcD
+```
+
+---
+
+### ③ 다시 클릭
+
+focus 이벤트 → CSS 제거
+
+하지만 **value 자체는 `aBcD`** 이기 때문에
+화면은
+
+```
+aBcD
+```
+
+이 됩니다.
+
+---
+
+# 그런데 질문 요구사항은
+
+> 다시 클릭 → **ABCD**
+
+이므로 focus에서 **CSS 제거를 하지 않으면 됩니다.**
+
+즉 JS 없이도 가능:
+
+```css
+input {
+    text-transform: uppercase;
+}
+```
+
+그러면
+
+| 상태    | 표시                |
+| ----- | ----------------- |
+| 입력    | aBcD 입력 → 화면 ABCD |
+| blur  | ABCD              |
+| 다시 클릭 | ABCD              |
+
+value
+
+```
+aBcD
+```
+
+---
+
+# ✔ Ctrl+Z 문제
+
+이 방식은
+
+* JS로 value 변경 없음
+* undo stack 정상
+* 브라우저 호환 문제 없음
+
+---
+
+# ✔ 결론 (가장 안전)
+
+```css
+input {
+    text-transform: uppercase;
+}
+```
+
+**value는 원본 유지
+화면만 대문자 표시**
+
+---
+
+원하면 추가로 **JSF + XHTML에서 이걸 적용할 때 주의할 점**도 알려줄게.
+(JSF는 re-render 때문에 input 스타일이 초기화되는 경우가 있습니다.)
