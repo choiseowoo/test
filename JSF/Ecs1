@@ -1,0 +1,147 @@
+아 그 상황이면 문제 핵심이 이거야 👇
+
+👉 **ESC가 “취소” 역할이 아니라 “중복 submit 트리거”처럼 동작하고 있음**
+
+그래서
+
+* 프로그래스바 표시됨
+* ESC 누름
+* 다시 submit or 상태 꼬임
+* 👉 무한루프 / 화면 멈춤
+
+---
+
+## 🔥 왜 이런 일이 생기냐
+
+보통 이런 구조일 가능성 높음:
+
+```javascript
+form.submit → 프로그래스바 표시 → 입력 막기
+```
+
+근데 ESC 누르면:
+
+* 포커스 빠짐 (`blur`)
+* 일부 이벤트 다시 발생
+* 또는 submit 재호출 / 상태 초기화 안됨
+
+👉 **“로딩 상태인데 다시 로딩 시작”** → 무한루프
+
+---
+
+## ✅ 해결 핵심 2가지
+
+### 1️⃣ “로딩 중인지” 상태를 반드시 관리해야 함
+
+```javascript
+let isSubmitting = false;
+
+form.addEventListener("submit", function(e) {
+    if (isSubmitting) {
+        e.preventDefault(); // 중복 submit 방지
+        return;
+    }
+
+    isSubmitting = true;
+
+    showLoading(); // 프로그래스바 표시
+});
+```
+
+👉 이거 없으면 100% 다시 터짐
+
+---
+
+### 2️⃣ ESC는 “취소”로만 써야 함 (중요)
+
+지금처럼
+👉 “ESC = 뭔가 다시 실행” 구조 ❌
+
+👉 “ESC = 현재 상태 해제” 구조로 바꿔야 함
+
+```javascript
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+        if (isSubmitting) {
+            // 로딩 취소
+            isSubmitting = false;
+            hideLoading(); // 프로그래스바 제거
+        }
+    }
+});
+```
+
+---
+
+## 💡 UX 기준으로 보면
+
+| 상황            | 올바른 동작      |
+| ------------- | ----------- |
+| submit 클릭     | 로딩 시작       |
+| 로딩 중          | 입력 차단       |
+| ESC           | 로딩 취소 or 무시 |
+| 로딩 중 재 submit | 막아야 함       |
+
+---
+
+## 🚨 지금 코드에서 위험한 패턴
+
+너 상황 보면 아마 이런 느낌일 가능성 있음:
+
+* ESC 누르면 → blur 발생
+* blur → 값 변환 JS 실행
+* 그 안에서 submit or 상태 변경
+* → 다시 프로그래스 → 반복
+
+👉 이건 구조적으로 깨진 상태
+
+---
+
+## ✔ 추천 구조 (안전한 패턴)
+
+```javascript
+let isSubmitting = false;
+
+function showLoading() {
+    document.getElementById("loading").style.display = "block";
+}
+
+function hideLoading() {
+    document.getElementById("loading").style.display = "none";
+}
+
+form.addEventListener("submit", function(e) {
+    if (isSubmitting) {
+        e.preventDefault();
+        return;
+    }
+
+    isSubmitting = true;
+    showLoading();
+});
+
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+        if (isSubmitting) {
+            isSubmitting = false;
+            hideLoading();
+        }
+    }
+});
+```
+
+---
+
+## 🔥 핵심 정리
+
+* ❌ ESC를 강제로 submit 흐름에 끼워 넣으면 안됨
+* ❌ ESC = 이벤트 재실행 구조 → 무한루프 원인
+* ✅ **isSubmitting 같은 상태 관리가 필수**
+* ✅ ESC는 “취소 / 해제” 역할만 해야 안정적
+
+---
+
+원하면
+👉 지금 쓰는 submit + 프로그래스바 + ESC 코드 보여줘
+
+**무한루프 나는 정확한 원인 찍어서 고쳐줄게** (거의 100% 재현 가능 케이스야)
