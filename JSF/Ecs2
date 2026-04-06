@@ -1,0 +1,101 @@
+짧게 말하면 👉 **ESC를 허용해서 뭔가 처리하려고 하기보다, “로딩 중에는 ESC를 무시(또는 차단)”하는 게 더 안정적**이야.
+
+---
+
+## 🔥 왜 ESC를 막는 게 낫냐
+
+지금 상황 기준:
+
+* submit → 프로그래스바 표시 → 입력 막기
+* ESC 누름 → **예상 못한 이벤트 발생 (blur / focus / 기타 JS)**
+* 👉 상태 꼬임 → 무한루프 / UI 멈춤
+
+즉
+👉 **ESC는 브라우저 레벨 이벤트라 완전히 통제하기 어려움**
+
+그래서 실무에서는 보통:
+
+> ✅ **로딩 중에는 ESC 포함 모든 입력을 무시**
+
+---
+
+## ✅ 권장 방식 (가장 안전)
+
+### ✔ 방법 1: ESC 자체를 무시
+
+```javascript
+let isSubmitting = false;
+
+document.addEventListener("keydown", function(e) {
+    if (isSubmitting && e.key === "Escape") {
+        e.preventDefault();   // 기본 동작 막기
+        e.stopPropagation();  // 이벤트 전파 차단
+        return false;
+    }
+});
+```
+
+---
+
+### ✔ 방법 2: 아예 UI를 막기 (더 좋음 👍)
+
+```css
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 9999;
+}
+```
+
+```javascript
+function showLoading() {
+    document.getElementById("overlay").style.display = "block";
+    isSubmitting = true;
+}
+```
+
+👉 이렇게 하면:
+
+* 클릭 ❌
+* 키 입력 ❌ (대부분 차단됨)
+* 포커스 이동 ❌
+
+---
+
+## ❌ ESC로 “취소 기능” 만드는 건?
+
+가능은 한데 조건 있음:
+
+* 서버 요청 취소까지 해야 함 (AbortController 등)
+* 상태 완전 초기화 필요
+* JS / DOM / CSS 다 되돌려야 함
+
+👉 이거 제대로 안 하면
+**지금처럼 무한루프 100% 발생**
+
+---
+
+## ✔ 결론 (중요)
+
+👉 네 케이스 기준 정답:
+
+* ❌ ESC 허용해서 처리 → 위험 (지금 문제 원인)
+* ❌ ESC로 submit 흐름 제어 → 비추
+* ✅ **로딩 중에는 ESC 포함 입력 무시가 가장 안전**
+* ✅ 또는 **완전한 cancel 로직을 따로 구현 (난이도 높음)**
+
+---
+
+## 🔥 한 줄 요약
+
+👉 **“ESC를 처리하려고 하지 말고, 로딩 중에는 아무 것도 못 하게 막아라”**
+
+---
+
+원하면
+👉 네 프로그래스바 구조 (JS + XHTML) 보면
+**ESC 눌러도 절대 안 깨지는 구조로 깔끔하게 재설계해줄게**
